@@ -142,3 +142,17 @@ function Module:cuda(shared)
    local type = 'torch.CudaTensor'
    return shared and self:sharedType(type) or self:type(type)
 end
+
+-- useful to get the output size
+-- I chose this method name because it is less likely to be overriden.
+function Module:outside(insize).
+   local input
+   if torch.type(insize) == 'table' then
+      input = torch.randn(unpack(insize))
+   else
+      input = torch.randn(insize)
+   end
+   local output = self:updateOutput(input)
+   return output:size()
+end
+
