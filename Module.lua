@@ -145,7 +145,7 @@ end
 
 -- useful to get the output size
 -- I chose this method name because it is less likely to be overriden.
-function Module:outside(insize).
+function Module:outside(insize)
    local input
    if torch.type(insize) == 'table' then
       input = torch.randn(unpack(insize))

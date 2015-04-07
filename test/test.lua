@@ -99,7 +99,15 @@ function dpnntest.Module_sharedType()
    end
 end
 
-function dp.testnn(tests)
+function dpnntest.Convert()
+   local c = nn.Convert('bchw', 'chwb')
+   local input = torch.randn(8,3,5,5)
+   local output = c:forward(input)
+   local output2 = input:transpose(1,4):transpose(1,3):transpose(1,2)
+   mytester:assertTensorEq(output, output2, 0.000001, "Convert bchw->chwb")
+end
+
+function dpnn.test(tests)
    mytester = torch.Tester()
    mytester:add(dpnntest)
    math.randomseed(os.time())

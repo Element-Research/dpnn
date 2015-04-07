@@ -26,13 +26,16 @@
 
 require 'torch'
 require 'nn'
+_ = require 'moses'
 
--- reuse or create global dp table:
-dp = dp or {}
+-- create global dpnn table
+dpnn = {}
 
 -- for testing:
-torch.include('dp', 'test.lua')
+torch.include('dpnn', 'test.lua')
 
 -- extensions to existing modules
-torch.include('nn', 'Module.lua')
+torch.include('dpnn', 'Module.lua')
+
+torch.include('dpnn', 'Convert.lua')
 
