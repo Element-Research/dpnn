@@ -156,3 +156,75 @@ function Module:outside(insize)
    return output:size()
 end
 
+Module.__dontSerialize__ = {'output', 'gradInput'}
+Module.__serialMode = 'heavy'
+Module.__serialType = false 
+
+function Module:serial(mode, type)
+   self.__serialMode = mode or 'light'
+   self.__serialType = (type == nil) and 'float' or type
+   return self
+end
+
+function Module:write(file)
+   local state
+   if self.__serialMode == 'light' then
+      state = _.map(self, 
+         function(k,v) 
+            -- light mode ignores gradInputs and outputs by default
+            if _.contains(self.__dontSerialize__, k) then 
+               if torch.type(v) == 'table' then
+                  return {}
+               elseif torch.isTensor(v) then
+                  return v.new()
+               else
+                  -- not table nor tensor? serialize as is
+                  return v
+               end
+            else
+               return v
+            end
+         end)
+   else
+      -- otherwise, serialize everything (default Module behavior)
+      state = _.map(self, function(k,v) return v end)
+   end
+
+   if self.__serialType then
+      -- cast to type before serialization (useful for cuda)
+      torch.setmetatable(state, torch.type(self))
+      local type = self.__serialType
+      if type:find('torch') then
+         state:type(type)
+      else
+         state[type](state)
+      end
+      -- remove metatable (I don't know any better way)
+      state = _.map(state, function(k,v) return v end)
+   end
+   file:writeObject(state)
+end
+
+function Module:read(file)
+   local state = file:readObject()
+   for k,v in pairs(state) do
+      self[k] = v
+   end
+end
+
+local __clone__ = Module.clone
+
+function Module:clone(...)
+   local serialMode = self.__serialMode
+   local serialType = self.__serialType
+   self.__serialMode = Module.__serialMode
+   self.__serialType = Module.__serialType
+   
+   -- call the original Module:clone() method
+   -- Note that subclasses that override clone() without calling parent.clone will fail
+   local clone = __clone__(self,...)
+   clone:serial(serialMode, serialType)
+   
+   self:serial(serialMode, serialType)
+   return clone
+end
