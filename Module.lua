@@ -228,3 +228,132 @@ function Module:clone(...)
    self:serial(serialMode, serialType)
    return clone
 end
+
+function Module:accept(visitor)
+   visitor:visit(self)
+end
+
+-- Can be used as a regularizer instead of weight decay
+-- Assumes that parameters are arranged (output dim x ... x input dim)
+function Module:maxParamNorm(maxOutNorm, maxInNorm)
+   -- this allows each module to set its own max[Out,In]Norm
+   maxOutNorm = self.maxOutNorm or maxOutNorm
+   maxInNorm = self.maxInNorm or maxInNorm
+   if self.modules then
+      for i,module in ipairs(self.modules) do
+         module:maxParamNorm(maxOutNorm, maxInNorm)
+      end
+   else
+      local params = self:parameters()
+      for k,param in pairs(params) do
+         -- By default, only affects non-1D params.
+         if param:dim() > 1 then
+            if maxOutNorm then
+               -- rows feed into output neurons 
+               param:renorm(2, 1, maxOutNorm)
+            end
+            if maxInNorm then
+               -- cols feed out from input neurons
+               param:renorm(2, param:dim(), maxInNorm)
+            end
+         end
+      end
+   end
+end
+
+-- Similar to maxParamNorm, but norm is global to Module for which 
+-- this is called. Unless moduleLocal is true, in which case, the
+-- norm is constraint is applied to the norm of all parameters in each
+-- component (non-container) module.
+function Module:gradParamClip(cutoffNorm, moduleLocal)
+   -- this allows each module to set its own cutoffNorm
+   cutoffNorm = self.cutoffNorm or cutoffNorm
+   if self.moduleLocal ~= nil then
+      moduleLocal =  self.moduleLocal
+   end
+   if moduleLocal and self.modules then
+      for i,module in ipairs(self.modules) do
+         module:gradParamClip(maxOutNorm, maxInNorm)
+      end
+   else
+      local params, gradParams = self:parameters()
+      local norm = 0
+      for k,gradParam in pairs(gradParams) do
+         norm = norm + math.pow(gradParam:norm(),2)
+      end
+      norm = math.sqrt(norm)
+      if norm > cutoffNorm then
+         -- rescale gradParams to obtain desired cutoffNorm
+         for k,gradParam in pairs(gradParams) do
+            gradParam:mul(cutoffNorm/norm)
+         end
+      end
+   end
+   return norm
+end
+
+-- Adds weight decay constraint on params with dims > 2 (default).
+-- TODO : allow inplace weightDecay (before calling accUpdateGradParameters)
+function Module:weightDecay(wdFactor, wdMinDim)
+   -- this allows each module to set its own hyper-parameters
+   wdMinDim = self.wdMinDim or wdMinDim or 2
+   wdFactor = self.wdFactor or wdFactor
+   if wdFactor <= 0 then
+      return
+   end
+   if self.modules then
+      for i,module in ipairs(self.modules) do
+         module:weightDecay(wdFactor, wdMinDim)
+      end
+   else
+      local params, gradParams = self:parameters()
+      for i,param in ipairs(params) do
+         if param:dim() >= wdMinDim then
+            gradParams[i]:add(wdFactor, param)
+         end
+      end
+   end
+end
+
+function Module:updateGradParameters(momFactor, momDamp, momNesterov)
+   -- this allows each module to set its own hyper-parameters
+   momFactor = self.momFactor or momFactor
+   momDamp = self.momDamp or momDamp or momFactor
+   if self.momNesterov ~= nil then
+      momNesterov = self.momNesterov
+   end
+   if momFactor <= 0 then
+      return
+   end
+   
+   if self.modules then
+      for i,module in ipairs(self.modules) do
+         module:momentum(momFactor, momDamp, momNesterov)
+      end
+   else
+      local params, gradParams = self:parameters()
+      local momGradParams = module.momGradParams
+      if not momGradParams then
+         momGradParams = {}
+         for i,gradParam in ipairs(gradParams) do
+            momGradParams[i] = gradParam.new():resizeAs(gradParam):copy(gradParam)
+         end
+         module.momGradParams = momGradParams
+      else
+         state.dfdx:mul(mom):add(1-damp, dfdx)
+         for i,gradParam in ipairs(gradParams) do
+            momGradParams:mul(momFactor):add(1-momDamp, gradParam)
+         end
+      end
+      
+      if momNesterov then
+         for i,gradParam in ipairs(gradParams) do
+            gradParam:add(momFactor, momGradParams[i])
+         end
+      else
+         for i,gradParam in ipairs(gradParams) do
+            gradParam:copy(momGradParams[i])
+         end
+      end
+   end
+end
