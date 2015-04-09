@@ -357,3 +357,24 @@ function Module:updateGradParameters(momFactor, momDamp, momNesterov)
       end
    end
 end
+
+-- returns inputShape, outputShape. 
+-- dp uses this to extrapolate module and criterion shapes.
+function Module:ioShapes()
+   local inputShape, outputShape
+   local typename = torch.type(self)
+   if self.inputShape then
+      inputShape = self.inputShape
+   elseif typename:find('Spatial') then
+      inputShape = 'bchw'
+   elseif typename:find('LookupTable') then
+      inputShape = 'bt'
+      outputShape = 'bwc'
+   elseif typename:find('Temporal') then
+      inputShape = 'bwc'
+   elseif typename:find('Volumetric') then
+      inputShape = 'bcdhw'
+   end
+   outputShape = outputShape or inputShape
+   return inputShape or 'default', outputShape or 'default'
+end
