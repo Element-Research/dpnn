@@ -358,22 +358,52 @@ function Module:updateGradParameters(momFactor, momDamp, momNesterov)
    end
 end
 
--- returns inputShape, outputShape. 
--- dp uses this to extrapolate module and criterion shapes.
-function Module:ioShapes()
-   local inputShape, outputShape
+-- get/set inputShape and outputShape. 
+function Module:ioShapes(inputShape, outputShape)
+   if inputShape or outputShape then
+      self.inputShape = inputShape
+      self.outputShape = outputShape
+      return
+   end
+   
+   -- danger zone.
+   -- attempt to extrapolate the inputShape and outputShape
+   inputShape = self.inputShape
+   outputShape = self.outputShape
+   
    local typename = torch.type(self)
-   if self.inputShape then
-      inputShape = self.inputShape
-   elseif typename:find('Spatial') then
-      inputShape = 'bchw'
-   elseif typename:find('LookupTable') then
-      inputShape = 'bt'
-      outputShape = 'bwc'
-   elseif typename:find('Temporal') then
-      inputShape = 'bwc'
-   elseif typename:find('Volumetric') then
-      inputShape = 'bcdhw'
+   if self.modules then
+      if torch.isTypeOf(self, 'nn.Sequential') then
+         inputShape = self.modules[1]:ioShapes()
+         outputShape = {self.modules[#self.modules]:ioShapes()}[2]
+      elseif torch.isTypeOf(self, 'nn.ParallelTable') then
+         inputShape = {}
+         outputShape = {}
+         for i,module in ipairs(self.modules) do
+            inputShape[i], outputShape[i] = module:ioShapes()
+         end
+      elseif torch.isTypeOf(self, 'nn.ConcatTable') then
+         outputShape = {}
+         for i,module in ipairs(self.modules) do
+            inputShape, outputShape[i] = module:ioShapes()
+         end
+      end
+   else
+      if typename:find('Spatial') then
+         inputShape = 'bchw'
+      elseif typename:find('LookupTable') then
+         inputShape = 'bt'
+         outputShape = 'bwc'
+      elseif typename:find('Temporal') then
+         inputShape = 'bwc'
+      elseif typename:find('Volumetric') then
+         inputShape = 'bcdhw'
+      elseif torch.isTypeOf(self, 'nn.Linear')
+            or torch.isTypeOf(self, 'nn.Euclidean') or torch.isTypeOf(self, 'nn.WeightedEuclidean') 
+            or torch.isTypeOf(self, 'nn.LogSoftMax') or torch.isTypeOf(self, 'nn.SoftMax')
+         then
+         inputShape = 'bf'
+      end
    end
    outputShape = outputShape or inputShape
    return inputShape or 'default', outputShape or 'default'
