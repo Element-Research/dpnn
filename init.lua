@@ -36,6 +36,8 @@ torch.include('dpnn', 'test.lua')
 
 -- extensions to existing modules
 torch.include('dpnn', 'Module.lua')
+torch.include('dpnn', 'Container.lua')
 
+-- modules
 torch.include('dpnn', 'Convert.lua')
 
