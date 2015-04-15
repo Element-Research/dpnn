@@ -357,3 +357,12 @@ function Module:updateGradParameters(momFactor, momDamp, momNesterov)
       end
    end
 end
+
+function Module:checkParameters()
+   local params = self:parameters()
+   for k,param in pairs(params) do
+      if _.isNaN(param:sum()) then
+         error("NaN Error for param at index" ..k)
+      end
+   end
+end
