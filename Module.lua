@@ -127,20 +127,23 @@ function Module:sharedType(type, castmap)
    return self
 end
 
+-- by default, uses sharedType. Why? more sensible way, 
+-- necessary for RNNs and fits in with existing overwritten methods 
+function Module:type(type, shared)
+   shared = (shared == nil) and true or shared
+   return self:sharedType(type)
+end
 
 function Module:float(shared)
-   local type = 'torch.FloatTensor'
-   return shared and self:sharedType(type) or self:type(type)
+   return self:type('torch.FloatTensor', shared)
 end
 
 function Module:double(shared)
-   local type = 'torch.DoubleTensor'
-   return shared and self:sharedType(type) or self:type(type)
+   return self:type('torch.DoubleTensor', shared)
 end
 
 function Module:cuda(shared)
-   local type = 'torch.CudaTensor'
-   return shared and self:sharedType(type) or self:type(type)
+   return self:type('torch.CudaTensor', shared)
 end
 
 -- useful to get the output size

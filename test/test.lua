@@ -127,6 +127,8 @@ function dpnntest.Convert()
    c:float()
    local output = c:forward(input:float())
    mytester:assertTensorEq(output, output2:float(), 0.000001, "Convert:type()")
+   local output = c:forward(input)
+   mytester:assertTensorEq(output, output2:float(), 0.000001, "Convert:type() double->float")
 end
 
 function dpnn.test(tests)

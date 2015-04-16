@@ -2,6 +2,7 @@
 --[ nn.Convert ]--
 -- Module to convert between different data formats
 -- nn.Convert('bchw', 'bf') or nn.Convert('chw', 'f')
+-- Automatically converts input to same type as self.output
 ------------------------------------------------------------------------
 local Convert, parent = torch.class("nn.Convert", "nn.Container")
 
@@ -41,6 +42,11 @@ function Convert:buildConverter(input)
 end
 
 function Convert:updateOutput(input)
+   if not torch.isTypeOf(input, self.output) then
+      self._input = self._input or self.output.new()
+      self._input:resize(input:size()):copy(input)
+      input = self._input
+   end
    if not self.converter then
       self:buildConverter(input)
    end
@@ -49,15 +55,25 @@ function Convert:updateOutput(input)
 end
 
 function Convert:updateGradInput(input, gradOutput)
-   self.gradInput = self.converter:updateGradInput(input, gradOutput)
+   input = self._input or input
+   local gradInput = self.converter:updateGradInput(input, gradOutput)
+   if self._input then
+      self._gradInput = self._gradInput or input.new()
+      self._gradInput:resize(input:size()):copy(gradInput)
+      self.gradInput = self._gradInput
+   else
+      self.gradInput = gradInput
+   end
    return self.gradInput
 end
 
 function Convert:accGradParameters(input, gradOutput, scale)
+   input = self._input or input
    self.converter:accGradParameters(input, gradOutput, scale)
 end
 
 function Convert:accUpdateGradParameters(input, gradOutput, lr)
+   input = self._input or input
    self.converter:accUpdateGradParameters(input, gradOutput, lr)
 end
 
@@ -157,4 +173,12 @@ function Convert:findAxis(axis_char, shape, silent)
       error("Provided shape '"..shape.."' has no axis '"..axis_char.."'", 2)
    end
    return axis_pos
+end
+
+function Convert:type(type)
+   if not torch.isTypeOf(type, self.output) then
+      self._input = nil
+      self._gradInput = nil
+   end
+   return parent.type(self, type)
 end
