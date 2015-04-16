@@ -252,7 +252,7 @@ function Module:maxParamNorm(maxOutNorm, maxInNorm)
          module:maxParamNorm(maxOutNorm, maxInNorm)
       end
    else
-      local params = self:parameters()
+      local params = self:parameters() or {}, {}
       for k,param in pairs(params) do
          -- By default, only affects non-1D params.
          if param:dim() > 1 then
@@ -288,7 +288,7 @@ function Module:gradParamClip(cutoffNorm, moduleLocal)
          module:gradParamClip(maxOutNorm, maxInNorm)
       end
    else
-      local params, gradParams = self:parameters()
+      local params, gradParams = self:parameters() or {}, {}
       local norm = 0
       for k,gradParam in pairs(gradParams) do
          norm = norm + math.pow(gradParam:norm(),2)
@@ -319,7 +319,7 @@ function Module:weightDecay(wdFactor, wdMinDim)
          module:weightDecay(wdFactor, wdMinDim)
       end
    else
-      local params, gradParams = self:parameters()
+      local params, gradParams = self:parameters() or {}, {}
       for i,param in ipairs(params) do
          if param:dim() >= wdMinDim then
             gradParams[i]:add(wdFactor, param)
@@ -342,19 +342,18 @@ function Module:updateGradParameters(momFactor, momDamp, momNesterov)
    
    if self.modules then
       for i,module in ipairs(self.modules) do
-         module:momentum(momFactor, momDamp, momNesterov)
+         module:updateGradParameters(momFactor, momDamp, momNesterov)
       end
    else
-      local params, gradParams = self:parameters()
-      local momGradParams = module.momGradParams
+      local params, gradParams = self:parameters() or {}, {}
+      local momGradParams = self.momGradParams
       if not momGradParams then
          momGradParams = {}
          for i,gradParam in ipairs(gradParams) do
             momGradParams[i] = gradParam.new():resizeAs(gradParam):copy(gradParam)
          end
-         module.momGradParams = momGradParams
+         self.momGradParams = momGradParams
       else
-         state.dfdx:mul(mom):add(1-damp, dfdx)
          for i,gradParam in ipairs(gradParams) do
             momGradParams:mul(momFactor):add(1-momDamp, gradParam)
          end
@@ -373,7 +372,7 @@ function Module:updateGradParameters(momFactor, momDamp, momNesterov)
 end
 
 function Module:checkParameters()
-   local params = self:parameters()
+   local params = self:parameters() or {}, {}
    for k,param in pairs(params) do
       if _.isNaN(param:sum()) then
          error("NaN Error for param at index" ..k)
