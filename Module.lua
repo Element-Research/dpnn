@@ -229,6 +229,7 @@ function Module:clone(...)
    return clone
 end
 
+-- for those interested in implementing the visitor design pattern
 function Module:accept(visitor)
    visitor:visit(self)
 end
@@ -239,6 +240,10 @@ function Module:maxParamNorm(maxOutNorm, maxInNorm)
    -- this allows each module to set its own max[Out,In]Norm
    maxOutNorm = self.maxOutNorm or maxOutNorm
    maxInNorm = self.maxInNorm or maxInNorm
+   if not (maxOutNorm or maxInNorm) then
+      return
+   end
+   
    if self.modules then
       for i,module in ipairs(self.modules) do
          module:maxParamNorm(maxOutNorm, maxInNorm)
@@ -268,9 +273,13 @@ end
 function Module:gradParamClip(cutoffNorm, moduleLocal)
    -- this allows each module to set its own cutoffNorm
    cutoffNorm = self.cutoffNorm or cutoffNorm
+   if cutoffNorm <= 0 then
+      return
+   end
    if self.moduleLocal ~= nil then
       moduleLocal =  self.moduleLocal
    end
+   
    if moduleLocal and self.modules then
       for i,module in ipairs(self.modules) do
          module:gradParamClip(maxOutNorm, maxInNorm)
@@ -296,11 +305,12 @@ end
 -- TODO : allow inplace weightDecay (before calling accUpdateGradParameters)
 function Module:weightDecay(wdFactor, wdMinDim)
    -- this allows each module to set its own hyper-parameters
-   wdMinDim = self.wdMinDim or wdMinDim or 2
    wdFactor = self.wdFactor or wdFactor
    if wdFactor <= 0 then
       return
    end
+   wdMinDim = self.wdMinDim or wdMinDim or 2
+   
    if self.modules then
       for i,module in ipairs(self.modules) do
          module:weightDecay(wdFactor, wdMinDim)
@@ -315,15 +325,16 @@ function Module:weightDecay(wdFactor, wdMinDim)
    end
 end
 
+-- uses momentum learning to update gradParams
 function Module:updateGradParameters(momFactor, momDamp, momNesterov)
    -- this allows each module to set its own hyper-parameters
    momFactor = self.momFactor or momFactor
+   if momFactor <= 0 then
+      return
+   end
    momDamp = self.momDamp or momDamp or momFactor
    if self.momNesterov ~= nil then
       momNesterov = self.momNesterov
-   end
-   if momFactor <= 0 then
-      return
    end
    
    if self.modules then
@@ -366,3 +377,26 @@ function Module:checkParameters()
       end
    end
 end
+
+-- a couple of methods pulled from dp, not sure they will be useful :
+
+-- returns a report of the Module's progress during epoch.
+-- if statistics were being gathered, this is the time to report them.
+function Module:report()
+end
+
+-- zero statistics between epochs
+function Module:zeroStatistics()
+   self.dpnn_nSample = 0
+end
+
+-- should only be called once per batch
+function Module:updateStatistics(nSample)
+   self.dpnn_nSample = self.dpnn_nSample + nSample
+end
+
+function Module:doneEpoch(report, ...)
+   --zeros statistics between epochs
+   self:zeroStatistics()
+end
+
