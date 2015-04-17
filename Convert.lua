@@ -7,13 +7,13 @@
 local Convert, parent = torch.class("nn.Convert", "nn.Container")
 
 function Convert:__init(inputShape, outputShape)
-   inputShape = inputShape:find('b') and inputShape or ('b'..inputShape)
-   self.inputShape = inputShape
-   outputShape = outputShape:find('b') and outputShape or ('b'..outputShape)
-   self.outputShape = outputShape
+   self.inputShape = inputShape:find('b') and inputShape or ('b'..inputShape)
+   self.outputShape = outputShape:find('b') and outputShape or ('b'..outputShape)
+   self.inputBatchDim = self.inputShape:find('b')
+   self.outputBatchDim = self.outputShape:find('b')
    -- number of dims in batch mode
-   self.nInputDim = #inputShape
-   self.nOutputDim = #outputShape
+   self.nInputDim = #self.inputShape
+   self.nOutputDim = #self.outputShape
    -- is the outputShape just a transposition of the inputShape?
    if self.nInputDim == self.nOutputDim then
       self.transposition = true
@@ -29,7 +29,6 @@ end
 
 -- post-initialization
 function Convert:buildConverter(input)
-   assert(input:dim() == self.nInputDim, "Only supports batch mode (for now)")
    if self.transposition then
       self.converter = self:transpose(self.outputShape)
    else
@@ -43,20 +42,54 @@ end
 
 function Convert:updateOutput(input)
    if not torch.isTypeOf(input, self.output) then
+      -- handle different input type
       self._input = self._input or self.output.new()
       self._input:resize(input:size()):copy(input)
       input = self._input
    end
+   self.batchMode = true
+   if input:dim() < self.nInputDim then
+      -- handle non-batch mode
+      local inputSize = input:size():totable()
+      table.insert(inputSize, self.inputBatchDim, 1)
+      self.__input = self.__input or input.new()
+      self.__input:set(input):resize(unpack(inputSize))
+      input = self.__input
+      self.batchMode = false
+   end
    if not self.converter then
       self:buildConverter(input)
    end
+   
    self.output = self.converter:updateOutput(input)
+   
+   if not self.batchMode then
+      local outputSize = self.output:size():totable()
+      table.remove(outputSize, self.outputBatchDim)
+      self.__output = self.__output or self.output.new()
+      self.__output:set(self.output):resize(unpack(outputSize))
+      self.output = self.__output
+   end
    return self.output
 end
 
 function Convert:updateGradInput(input, gradOutput)
+   local input_ = input
    input = self._input or input
+   if not self.batchMode then
+      input = self.__input
+      self.__gradOutput = self.__gradOutput or gradOutput.new()
+      self.__gradOutput:set(gradOutput):resizeAs(self.converter.output)
+      gradOutput = self.__gradOutput
+   end
+   
    local gradInput = self.converter:updateGradInput(input, gradOutput)
+   
+   if not self.batchMode then
+      self.__gradInput = self.__gradInput or gradInput.new()
+      self.__gradInput:set(gradInput):resizeAs(input_)
+      gradInput = self.__gradInput
+   end
    if self._input then
       self._gradInput = self._gradInput or input.new()
       self._gradInput:resize(input:size()):copy(gradInput)
@@ -64,16 +97,19 @@ function Convert:updateGradInput(input, gradOutput)
    else
       self.gradInput = gradInput
    end
+   
    return self.gradInput
 end
 
 function Convert:accGradParameters(input, gradOutput, scale)
-   input = self._input or input
+   input = self.batchMode and self.__input or self._input or input
+   gradOutput = self.batchMode and self.__gradOutput or gradOutput
    self.converter:accGradParameters(input, gradOutput, scale)
 end
 
 function Convert:accUpdateGradParameters(input, gradOutput, lr)
-   input = self._input or input
+   input = self.batchMode and self.__input or self._input or input
+   gradOutput = self.batchMode and self.__gradOutput or gradOutput
    self.converter:accUpdateGradParameters(input, gradOutput, lr)
 end
 
@@ -179,6 +215,10 @@ function Convert:type(type)
    if not torch.isTypeOf(type, self.output) then
       self._input = nil
       self._gradInput = nil
+      self.__input = nil
+      self.__output = nil
+      self.__gradInput = nil
+      self.__gradOutput =  nil
    end
    return parent.type(self, type)
 end
