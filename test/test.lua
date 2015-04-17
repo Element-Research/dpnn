@@ -131,6 +131,22 @@ function dpnntest.Convert()
    mytester:assertTensorEq(output, output2:float(), 0.000001, "Convert:type() double->float")
 end
 
+function dpnntest.Collapse()
+   local c = nn.Collapse(3)
+   local input = torch.randn(8,3,4,5)
+   local output = c:forward(input)
+   mytester:assertTensorEq(input:view(8,-1), output, 0.000001, "Collapse:forward")
+   local gradInput = c:backward(input, output)
+   mytester:assertTensorEq(gradInput, input, 0.000001, "Collapse:backward")
+   mytester:assertTableEq(gradInput:size():totable(), input:size():totable(), 0.000001, "Collapse:backward size")
+   local input2 = input:transpose(1,4)
+   local output2 = c:forward(input2)
+   mytester:assertTensorEq(input2, output2, 0.000001, "Collapse:forward non-contiguous")
+   local gradInput2 = c:backward(input2, output2)
+   mytester:assertTensorEq(gradInput2, input2, 0.000001, "Collapse:backward non-contiguous")
+   mytester:assertTableEq(gradInput2:size():totable(), input2:size():totable(), 0.000001, "Collapse:backward size non-contiguous")
+end
+
 function dpnn.test(tests)
    mytester = torch.Tester()
    mytester:add(dpnntest)

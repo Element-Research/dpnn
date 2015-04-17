@@ -40,4 +40,5 @@ torch.include('dpnn', 'Container.lua')
 
 -- modules
 torch.include('dpnn', 'Convert.lua')
+torch.include('dpnn', 'Collapse.lua')
 
