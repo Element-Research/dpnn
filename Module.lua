@@ -1,5 +1,25 @@
 local Module = nn.Module
 
+function Module:updateParameters(learningRate)
+   -- sparse params can have different learningRate scales per param
+   local params, gradParams, scales = self:parameters()
+   if params then
+      for i,param in pairs(params) do -- pairs for sparse params
+         local scale = scales and scales[i] or 1
+         param:add(-learningRate*scale, gradParams[i])
+      end
+   end
+end
+
+function Module:zeroGradParameters()
+   local _,gradParams = self:parameters()
+   if gradParams then
+      for i,gradParam in pairs(gradParams) do -- pairs for sparse params
+         gradParam:zero()
+      end
+   end
+end
+
 Module.__parameters__ = {'weight', 'bias'}
 Module.__gradParameters__ = {'gradWeight', 'gradBias'}
 
@@ -253,7 +273,7 @@ function Module:maxParamNorm(maxOutNorm, maxInNorm)
       end
    else
       local params = self:parameters() or {}, {}
-      for k,param in pairs(params) do
+      for k,param in pairs(params) do -- pairs for sparse params
          -- By default, only affects non-1D params.
          if param:dim() > 1 then
             if maxOutNorm then
@@ -290,7 +310,7 @@ function Module:gradParamClip(cutoffNorm, moduleLocal)
    else
       local params, gradParams = self:parameters() or {}, {}
       local norm = 0
-      for k,gradParam in pairs(gradParams) do
+      for k,gradParam in pairs(gradParams) do -- pairs for sparse params
          norm = norm + math.pow(gradParam:norm(),2)
       end
       norm = math.sqrt(norm)
@@ -320,7 +340,7 @@ function Module:weightDecay(wdFactor, wdMinDim)
       end
    else
       local params, gradParams = self:parameters() or {}, {}
-      for i,param in ipairs(params) do
+      for i,param in pairs(params) do -- pairs for sparse params
          if param:dim() >= wdMinDim then
             gradParams[i]:add(wdFactor, param)
          end
@@ -349,22 +369,22 @@ function Module:updateGradParameters(momFactor, momDamp, momNesterov)
       local momGradParams = self.momGradParams
       if not momGradParams then
          momGradParams = {}
-         for i,gradParam in ipairs(gradParams) do
+         for i,gradParam in pairs(gradParams) do -- pairs for sparse params
             momGradParams[i] = gradParam.new():resizeAs(gradParam):copy(gradParam)
          end
          self.momGradParams = momGradParams
       else
-         for i,gradParam in ipairs(gradParams) do
+         for i,gradParam in pairs(gradParams) do
             momGradParams:mul(momFactor):add(1-momDamp, gradParam)
          end
       end
       
       if momNesterov then
-         for i,gradParam in ipairs(gradParams) do
+         for i,gradParam in pairs(gradParams) do
             gradParam:add(momFactor, momGradParams[i])
          end
       else
-         for i,gradParam in ipairs(gradParams) do
+         for i,gradParam in pairs(gradParams) do
             gradParam:copy(momGradParams[i])
          end
       end
