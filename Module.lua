@@ -1,10 +1,12 @@
 local Module = nn.Module
 
 function Module:updateParameters(learningRate)
-   local params, gradParams = self:parameters()
+   -- sparse params can have different learningRate scales per param
+   local params, gradParams, scales = self:parameters()
    if params then
       for i,param in pairs(params) do -- pairs for sparse params
-         param:add(-learningRate, gradParams[i])
+         local scale = scales and scales[i] or 1
+         param:add(-learningRate*scale, gradParams[i])
       end
    end
 end

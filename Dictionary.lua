@@ -10,17 +10,6 @@ function Dictionary:__init(dictSize, embeddingSize, accUpdate)
    self.dpnn_sparseParameters = true --disable for use with optim 
 end
 
-function Dictionary:updateParameters(learningRate)
-   -- sparse params can have different learningRate scales per param
-   local params, gradParams, scales = self:parameters()
-   if params then
-      for i,param in pairs(params) do -- pairs for sparse params
-         local scale = scales and scales[i] or 1
-         param:add(-learningRate*scale, gradParams[i])
-      end
-   end
-end
-
 function Dictionary:parameters()
    if self.dpnn_sparseParameters then
       -- only return the parameters affected by the forward/backward
@@ -33,7 +22,7 @@ function Dictionary:parameters()
          end
          scales[k] = self:scaleUpdateByKey(k)
       end
-      return params, gradParams, scales
+      return params, gradParams, scales, self.weight:size(1)
    end
    return parent.parameters(self)
 end
