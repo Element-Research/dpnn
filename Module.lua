@@ -177,7 +177,7 @@ function Module:outside(insize)
    return output:size()
 end
 
-Module.__dontSerialize__ = {'output', 'gradInput', 'momGradParams'}
+Module.__dontSerialize__ = {'output', 'gradInput', 'momGradParams', 'dpnn_input'}
 Module.__serialMode = 'heavy'
 Module.__serialType = false 
 

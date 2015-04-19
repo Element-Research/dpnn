@@ -26,6 +26,7 @@
 
 require 'torch'
 require 'nn'
+require 'nnx'
 _ = require 'moses'
 
 -- create global dpnn table
@@ -42,4 +43,5 @@ torch.include('dpnn', 'Container.lua')
 torch.include('dpnn', 'Convert.lua')
 torch.include('dpnn', 'Collapse.lua')
 torch.include('dpnn', 'Dictionary.lua')
+torch.include('dpnn', 'SoftMaxForest.lua')
 
