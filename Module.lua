@@ -349,17 +349,15 @@ function Module:weightDecay(wdFactor, wdMinDim)
 end
 
 function Module:momentumGradParameters()
-   -- Note that sparse param modules should over-ride this method
    if (not self.momGradParams) or _.isEmpty(self.momGradParams) then
       local params, gradParams = self:parameters()
       if not gradParams or _.isEmpty(gradParams) then
          return
       end
       self.momGradParams = {}
-      for i,gradParam in ipairs(gradParams) do 
+      for i,gradParam in pairs(gradParams) do 
          self.momGradParams[i] = gradParam.new():resizeAs(gradParam):copy(gradParam)
       end
-      self.momGradParams = momGradParams
    end
    return self.momGradParams
 end
@@ -385,7 +383,7 @@ function Module:updateGradParameters(momFactor, momDamp, momNesterov)
       if (not params) or _.isEmpty(params) then
          return
       end
-      local momGradParams = self:momemtumGradParameters()
+      local momGradParams = self:momentumGradParameters()
       for i,gradParam in pairs(gradParams) do
          momGradParams[i]:mul(momFactor):add(1-momDamp, gradParam)
       end

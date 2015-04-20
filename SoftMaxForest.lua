@@ -1,4 +1,4 @@
-local SoftMaxForest, parent = torch.class("nn.SoftMaxTree", "nn.Container")
+local SoftMaxForest, parent = torch.class("nn.SoftMaxForest", "nn.Container")
 
 function SoftMaxForest:__init(inputSize, trees, rootIds, gaterSize, gaterAct, accUpdate)
    local gaterAct = gaterAct or nn.Tanh() 

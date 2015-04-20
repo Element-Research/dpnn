@@ -29,11 +29,12 @@ end
 
 function Dictionary:momentumGradParameters()
    if self.dpnn_sparseParameters then
-      local momGradWeight = parent.momentumGradParameters(self)
-      if not momGradWeight then
-         return
+      -- get dense view of momGradParams
+      if not self.momGradParams or _.isEmpty(self.momGradParams) then
+         assert(not self.accUpdate, "cannot use momentum with accUpdate")
+         self.momGradParams = {self.gradWeight:clone():zero()}
       end
-      momGradWeight = momGradWeight[1]
+      local momGradWeight = self.momGradParams[1]
       local momGradParams = {}
       -- only return the parameters affected by the forward/backward
       for k,nBackward in pairs(self.inputs) do
