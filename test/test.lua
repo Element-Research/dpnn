@@ -165,6 +165,29 @@ function dpnntest.Collapse()
    mytester:assertTableEq(gradInput2:size():totable(), input2:size():totable(), 0.000001, "Collapse:backward size non-contiguous")
 end
 
+function dpnntest.ZipTable()
+   -- input : { {a1,a2}, {b1,b2}, {c1,c2} }
+   -- output : { {a1,b1,c1}, {a2,b2,c2} }
+   local z = nn.ZipTable()
+   local input = {
+      {torch.randn(3,4), torch.randn(3,4)},
+      {torch.randn(3,4), torch.randn(3,4)},
+      {torch.randn(3,4), torch.randn(3,4)}
+   }
+   local output = z:forward(input)
+   mytester:assert(#output == 2, "ZipTable #output")
+   mytester:assert(#(output[1]) == 3, "ZipTable #output[1]")
+   mytester:assertTensorEq(input[1][1], output[1][1], 0.000001, "ZipTable input11")
+   mytester:assertTensorEq(input[1][2], output[2][1], 0.000001, "ZipTable input12")
+   mytester:assertTensorEq(input[3][2], output[2][3], 0.000001, "ZipTable input32")
+   local gradInput = z:backward(input, output)
+   mytester:assert(#gradInput == 3, "ZipTable #gradInput")
+   mytester:assert(#(gradInput[1]) == 2, "ZipTable #gradInput[1]")
+   mytester:assertTensorEq(input[1][1], gradInput[1][1], 0.000001, "ZipTable gradInput11")
+   mytester:assertTensorEq(input[1][2], gradInput[1][2], 0.000001, "ZipTable gradInput12")
+   mytester:assertTensorEq(input[3][2], gradInput[3][2], 0.000001, "ZipTable gradInput32")
+end
+
 function dpnn.test(tests)
    mytester = torch.Tester()
    mytester:add(dpnntest)
