@@ -166,6 +166,14 @@ function Module:cuda(shared)
    return self:type('torch.CudaTensor', shared)
 end
 
+function Module:int(shared)
+   return self:type('torch.IntTensor', shared)
+end
+
+function Module:long(shared)
+   return self:type('torch.LongTensor', shared)
+end
+
 -- useful to get the output size
 -- I chose this method name because it is less likely to be overriden.
 function Module:outside(insize)
@@ -409,25 +417,9 @@ function Module:checkParameters()
    end
 end
 
--- a couple of methods pulled from dp, not sure they will be useful :
-
--- returns a report of the Module's progress during epoch.
--- if statistics were being gathered, this is the time to report them.
-function Module:report()
+function Module:dontBackward()
+   self.updateGradInput = function() end
+   self.accGradParameters = function() end
+   self.accUpdateGradParameters = function() end
+   return self
 end
-
--- zero statistics between epochs
-function Module:zeroStatistics()
-   self.dpnn_nSample = 0
-end
-
--- should only be called once per batch
-function Module:updateStatistics(nSample)
-   self.dpnn_nSample = self.dpnn_nSample + nSample
-end
-
-function Module:doneEpoch(report, ...)
-   --zeros statistics between epochs
-   self:zeroStatistics()
-end
-
