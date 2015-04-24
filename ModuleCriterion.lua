@@ -1,9 +1,9 @@
 local ModuleCriterion, parent = torch.class("nn.ModuleCriterion", "nn.Criterion")
 
-function ModuleCriterion:__init(criterion, inputModule, targetModule)
+function ModuleCriterion:__init(criterion, inputModule, targetModule, castTarget)
    self.inputModule = inputModule
    self.targetModule = targetModule
-   self.castTarget = true
+   self.castTarget = (castTarget == nil) and true or castTarget
    if self.inputModule then
       local params = self.inputModule:parameters()
       if params and #params > 0 then
@@ -18,7 +18,7 @@ function ModuleCriterion:forward(input, target)
       self.input = self.inputModule:forward(input)
    end
    if self.targetModule then
-      self.target = self.outputModule:forward(target)
+      self.target = self.targetModule:forward(target)
    end
    self.output = self.criterion:forward(self.input or input, self.target or target)
    return self.output
@@ -39,5 +39,6 @@ function ModuleCriterion:type(type)
    if self.castTarget and self.targetModule then
       self.targetModule:type(type)
    end
+   self.criterion:type(type)
    return parent.type(self, type)
 end

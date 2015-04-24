@@ -7,6 +7,8 @@
 local Convert, parent = torch.class("nn.Convert", "nn.Container")
 
 function Convert:__init(inputShape, outputShape)
+   inputShape = inputShape or 'b*'
+   outputShape = outputShape or inputShape
    self.inputShape = inputShape:find('b') and inputShape or ('b'..inputShape)
    self.outputShape = outputShape:find('b') and outputShape or ('b'..outputShape)
    self.inputBatchDim = self.inputShape:find('b')
