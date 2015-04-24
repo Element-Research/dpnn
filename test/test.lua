@@ -188,6 +188,32 @@ function dpnntest.ZipTable()
    mytester:assertTensorEq(input[3][2], gradInput[3][2], 0.000001, "ZipTable gradInput32")
 end
 
+function dpnntest.Inception()
+   local size = {8,3,32,32}
+   local outputSize = {8,16+24+8+12,32,32}
+   local input = torch.rand(unpack(size))
+   local gradOutput = torch.randn(unpack(outputSize))
+   local incep = nn.Inception{inputSize=3, outputSize={16,24}, reduceSize={14,16,8,12}}
+   for i, param in ipairs(incep:parameters()) do
+      mytester:assert(_.isFinite(param:sum()), 'inception init error')
+   end
+   local output = incep:forward(input)
+   mytester:assertTableEq(output:size():totable(), outputSize, 0.00001)
+   mytester:assert(_.isFinite(output:sum()))
+   incep:zeroGradParameters()
+   local gradInput = incep:backward(input, gradOutput)
+   mytester:assertTableEq(gradInput:size():totable(), size, 0.00001)
+   mytester:assert(_.isFinite(gradInput:sum()))
+   incep:updateParameters(0.1)
+   for i, param in ipairs(incep:parameters()) do
+      mytester:assert(_.isFinite(param:sum()), 'inception update error')
+   end
+   incep:maxParamNorm(1)
+   for i, param in ipairs(incep:parameters()) do
+      mytester:assert(_.isFinite(param:sum()), 'inception maxNorm error')
+   end
+end
+
 function dpnn.test(tests)
    mytester = torch.Tester()
    mytester:add(dpnntest)

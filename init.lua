@@ -45,6 +45,7 @@ torch.include('dpnn', 'DontCast.lua')
 torch.include('dpnn', 'Collapse.lua')
 torch.include('dpnn', 'ZipTable.lua')
 torch.include('dpnn', 'Dictionary.lua')
+torch.include('dpnn', 'Inception.lua')
 torch.include('dpnn', 'SoftMaxTree.lua')
 torch.include('dpnn', 'SoftMaxForest.lua')
 

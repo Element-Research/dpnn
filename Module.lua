@@ -423,3 +423,37 @@ function Module:dontBackward()
    self.accUpdateGradParameters = function() end
    return self
 end
+
+function Module:contiguousInput(input, backward)
+   if backward then
+      return self.dpnn_cinput or input
+   end
+   if not input:isContiguous() then
+      self.dpnn_cinput = self.dpnn_cinput or input.new()
+      self.dpnn_cinput:resizeAs(input):copy(input)
+      input = self.dpnn_cinput
+   end
+   return input
+end
+
+function Module:toBatch(tensor, nDim, batchDim)
+   local batchDim = batchDim or 1
+   if tensor:dim() == nDim then
+      self.dpnn_online = true
+      local size = tensor:size():totable()
+      table.insert(size, batchDim, 1)
+      tensor = tensor:view(unpack(size))
+   else
+      self.dpnn_online = false
+   end
+   return tensor
+end
+
+function Module:fromBatch(tensor, batchDim)
+   if self.dpnn_online then
+      local size = tensor:size():totable()
+      assert(table.remove(size, batchDim) == 1)
+      tensor = tensor:view(unpack(size))
+   end
+   return tensor
+end
