@@ -130,3 +130,7 @@ function Inception:accUpdateGradParameters(input, gradOutput, lr)
    self.depthConcat:accUpdateGradParameters(input, gradOutput, lr)
 end
 
+function Inception:__tostring__()
+   return self.depthConcat:__tostring__()
+end
+

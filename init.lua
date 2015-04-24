@@ -40,6 +40,7 @@ torch.include('dpnn', 'Module.lua')
 torch.include('dpnn', 'Container.lua')
 
 -- modules
+torch.include('dpnn', 'PrintSize.lua')
 torch.include('dpnn', 'Convert.lua')
 torch.include('dpnn', 'DontCast.lua')
 torch.include('dpnn', 'Collapse.lua')
@@ -49,3 +50,5 @@ torch.include('dpnn', 'Inception.lua')
 torch.include('dpnn', 'SoftMaxTree.lua')
 torch.include('dpnn', 'SoftMaxForest.lua')
 
+-- criterions
+torch.include('dpnn', 'ModuleCriterion.lua')
