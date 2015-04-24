@@ -200,22 +200,28 @@ end
 function Module:write(file)
    local state
    if self.__serialMode == 'light' then
-      state = _.map(self, 
-         function(k,v) 
-            -- light mode ignores gradInputs and outputs by default
-            if _.contains(self.__dontSerialize__, k) then 
-               if torch.type(v) == 'table' then
-                  return {}
-               elseif torch.isTensor(v) then
-                  return v.new()
+      local function writeState(modula) 
+         local state = _.map(modula, 
+            function(k,v) 
+               -- light mode ignores gradInputs and outputs by default
+               if _.contains(modula.__dontSerialize__, k) then 
+                  if torch.type(v) == 'table' then
+                     return {}
+                  elseif torch.isTensor(v) then
+                     return v.new()
+                  else
+                     -- not table nor tensor? serialize as is
+                     return v
+                  end
+               elseif torch.isTypeOf(v, 'nn.Module') then
+                  return writeState(modula)
                else
-                  -- not table nor tensor? serialize as is
                   return v
                end
-            else
-               return v
-            end
-         end)
+            end)
+         state.dpnn_typename = torch.type(modula)
+      end
+      state = writeState(self)
    else
       -- otherwise, serialize everything (default Module behavior)
       state = _.map(self, function(k,v) return v end)
@@ -223,7 +229,11 @@ function Module:write(file)
 
    if self.__serialType then
       -- cast to type before serialization (useful for cuda)
-      torch.setmetatable(state, torch.type(self))
+      local function castState(state)
+         torch.setmetatable(state, torch.type(state.dpnn_typename))
+         for k,v in pairs(state) do
+            v == 
+         end
       local type = self.__serialType
       if type:find('torch') then
          state:type(type)
