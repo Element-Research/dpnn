@@ -20,8 +20,10 @@ function Module:zeroGradParameters()
    end
 end
 
-Module.__parameters__ = {'weight', 'bias'}
-Module.__gradParameters__ = {'gradWeight', 'gradBias'}
+------------------------ clone and type --------------------------------
+
+Module.dpnn_parameters = {'weight', 'bias'}
+Module.dpnn_gradParameters = {'gradWeight', 'gradBias'}
 
 -- TODO make this recursive (for table params)
 function Module:sharedClone(shareParams, shareGradParams)
@@ -40,7 +42,7 @@ function Module:sharedClone(shareParams, shareGradParams)
    
    local params, pointers = {}, {}
    if shareParams then
-      for i,paramName in ipairs(self.__parameters__) do
+      for i,paramName in ipairs(self.dpnn_parameters) do
          local param = self[paramName]
          if param then
             params[paramName] = param
@@ -53,7 +55,7 @@ function Module:sharedClone(shareParams, shareGradParams)
    end
    
    if shareGradParams then
-      for i,paramName in ipairs(self.__gradParameters__) do
+      for i,paramName in ipairs(self.dpnn_gradParameters) do
          local gradParam = self[paramName]
          if gradParam then
             params[paramName] = gradParam
@@ -174,6 +176,110 @@ function Module:long(shared)
    return self:type('torch.LongTensor', shared)
 end
 
+----------------- serialization (see nn.Serial) -------------------
+
+Module.dpnn_mediumEmpty = {'output', 'gradInput', 'momGradParams', 'dpnn_input'}
+Module.dpnn_lightEmpty = Module.dpnn_gradParameters
+-- defaults to heavy serialization
+Module.dpnn_serialEmpty = {}
+Module.dpnn_serialType = false 
+
+-- sets the serialization behavior of the module structure
+function Module:serial(empty, type)
+   assert(torch.type(empty) == 'table', "Expecting table at arg 1")
+   self.dpnn_serialEmpty = empty
+   self.dpnn_serialType = type
+   -- set the serial of all encapsulated modules
+   local function recursiveSerial(tbl)
+      for k,v in pairs(tbl) do
+         if torch.type(v) == 'nn.Module' then
+            v:serial(empty, type)
+         else
+            recursiveSerial(v)
+         end
+      end
+   end
+   recursiveSerial(self)
+   return self
+end
+
+-- serialize everything
+function Module:heavySerial(type)
+   return self:serial({}, type)
+end
+
+-- serialize everything except dpnn_mediumEmpty attributes
+function Module:mediumSerial(type)
+   return self:serial(self.dpnn_mediumEmpty, (type == 'nil') and 'float' or type)
+end
+
+-- serialize everything except dpnn_mediumEmpty and dpnn_lightEmpty attributes
+function Module:lightSerial(type)
+   local empty = _.clone(self.dpnn_mediumEmpty)
+   for k,v in ipairs(self.dpnn_lightEmpty)
+      table.insert(empty, v)
+   end
+   return self:serial(empty, (type == 'nil') and 'float' or type)
+end
+
+function Module:getSerialState(states)
+   states = states or {}
+   -- dont get the serial state of the same module twice (reuse existing)
+   if states[self] then
+      return states[self]
+   end
+   -- returns the object structure as tables (i.e. without metatables)
+   local function recursiveState(tbl)
+      local state = _.map(tbl, 
+         function(k,v) 
+            if (torch.type(tbl) ~= 'table') and _.contains(self.dpnn_serialEmpty, k) then 
+               -- "empties" module attributes found in empty
+               if torch.type(v) == 'table' then
+                  -- empty table
+                  return {} 
+               elseif torch.isTensor(v) then
+                  -- empty tensor
+                  return v.new() 
+               else
+                  -- not table nor tensor? then serialize as is
+                  return v
+               end
+            elseif torch.isTypeOf(v, 'nn.Module') then
+               -- recursive, yet can be overwritten
+               return v:getSerialState(states)
+            elseif torch.type(v) == 'table' then
+               -- in case it is a table of modules
+               return states[v] or recursiveState(v)
+            else
+               return v
+            end
+         end
+      )
+      states[tbl] = state
+      return state
+   end
+   local state = recursiveState(self)
+   
+   -- so that the module can be reconstructed from the state
+   state.dpnn_typename = torch.type(self)
+   if self.dpnn_serialType then
+      -- cast to type before serialization (useful for cuda)
+      torch.setmetatable(state, torch.type(state.dpnn_typename))
+      local type = self.dpnn_serialType
+      if type:find('torch') then
+         state:type(type)
+      else
+         state[type](state)
+      end
+      -- remove metatable via shallow copy (I don't know any better way)
+      state = _.map(state, function(k,v) return v end)
+   end
+   
+   return state
+end
+
+----------------------- for training -----------------------------
+
 -- useful to get the output size
 -- I chose this method name because it is less likely to be overriden.
 function Module:outside(insize)
@@ -185,89 +291,6 @@ function Module:outside(insize)
    end
    local output = self:updateOutput(input)
    return output:size()
-end
-
-Module.__dontSerialize__ = {'output', 'gradInput', 'momGradParams', 'dpnn_input'}
-Module.__serialMode = 'heavy'
-Module.__serialType = false 
-
-function Module:serial(mode, type)
-   self.__serialMode = mode or 'light'
-   self.__serialType = (type == nil) and 'float' or type
-   return self
-end
-
-function Module:write(file)
-   local state
-   if self.__serialMode == 'light' then
-      local function writeState(modula) 
-         local state = _.map(modula, 
-            function(k,v) 
-               -- light mode ignores gradInputs and outputs by default
-               if _.contains(modula.__dontSerialize__, k) then 
-                  if torch.type(v) == 'table' then
-                     return {}
-                  elseif torch.isTensor(v) then
-                     return v.new()
-                  else
-                     -- not table nor tensor? serialize as is
-                     return v
-                  end
-               elseif torch.isTypeOf(v, 'nn.Module') then
-                  return writeState(modula)
-               else
-                  return v
-               end
-            end)
-         state.dpnn_typename = torch.type(modula)
-      end
-      state = writeState(self)
-   else
-      -- otherwise, serialize everything (default Module behavior)
-      state = _.map(self, function(k,v) return v end)
-   end
-
-   if self.__serialType then
-      -- cast to type before serialization (useful for cuda)
-      local function castState(state)
-         torch.setmetatable(state, torch.type(state.dpnn_typename))
-         for k,v in pairs(state) do
-            v == 
-         end
-      local type = self.__serialType
-      if type:find('torch') then
-         state:type(type)
-      else
-         state[type](state)
-      end
-      -- remove metatable (I don't know any better way)
-      state = _.map(state, function(k,v) return v end)
-   end
-   file:writeObject(state)
-end
-
-function Module:read(file)
-   local state = file:readObject()
-   for k,v in pairs(state) do
-      self[k] = v
-   end
-end
-
-local __clone__ = Module.clone
-
-function Module:clone(...)
-   local serialMode = self.__serialMode
-   local serialType = self.__serialType
-   self.__serialMode = Module.__serialMode
-   self.__serialType = Module.__serialType
-   
-   -- call the original Module:clone() method
-   -- Note that subclasses that override clone() without calling parent.clone will fail
-   local clone = __clone__(self,...)
-   clone:serial(serialMode, serialType)
-   
-   self:serial(serialMode, serialType)
-   return clone
 end
 
 -- for those interested in implementing the visitor design pattern

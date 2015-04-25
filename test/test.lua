@@ -99,17 +99,15 @@ function dpnntest.Module_sharedType()
    end
 end
 
-function dpnntest.Module_serial()
+function dpnntest.Serial()
    local mlp = nn.Linear(3,7)
    mlp:forward(torch.randn(4,3))
    mlp:backward(torch.randn(4,3), torch.randn(4,7))
-   mlp:serial()
-   local mlp2 = mlp:clone()
-   mytester:assert(torch.type(mlp2.output) == torch.type(mlp.output), "serial clone err")
-   mytester:assertTensorEq(mlp2.output, mlp.output, 0.000001, "serial clone err")
-   local mlp3 = torch.deserialize(torch.serialize(mlp))
-   mytester:assert(mlp3.output:nElement() == 0, "serial light size err")
-   mytester:assert(torch.type(mlp3.output) == 'torch.FloatTensor', "serial light type err")
+   local mlp2 = nn.Serial(mlp)
+   mlp2:mediumSerial()
+   local mlp3:clone()
+   mytester:assert(mlp3.module.output:nElement() == 0, "serial medium empty err")
+   mytester:assert(torch.type(mlp3.module.output) == 'torch.FloatTensor', "serial medium type err")
 end
 
 function dpnntest.Convert()
