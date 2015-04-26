@@ -185,16 +185,16 @@ Module.dpnn_serialEmpty = {}
 Module.dpnn_serialType = false 
 
 -- sets the serialization behavior of the module structure
-function Module:serial(empty, type)
+function Module:serialMode(empty, type)
    assert(torch.type(empty) == 'table', "Expecting table at arg 1")
    self.dpnn_serialEmpty = empty
    self.dpnn_serialType = type
    -- set the serial of all encapsulated modules
    local function recursiveSerial(tbl)
       for k,v in pairs(tbl) do
-         if torch.type(v) == 'nn.Module' then
-            v:serial(empty, type)
-         else
+         if torch.isTypeOf(v, 'nn.Module') then
+            v:serialMode(empty, type)
+         elseif torch.type(v) == 'table' then
             recursiveSerial(v)
          end
       end
@@ -203,23 +203,23 @@ function Module:serial(empty, type)
    return self
 end
 
--- serialize everything
+-- serialMode : serialize everything
 function Module:heavySerial(type)
-   return self:serial({}, type)
+   return self:serialMode({}, type)
 end
 
--- serialize everything except dpnn_mediumEmpty attributes
+-- serialMode : serialize everything except dpnn_mediumEmpty attributes
 function Module:mediumSerial(type)
-   return self:serial(self.dpnn_mediumEmpty, (type == 'nil') and 'float' or type)
+   return self:serialMode(self.dpnn_mediumEmpty, (type == nil) and 'float' or type)
 end
 
--- serialize everything except dpnn_mediumEmpty and dpnn_lightEmpty attributes
+-- serialMode : serialize everything except dpnn_mediumEmpty and dpnn_lightEmpty attributes
 function Module:lightSerial(type)
    local empty = _.clone(self.dpnn_mediumEmpty)
-   for k,v in ipairs(self.dpnn_lightEmpty)
+   for k,v in ipairs(self.dpnn_lightEmpty) do
       table.insert(empty, v)
    end
-   return self:serial(empty, (type == 'nil') and 'float' or type)
+   return self:serialMode(empty, (type == nil) and 'float' or type)
 end
 
 function Module:getSerialState(states)
@@ -232,7 +232,7 @@ function Module:getSerialState(states)
    local function recursiveState(tbl)
       local state = _.map(tbl, 
          function(k,v) 
-            if (torch.type(tbl) ~= 'table') and _.contains(self.dpnn_serialEmpty, k) then 
+            if torch.isTypeOf(tbl, 'nn.Module') and _.contains(self.dpnn_serialEmpty, k) then 
                -- "empties" module attributes found in empty
                if torch.type(v) == 'table' then
                   -- empty table
@@ -264,7 +264,7 @@ function Module:getSerialState(states)
    state.dpnn_typename = torch.type(self)
    if self.dpnn_serialType then
       -- cast to type before serialization (useful for cuda)
-      torch.setmetatable(state, torch.type(state.dpnn_typename))
+      torch.setmetatable(state, state.dpnn_typename)
       local type = self.dpnn_serialType
       if type:find('torch') then
          state:type(type)
@@ -276,6 +276,11 @@ function Module:getSerialState(states)
    end
    
    return state
+end
+
+-- decorates self with nn.Serial
+function Module:Serial()
+   return nn.Serial(self)
 end
 
 ----------------------- for training -----------------------------

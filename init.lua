@@ -40,6 +40,7 @@ torch.include('dpnn', 'Module.lua')
 torch.include('dpnn', 'Container.lua')
 
 -- decorator modules
+torch.include('dpnn', 'Decorator.lua')
 torch.include('dpnn', 'Serial.lua')
 torch.include('dpnn', 'DontCast.lua')
 

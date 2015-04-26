@@ -3,11 +3,7 @@
 -- Decorator that modifies the serialization/deserialization 
 -- behaviour of encapsulated module.
 ------------------------------------------------------------------------
-local Serial, parent = torch.class("nn.Serial", "nn.Module")
-
-function Serial:__init(module)
-   self.module = module
-end
+local Serial, parent = torch.class("nn.Serial", "nn.Decorator")
 
 function Serial:write(file)
    local state = self:getSerialState()
@@ -22,7 +18,7 @@ function Serial:read(file)
    local function recursiveSetMetatable(state)
       if torch.type(state) == 'table' and state.dpnn_typename then
          torch.setmetatable(state, state.dpnn_typename)
-      elseif torch.type(state) == 'nn.Module' then
+      elseif torch.isTypeOf(state, 'nn.Module') then
          for k,v in pairs(state) do
             recursiveSetMetatable(v)
          end
