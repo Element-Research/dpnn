@@ -15,10 +15,9 @@
 -- column seems to have one and only one reduce, their initial 
 -- configuration options are specified in lists of n+2 elements.
 ------------------------------------------------------------------------
-local Inception, parent = torch.class("nn.Inception", "nn.Container")
+local Inception, parent = torch.class("nn.Inception", "nn.Decorator")
 
 function Inception:__init(config)
-   parent.__init(self)
    --[[ Required Arguments ]]--
    -- Number of input channels or colors
    self.inputSize = config.inputSize
@@ -52,7 +51,7 @@ function Inception:__init(config)
    self.poolStride = config.poolStride or 1
    
    -- [[ Module Construction ]]--
-   self.depthConcat = nn.DepthConcat(2) -- concat on 'c' dimension
+   local depthConcat = nn.DepthConcat(2) -- concat on 'c' dimension
    -- 1x1 conv (reduce) -> 3x3 conv
    -- 1x1 conv (reduce) -> 5x5 conv
    -- ...
@@ -75,7 +74,7 @@ function Inception:__init(config)
       )
       mlp:add(conv)
       mlp:add(self.transfer:clone())
-      self.depthConcat:add(mlp)
+      depthConcat:add(mlp)
    end
    
    -- 3x3 max pool -> 1x1 conv
@@ -90,7 +89,7 @@ function Inception:__init(config)
    )
    mlp:add(reduce)
    mlp:add(self.transfer:clone())
-   self.depthConcat:add(mlp)
+   depthConcat:add(mlp)
       
    -- reduce: 1x1 conv (channel-wise pooling)
    local mlp = nn.Sequential()
@@ -101,36 +100,32 @@ function Inception:__init(config)
    )
    mlp:add(reduce)
    mlp:add(self.transfer:clone())
-   self.depthConcat:add(mlp)
+   depthConcat:add(mlp)
    
-   self.modules[1] = self.depthConcat
+   parent.__init(self, depthConcat)
 end
 
 function Inception:updateOutput(input)
    local input = self:toBatch(input, 3)
-   local output = self.depthConcat:updateOutput(input)
+   local output = self.module:updateOutput(input)
    self.output = self:fromBatch(output, 3)
    return self.output
 end
 
 function Inception:updateGradInput(input, gradOutput)
    local input, gradOutput = self:toBatch(input, 3), self:toBatch(gradOutput, 3)
-   local gradInput = self.depthConcat:updateGradInput(input, gradOutput)
+   local gradInput = self.module:updateGradInput(input, gradOutput)
    self.gradInput = self:fromBatch(gradInput, 3)
    return self.gradInput
 end
 
 function Inception:accGradParameters(input, gradOutput, scale)
    local input, gradOutput = self:toBatch(input, 3), self:toBatch(gradOutput, 3)
-   self.depthConcat:accGradParameters(input, gradOutput, scale)
+   self.module:accGradParameters(input, gradOutput, scale)
 end
 
 function Inception:accUpdateGradParameters(input, gradOutput, lr)
    local input, gradOutput = self:toBatch(input, 3), self:toBatch(gradOutput, 3)
-   self.depthConcat:accUpdateGradParameters(input, gradOutput, lr)
-end
-
-function Inception:__tostring__()
-   return self.depthConcat:__tostring__()
+   self.module:accUpdateGradParameters(input, gradOutput, lr)
 end
 

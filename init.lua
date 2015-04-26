@@ -39,10 +39,14 @@ torch.include('dpnn', 'test.lua')
 torch.include('dpnn', 'Module.lua')
 torch.include('dpnn', 'Container.lua')
 
+-- decorator modules
+torch.include('dpnn', 'Decorator.lua')
+torch.include('dpnn', 'Serial.lua')
+torch.include('dpnn', 'DontCast.lua')
+
 -- modules
 torch.include('dpnn', 'PrintSize.lua')
 torch.include('dpnn', 'Convert.lua')
-torch.include('dpnn', 'DontCast.lua')
 torch.include('dpnn', 'Collapse.lua')
 torch.include('dpnn', 'ZipTable.lua')
 torch.include('dpnn', 'Dictionary.lua')
