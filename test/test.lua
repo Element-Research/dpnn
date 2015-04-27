@@ -103,7 +103,12 @@ function dpnntest.Serial()
    local mlp = nn.Sequential():extend(
       nn.Linear(3,4),
       nn.Tanh(),
-      nn.Linear(4,7)
+      nn.Linear(4,5),
+      nn.Sequential():extend(
+         nn.Linear(5,6),
+         nn.Tanh(),
+         nn.Linear(6,7)
+      )
    )
    mlp:forward(torch.randn(4,3))
    mlp:backward(torch.randn(4,3), torch.randn(4,7))

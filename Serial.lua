@@ -15,21 +15,25 @@ function Serial:write(file)
          end
       end
       
-      if state.dpnn_serialType then
+      if state.dpnn_typename then
          torch.setmetatable(state, state.dpnn_typename)
-         assert(state.dpnn_typename)
+      end
+      
+      if state.dpnn_serialType then
          assert(torch.isTypeOf(state, 'nn.Module'))
-         local type = state.dpnn_serialType
-         if type:find('torch') then
-            state:type(type)
+         if state.dpnn_serialType:find('torch') then
+            state:type(state.dpnn_serialType)
          else
-            state[type](state)
+            state[state.dpnn_serialType](state)
          end
       end
    end
    
-   -- cast to type before serialization (useful for cuda)
+   -- maintain Tensor sharing
+   dpnn.castmap = {}
+   -- typecast before serialization (useful for cuda)
    recursiveType(state)
+   dpnn.castmap = nil
    
    -- removes self's metatable
    state = _.map(state, function(k,v) return v end)

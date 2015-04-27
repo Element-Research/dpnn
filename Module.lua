@@ -25,7 +25,6 @@ end
 Module.dpnn_parameters = {'weight', 'bias'}
 Module.dpnn_gradParameters = {'gradWeight', 'gradBias'}
 
--- TODO make this recursive (for table params)
 function Module:sharedClone(shareParams, shareGradParams)
    shareParams = (shareParams == nil) and true or shareParams
    shareGradParams = (shareGradParams == nil) and true or shareGradParams
@@ -94,13 +93,6 @@ function Module:sharedClone(shareParams, shareGradParams)
    return clone
 end      
 
-
-
--- Contains torch.Storage instances used in Modules.
--- The use of a global variable is ugly. But It is the only way 
--- to fit in with existing overriden Module:type() methods.
-dpnn.castmap = {}
-
 -- by default, Module:type() will preserve shared Tensors.
 -- Its more sensible this way, necessary for RNNs and fits 
 -- in with existing overriden methods.
@@ -109,6 +101,15 @@ function Module:type(type)
    assert(type, 'Module:type() must provide a type to convert to')
    -- key: pointer to old storage ; value : new storage
    local castmap = dpnn.castmap
+   local root
+   if not castmap then
+      -- Contains torch.Storage instances used in Modules.
+      -- The use of a global variable is ugly. But It is the only way 
+      -- to fit in with existing overriden Module:type() methods.
+      root = true
+      dpnn.castmap = {}
+      castmap = dpnn.castmap
+   end
    
    local function recursiveType(param, type_str)
       if torch.type(param) == 'table' then
@@ -149,9 +150,14 @@ function Module:type(type)
    
    -- find submodules in classic containers modules
    if self.modules then
-      for _,module in ipairs(self.modules) do
+      for __,module in ipairs(self.modules) do
          module:type(type)
       end
+   end
+   
+   if root then
+      -- reset the cast map
+      dpnn.castmap = nil
    end
    return self
 end
