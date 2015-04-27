@@ -224,10 +224,12 @@ end
 
 function Module:getSerialState(states)
    states = states or {}
+   
    -- dont get the serial state of the same module twice (reuse existing)
    if states[self] then
       return states[self]
    end
+   
    -- returns the object structure as tables (i.e. without metatables)
    local function recursiveState(tbl)
       local state = _.map(tbl, 
@@ -249,31 +251,22 @@ function Module:getSerialState(states)
                return v:getSerialState(states)
             elseif torch.type(v) == 'table' then
                -- in case it is a table of modules
-               return states[v] or recursiveState(v)
+               if not states[v] then
+                  states[v] = recursiveState(v)
+               end
+               return states[v]
             else
                return v
             end
          end
       )
-      states[tbl] = state
       return state
    end
-   local state = recursiveState(self)
    
-   -- so that the module can be reconstructed from the state
+   local state = recursiveState(self)
+   -- include state so that module can be reconstructed from the state
    state.dpnn_typename = torch.type(self)
-   if self.dpnn_serialType then
-      -- cast to type before serialization (useful for cuda)
-      torch.setmetatable(state, state.dpnn_typename)
-      local type = self.dpnn_serialType
-      if type:find('torch') then
-         state:type(type)
-      else
-         state[type](state)
-      end
-      -- remove metatable via shallow copy (I don't know any better way)
-      state = _.map(state, function(k,v) return v end)
-   end
+   states[self] = state
    
    return state
 end
