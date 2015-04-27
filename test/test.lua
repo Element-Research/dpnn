@@ -68,7 +68,7 @@ function dpnntest.Module_sharedClone()
    test(mlp, 'sequential')
 end
 
-function dpnntest.Module_sharedType()
+function dpnntest.Module_type()
    local mlp = nn.Sequential()
    mlp:add(nn.Linear(3,7))
    mlp:add(nn.Tanh())
@@ -79,7 +79,7 @@ function dpnntest.Module_sharedType()
    local concat = nn.ConcatTable()
    concat:add(mlp):add(mlp2)
    
-   concat:float(true) -- i.e. sharedType('torch.FloatTensor')
+   concat:float()
    
    local input = torch.randn(2,3):float()
    local gradOutput = torch.randn(2,4):float()
@@ -100,7 +100,11 @@ function dpnntest.Module_sharedType()
 end
 
 function dpnntest.Serial()
-   local mlp = nn.Linear(3,7)
+   local mlp = nn.Sequential():extend(
+      nn.Linear(3,4),
+      nn.Tanh(),
+      nn.Linear(4,7)
+   )
    mlp:forward(torch.randn(4,3))
    mlp:backward(torch.randn(4,3), torch.randn(4,7))
    local mlp2 = mlp:Serial()

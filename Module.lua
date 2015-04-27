@@ -94,17 +94,26 @@ function Module:sharedClone(shareParams, shareGradParams)
    return clone
 end      
 
+
+
+-- Contains torch.Storage instances used in Modules.
+-- The use of a global variable is ugly. But It is the only way 
+-- to fit in with existing overriden Module:type() methods.
+dpnn.castmap = {}
+
+-- by default, Module:type() will preserve shared Tensors.
+-- Its more sensible this way, necessary for RNNs and fits 
+-- in with existing overriden methods.
 -- for preserving shared params created with sharedClones
-function Module:sharedType(type, castmap)
-   assert(type, 'Module:sharedType must provide a type to convert to')
-   -- key: pointer to old storage 
-   -- value : new storage
-   castmap = castmap or {} --contains torch.Storage instances
+function Module:type(type)
+   assert(type, 'Module:type() must provide a type to convert to')
+   -- key: pointer to old storage ; value : new storage
+   local castmap = dpnn.castmap
    
    local function recursiveType(param, type_str)
       if torch.type(param) == 'table' then
-         for i = 1, #param do
-            param[i] = recursiveType(param[i], type_str)
+         for k,v in pairs(param) do
+            param[k] = recursiveType(v, type_str)
          end
       else
          if torch.isTensor(param) then
@@ -133,47 +142,18 @@ function Module:sharedType(type, castmap)
    
    -- find all tensors and convert them
    for key,param in pairs(self) do
-      -- Many modules (like CDivTable) have output or gradInput fields which
-      -- are table's of tensors.  To be general we need to recursively
-      -- cast fields that may be nested tables.
       if key ~= 'modules' then
-        self[key] = recursiveType(self[key], type)
+        self[key] = recursiveType(param, type)
       end
    end
-   -- find submodules in classic containers 'modules'
+   
+   -- find submodules in classic containers modules
    if self.modules then
       for _,module in ipairs(self.modules) do
-         module:sharedType(type, castmap)
+         module:type(type)
       end
    end
    return self
-end
-
--- by default, uses sharedType. Why? more sensible way, 
--- necessary for RNNs and fits in with existing overwritten methods 
-function Module:type(type, shared)
-   shared = (shared == nil) and true or shared
-   return self:sharedType(type)
-end
-
-function Module:float(shared)
-   return self:type('torch.FloatTensor', shared)
-end
-
-function Module:double(shared)
-   return self:type('torch.DoubleTensor', shared)
-end
-
-function Module:cuda(shared)
-   return self:type('torch.CudaTensor', shared)
-end
-
-function Module:int(shared)
-   return self:type('torch.IntTensor', shared)
-end
-
-function Module:long(shared)
-   return self:type('torch.LongTensor', shared)
 end
 
 ----------------- serialization (see nn.Serial) -------------------
@@ -264,7 +244,7 @@ function Module:getSerialState(states)
    end
    
    local state = recursiveState(self)
-   -- include state so that module can be reconstructed from the state
+   -- include typename so that module can be reconstructed from the state
    state.dpnn_typename = torch.type(self)
    states[self] = state
    

@@ -23,7 +23,7 @@ function Container:parameters()
                gradParams[size+k] = mGradParams[k]
                scales[size+k] = mScales and mScales[k]
             end
-            size = size + (mSize or #params)
+            size = size + (mSize or #mParams)
         end
     end
     return params, gradParams, scales, size
