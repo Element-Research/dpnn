@@ -495,3 +495,25 @@ function Module:fromBatch(tensor, batchDim)
    end
    return tensor
 end
+
+function Module:extrapolateType()
+   local params = module:parameters()
+   if params then
+      -- extrapolate the tensor type of the module
+      local types = {}
+      for i, param in ipairs(params) do
+         local tensorType = torch.type(param)
+         types[tensorType] = (types[tensorType] or 0) + 1
+      end
+      local maxCount = 0
+      local maxType
+      for tensorType, count in pairs(types) do
+         if count > maxCount then
+            maxtype = tensorType
+            maxCount = count
+         end
+      end
+      return maxType
+   end
+   return nil --unknown otherwise
+end
