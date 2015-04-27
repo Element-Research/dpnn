@@ -37,6 +37,8 @@ function Inception:__init(config)
    -- A transfer function like nn.Tanh, nn.Sigmoid, nn.ReLU, nn.Identity, etc. 
    -- It is used after each reduction (1x1 convolution) and convolution
    self.transfer = config.transfer or nn.ReLU()   
+   -- batch normalization can be awesome
+   self.batchNorm = config.batchNorm
    -- Adding padding to the input of the convolutions such that 
    -- input width and height are same as that of output. 
    self.padding = (config.padding ~= nil) and config.padding or true
@@ -63,6 +65,9 @@ function Inception:__init(config)
          self.reduceStride[i] or 1, self.reduceStride[i] or 1
       )
       mlp:add(reduce)
+      if self.batchNorm then
+         mlp:add(nn.SpatialBatchNormalization(self.reduceSize[i]))
+      end
       mlp:add(self.transfer:clone())
       
       -- nxn conv
@@ -73,6 +78,9 @@ function Inception:__init(config)
          self.padding and math.floor(self.kernelSize[i]/2) or 0
       )
       mlp:add(conv)
+      if self.batchNorm then
+         mlp:add(nn.SpatialBatchNormalization(self.outputSize[i]))
+      end
       mlp:add(self.transfer:clone())
       depthConcat:add(mlp)
    end
@@ -88,6 +96,9 @@ function Inception:__init(config)
       self.reduceStride[i] or 1, self.reduceStride[i] or 1
    )
    mlp:add(reduce)
+   if self.batchNorm then
+      mlp:add(nn.SpatialBatchNormalization(self.reduceSize[i]))
+   end
    mlp:add(self.transfer:clone())
    depthConcat:add(mlp)
       
@@ -99,6 +110,9 @@ function Inception:__init(config)
       self.reduceStride[i] or 1, self.reduceStride[i] or 1
    )
    mlp:add(reduce)
+   if self.batchNorm then
+      mlp:add(nn.SpatialBatchNormalization(self.reduceSize[i]))
+   end
    mlp:add(self.transfer:clone())
    depthConcat:add(mlp)
    
