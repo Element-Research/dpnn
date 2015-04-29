@@ -13,7 +13,7 @@ function ModuleCriterion:__init(criterion, inputModule, targetModule, castTarget
    self.criterion = criterion
 end
 
-function ModuleCriterion:forward(input, target)
+function ModuleCriterion:updateOutput(input, target)
    if self.inputModule then
       self.input = self.inputModule:forward(input)
    end
@@ -24,7 +24,7 @@ function ModuleCriterion:forward(input, target)
    return self.output
 end
 
-function ModuleCriterion:backward(input, target)
+function ModuleCriterion:updateGradInput(input, target)
    self.gradInput = self.criterion:backward(self.input or input, self.target or target)
    if self.inputModule then
       self.gradInput = self.inputModule:backward(input, self.gradInput)
