@@ -39,6 +39,8 @@ function Convert:buildConverter(input)
       end
       self.converter = self[self.outputShape](self, input)
    end
+   assert(torch.isTensor(self.output), "Expecting Tensor output")
+   self.converter:type(torch.type(self.output))
    self.modules[1] = self.converter
 end
 
