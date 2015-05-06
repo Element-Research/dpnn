@@ -3,26 +3,36 @@
 -- Module to convert between different data formats
 -- nn.Convert('bchw', 'bf') or nn.Convert('chw', 'f')
 -- Automatically converts input to same type as self.output
+-- Simplest use is for automatic input type converions : nn.Convert()
 ------------------------------------------------------------------------
 local Convert, parent = torch.class("nn.Convert", "nn.Container")
 
 function Convert:__init(inputShape, outputShape)
+   if outputShape and not inputShape then
+      error"Expecting non-nil arg 1 when arg 2 is provided"
+   end
    inputShape = inputShape or 'b*'
    outputShape = outputShape or inputShape
    self.inputShape = inputShape:find('b') and inputShape or ('b'..inputShape)
    self.outputShape = outputShape:find('b') and outputShape or ('b'..outputShape)
    self.inputBatchDim = self.inputShape:find('b')
    self.outputBatchDim = self.outputShape:find('b')
-   -- number of dims in batch mode
-   self.nInputDim = #self.inputShape
-   self.nOutputDim = #self.outputShape
-   -- is the outputShape just a transposition of the inputShape?
-   if self.nInputDim == self.nOutputDim then
-      self.transposition = true
-      for i=1,self.nInputDim do
-         if not self.outputShape:find(self.inputShape:sub(i,i)) then
-            self.transposition = false
-            break
+   if self.inputShape == 'b*' or self.outputShape == 'b*' then
+      assert(self.inputShape == 'b*' and self.outputShape == 'b*', 'Both or neither shapes must be b*')
+      self.nInputDim = -1
+      self.nOutputDim = -1
+   else
+      -- number of dims in batch mode
+      self.nInputDim = #self.inputShape
+      self.nOutputDim = #self.outputShape
+      -- is the outputShape just a transposition of the inputShape?
+      if self.nInputDim == self.nOutputDim then
+         self.transposition = true
+         for i=1,self.nInputDim do
+            if not self.outputShape:find(self.inputShape:sub(i,i)) then
+               self.transposition = false
+               break
+            end
          end
       end
    end
@@ -45,6 +55,7 @@ function Convert:buildConverter(input)
 end
 
 function Convert:updateOutput(input)
+   assert(torch.isTensor(input), "expecting Tensor")
    if not torch.isTypeOf(input, self.output) then
       -- handle different input type
       self._input = self._input or self.output.new()

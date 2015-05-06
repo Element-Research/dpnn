@@ -116,6 +116,8 @@ function Module:type(type)
          for k,v in pairs(param) do
             param[k] = recursiveType(v, type_str)
          end
+      elseif torch.isTypeOf(param, 'nn.Module') or torch.isTypeOf(param, 'nn.Criterion') then
+         param:type(type_str)
       else
          if torch.isTensor(param) then
             if param:storage() then
@@ -125,8 +127,10 @@ function Module:type(type)
                   local _param = param
                   -- cast entire storage
                   param = param.new(param:storage()):type(type_str)
-                  param:set(param:storage(), _param:storageOffset(), _param:size(), _param:stride())
-                  castmap[pointer] = param:storage()
+                  if param:storage() then -- to handle cuda tensors ...
+                     param:set(param:storage(), _param:storageOffset(), _param:size(), _param:stride())
+                     castmap[pointer] = param:storage()
+                  end
                else
                   -- set to point to existing storage
                   local _param = param
