@@ -21,6 +21,7 @@ function Convert:__init(inputShape, outputShape)
       assert(self.inputShape == 'b*' and self.outputShape == 'b*', 'Both or neither shapes must be b*')
       self.nInputDim = -1
       self.nOutputDim = -1
+      self.transposition = true
    else
       -- number of dims in batch mode
       self.nInputDim = #self.inputShape
