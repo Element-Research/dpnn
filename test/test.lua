@@ -102,10 +102,10 @@ function dpnntest.Module_type()
       require 'cunn'
       local input = torch.randn(3,32,32)
       local cnn = nn.Sequential()
-      --cnn:add(nn.SpatialConvolution(3,8,5,5)) -- conv isn't consistent GPU vs CPU
+      cnn:add(nn.SpatialConvolutionMM(3,8,5,5))
       cnn:add(nn.ReLU())
       cnn:add(nn.SpatialAveragePooling(2,2,2,2))
-      --cnn:add(nn.SpatialConvolution(8,12,5,5))
+      cnn:add(nn.SpatialConvolutionMM(8,12,5,5))
       cnn:add(nn.ReLU())
       cnn:add(nn.SpatialAveragePooling(2,2,2,2))
       local outsize = cnn:outside{1,3,32,32}
