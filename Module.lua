@@ -123,19 +123,25 @@ function Module:type(type)
             if param:storage() then
                local pointer = torch.pointer(param:storage():data())
                local storage = castmap[pointer]
-               if not storage then
-                  local _param = param
-                  -- cast entire storage
-                  param = param.new(param:storage()):type(type_str)
-                  if param:storage() then -- to handle cuda tensors ...
-                     param:set(param:storage(), _param:storageOffset(), _param:size(), _param:stride())
-                     castmap[pointer] = param:storage()
+               -- empty storages (cuda) have zero pointers.
+               -- we assume that these aren't shared.
+               if pointer > 0 then 
+                  if not storage then
+                     local _param = param
+                     -- cast entire storage
+                     param = param.new(param:storage()):type(type_str)
+                     if param:storage() then -- to handle cuda tensors ...
+                        param:set(param:storage(), _param:storageOffset(), _param:size(), _param:stride())
+                        castmap[pointer] = param:storage()
+                        -- in case the module gets cast more than once:
+                        castmap[torch.pointer(param:storage():data())] = param:storage()
+                     end
+                  else
+                     -- set to point to existing storage
+                     local _param = param
+                     param = torch.getmetatable(type_str).new()
+                     param:set(storage, _param:storageOffset(), _param:size(), _param:stride())
                   end
-               else
-                  -- set to point to existing storage
-                  local _param = param
-                  param = torch.getmetatable(type_str).new()
-                  param:set(storage, _param:storageOffset(), _param:size(), _param:stride())
                end
             else
                param = param:type(type_str)
@@ -147,16 +153,7 @@ function Module:type(type)
    
    -- find all tensors and convert them
    for key,param in pairs(self) do
-      if key ~= 'modules' then
-        self[key] = recursiveType(param, type)
-      end
-   end
-   
-   -- find submodules in classic containers modules
-   if self.modules then
-      for __,module in ipairs(self.modules) do
-         module:type(type)
-      end
+      self[key] = recursiveType(param, type)
    end
    
    if root then

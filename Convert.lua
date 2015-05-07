@@ -228,7 +228,7 @@ function Convert:findAxis(axis_char, shape, silent)
 end
 
 function Convert:type(type)
-   if not torch.isTypeOf(type, self.output) then
+   if not torch.isTypeOf(self.output, type) then
       self._input = nil
       self._gradInput = nil
       self.__input = nil
