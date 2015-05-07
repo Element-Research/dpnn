@@ -125,6 +125,7 @@ function Module:type(type)
                local storage = castmap[pointer]
                -- empty storages (cuda) have zero pointers.
                -- we assume that these aren't shared.
+               -- https://github.com/torch/cutorch/issues/147
                if pointer > 0 then 
                   if not storage then
                      local _param = param
@@ -142,6 +143,9 @@ function Module:type(type)
                      param = torch.getmetatable(type_str).new()
                      param:set(storage, _param:storageOffset(), _param:size(), _param:stride())
                   end
+               else
+                  assert(not storage)
+                  param = param:type(type_str)
                end
             else
                param = param:type(type_str)

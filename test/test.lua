@@ -97,6 +97,40 @@ function dpnntest.Module_type()
       mytester:assertTensorEq(param, params2[i], 0.00001, " params err "..i)
       mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.00001, " gradParams err "..i)
    end
+   
+   if cutorch then
+      require 'cunn'
+      local input = torch.randn(3,32,32)
+      local cnn = nn.Sequential()
+      --cnn:add(nn.SpatialConvolution(3,8,5,5)) -- conv isn't consistent GPU vs CPU
+      cnn:add(nn.ReLU())
+      cnn:add(nn.SpatialAveragePooling(2,2,2,2))
+      --cnn:add(nn.SpatialConvolution(8,12,5,5))
+      cnn:add(nn.ReLU())
+      cnn:add(nn.SpatialAveragePooling(2,2,2,2))
+      local outsize = cnn:outside{1,3,32,32}
+      cnn:add(nn.Collapse(3))
+      cnn:add(nn.Linear(outsize[2]*outsize[3]*outsize[4],20))
+      cnn:add(nn.ReLU())
+      cnn:add(nn.Linear(20,10))
+      local output = cnn:forward(input):clone()
+      local gradOutput = output:clone()
+      local gradInput = cnn:backward(input, gradOutput):clone()
+      cnn:float()
+      local input3 = input:float()
+      local output3 = cnn:forward(input3):clone()
+      local gradOutput3 = output3:clone()
+      local gradInput3 = cnn:backward(input3, gradOutput3):clone()
+      mytester:assertTensorEq(output3:float(), output:float(), 0.000001, "type float fwd err")
+      mytester:assertTensorEq(gradInput3:float(), gradInput:float(), 0.00001, "type float bwd err") 
+      cnn:cuda()
+      local input2 = input3:cuda()
+      local gradOutput2 = gradOutput3:cuda()
+      local output2 = cnn:forward(input2)
+      local gradInput2 = cnn:backward(input2, gradOutput2)
+      mytester:assertTensorEq(output2:float(), output3, 0.000001, "type cuda fwd err")
+      mytester:assertTensorEq(gradInput2:float(), gradInput3, 0.00001, "type cuda bwd err") 
+   end
 end
 
 function dpnntest.Serial()
