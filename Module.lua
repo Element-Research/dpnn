@@ -302,7 +302,10 @@ function Module:maxParamNorm(maxOutNorm, maxInNorm)
          module:maxParamNorm(maxOutNorm, maxInNorm)
       end
    else
-      local params = self:parameters() or {}, {}
+      local params = self:parameters() 
+      if not params or gradParams then
+         return
+      end
       for k,param in pairs(params) do -- pairs for sparse params
          -- By default, only affects non-1D params.
          if param:dim() > 1 then
@@ -338,7 +341,10 @@ function Module:gradParamClip(cutoffNorm, moduleLocal)
          module:gradParamClip(maxOutNorm, maxInNorm)
       end
    else
-      local params, gradParams = self:parameters() or {}, {}
+      local params, gradParams = self:parameters()
+      if not params or gradParams then
+         return
+      end
       local norm = 0
       for k,gradParam in pairs(gradParams) do -- pairs for sparse params
          norm = norm + math.pow(gradParam:norm(),2)
@@ -369,7 +375,11 @@ function Module:weightDecay(wdFactor, wdMinDim)
          module:weightDecay(wdFactor, wdMinDim)
       end
    else
-      local params, gradParams = self:parameters() or {}, {}
+      local params, gradParams = self:parameters()
+      if not params or gradParams then
+         return
+      end
+      print(params, gradParams)
       for i,param in pairs(params) do -- pairs for sparse params
          if param:dim() >= wdMinDim then
             gradParams[i]:add(wdFactor, param)
@@ -431,7 +441,7 @@ function Module:updateGradParameters(momFactor, momDamp, momNesterov)
 end
 
 function Module:checkParameters()
-   local params = self:parameters() or {}, {}
+   local params = self:parameters() or {}
    for k,param in pairs(params) do
       if _.isNaN(param:sum()) then
          error("NaN Error for param at index" ..k)
