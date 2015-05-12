@@ -66,4 +66,5 @@ function Dictionary:getParameters()
    self.dpnn_sparseParameters = sp
    return flatParameters, flatGradParameters
 end
+
    

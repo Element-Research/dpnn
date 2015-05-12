@@ -1,4 +1,4 @@
-local SoftMaxTree = nn.SoftMaxTree
+local SoftMaxTree, parent = nn.SoftMaxTree, nn.Module
 
 function SoftMaxTree:momentumGradParameters()
    -- get dense view of momGradParams
