@@ -511,3 +511,12 @@ function Module:extrapolateType()
    end
    return nil --unknown otherwise
 end
+
+function Module:profile()
+   if self.modules then
+      for i, module in ipairs(self.modules) do
+         module:profile()
+      end
+   end
+   self.dpnn_profile = true
+end

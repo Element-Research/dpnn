@@ -38,6 +38,8 @@ torch.include('dpnn', 'test.lua')
 -- extensions to existing modules
 torch.include('dpnn', 'Module.lua')
 torch.include('dpnn', 'Container.lua')
+torch.include('dpnn', 'Sequential.lua')
+torch.include('dpnn', 'ParallelTable.lua')
 
 -- decorator modules
 torch.include('dpnn', 'Decorator.lua')
