@@ -263,6 +263,26 @@ function dpnntest.Inception()
    end
 end
 
+function dpnntest.Dictionary()
+   local input = torch.randperm(80):resize(8,10)
+   local gradOutput = torch.randn(8,10,50)
+   local d = nn.Dictionary(100, 50)
+   local output = d:forward(input)
+   mytester:assertTableEq(output:size():totable(), {8,10,50}, 0.00001)
+   d:zeroGradParameters()
+   d:backward(input, gradOutput)
+   local d2 = nn.LookupTable(100,50)
+   d2 = d2:share(d, 'weight'):clone()
+   local output2 = d2:forward(input)
+   mytester:assertTensorEq(output, output2, 0.00001)
+   d2:zeroGradParameters()
+   d2:backward(input, gradOutput)
+   mytester:assertTensorEq(d.gradWeight, d2.gradWeight, 0.000001)
+   d:updateParameters(0.1)
+   d2:updateParameters(0.1)
+   mytester:assertTensorEq(d.weight, d2.weight, 0.00001)
+end
+
 function dpnntest.ModuleCriterion()
    local input = torch.randn(8,4)
    local target = torch.randn(8,4)
@@ -281,6 +301,7 @@ function dpnntest.ModuleCriterion()
    mytester:assert(err == err2, "ModuleCriterion backward err")
    mytester:assertTensorEq(gradInput, gradInput2, 0.000001, "ModuleCriterion backward err")
 end
+
 
 function dpnn.test(tests)
    mytester = torch.Tester()
