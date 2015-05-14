@@ -51,7 +51,10 @@ function Convert:buildConverter(input)
       self.converter = self[self.outputShape](self, input)
    end
    assert(torch.isTensor(self.output), "Expecting Tensor output")
+   
    self.converter:type(torch.type(self.output))
+   self.converter:serialMode(self.dpnn_serialEmpty, self.dpnn_serialType)
+   
    self.modules[1] = self.converter
 end
 

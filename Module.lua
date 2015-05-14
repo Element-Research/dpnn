@@ -225,7 +225,7 @@ function Module:getSerialState(states)
    local function recursiveState(tbl)
       local state = _.map(tbl, 
          function(k,v) 
-            if torch.isTypeOf(tbl, 'nn.Module') and _.contains(self.dpnn_serialEmpty, k) then 
+            if torch.isTypeOf(tbl, 'nn.Module') and _.contains(tbl.dpnn_serialEmpty, k) then 
                -- "empties" module attributes found in empty
                if torch.type(v) == 'table' then
                   -- empty table
