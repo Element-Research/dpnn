@@ -175,7 +175,7 @@ Module.dpnn_lightEmpty = Module.dpnn_gradParameters
 Module.dpnn_serialEmpty = {}
 Module.dpnn_serialType = false 
 
--- sets the serialization behavior of the module structure
+-- sets the serialization behavior of the entire module structure
 function Module:serialMode(empty, type)
    assert(torch.type(empty) == 'table', "Expecting table at arg 1")
    self.dpnn_serialEmpty = empty
@@ -201,16 +201,47 @@ end
 
 -- serialMode : serialize everything except dpnn_mediumEmpty attributes
 function Module:mediumSerial(type)
-   return self:serialMode(self.dpnn_mediumEmpty, (type == nil) and 'float' or type)
+   
+   self.dpnn_serialEmpty = self.dpnn_mediumEmpty
+   self.dpnn_serialType = (type == nil) and 'float' or type
+   
+   -- set the serial of all encapsulated modules
+   local function recursiveSerial(tbl)
+      for k,v in pairs(tbl) do
+         if torch.isTypeOf(v, 'nn.Module') then
+            v:mediumSerial(type)
+         elseif torch.type(v) == 'table' then
+            recursiveSerial(v)
+         end
+      end
+   end
+   recursiveSerial(self)
+   return self
 end
 
 -- serialMode : serialize everything except dpnn_mediumEmpty and dpnn_lightEmpty attributes
 function Module:lightSerial(type)
-   local empty = _.clone(self.dpnn_mediumEmpty)
+   
+   self.dpnn_serialEmpty = _.clone(self.dpnn_mediumEmpty)
    for k,v in ipairs(self.dpnn_lightEmpty) do
-      table.insert(empty, v)
+      table.insert(self.dpnn_serialEmpty, v)
    end
-   return self:serialMode(empty, (type == nil) and 'float' or type)
+   
+   self.dpnn_serialType = (type == nil) and 'float' or type
+   
+   -- set the serial of all encapsulated modules
+   local function recursiveSerial(tbl)
+      for k,v in pairs(tbl) do
+         if torch.isTypeOf(v, 'nn.Module') then
+            v:lightSerial(type)
+         elseif torch.type(v) == 'table' then
+            recursiveSerial(v)
+         end
+      end
+   end
+   recursiveSerial(self)
+   
+   return self
 end
 
 function Module:getSerialState(states)
@@ -255,6 +286,7 @@ function Module:getSerialState(states)
    end
    
    local state = recursiveState(self)
+   
    -- include typename so that module can be reconstructed from the state
    state.dpnn_typename = torch.type(self)
    states[self] = state
