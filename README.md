@@ -25,6 +25,7 @@ A lot of the functionality implemented here was pulled from
 However, dpnn can be used without dp (for e.g. you can use it with optim), 
 which is one of the main reasons why we made it.
 
+<a name='dpnn.Module'></a>
 ## Module ##
 
 ### Module:type(type_str) ###
@@ -48,4 +49,17 @@ among Tensors. This is especially useful when cloning modules share `parameters`
 
 ## Decorator ##
 
+<a name='dpnn.ModuleCriterion'></a>
+## ModuleCriterion ##
+
+```lua
+criterion = nn.ModuleCriterion(criterion [, inputModule, targetModule, castTarget])
+```
+
+This criterion decorates a `criterion` by allowing the `input` and `target` to be 
+fed through optional an `inputModule` and `targetModule` before being passed to the 
+`criterion`. The `inputModule` must not contain parameters as these would not be updated. 
+
+When `castTarget = true` (the default), the `targetModule` is cast along with the `inputModule` and 
+`criterion`. Otherwise, the `targetModule` isn't.  
 
