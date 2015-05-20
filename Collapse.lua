@@ -1,7 +1,6 @@
 local Collapse, parent = torch.class('nn.Collapse', 'nn.Module')
 
--- assumes batch dim is first dim
--- collapses remaining dims
+-- collapses non-batch dims
 function Collapse:__init(nInputDim)
    parent.__init(self)
    self.nInputDim = nInputDim
