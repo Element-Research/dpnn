@@ -61,6 +61,24 @@ that method calls to `dmodule` will call the same method on the encapsulated
 <a name='nn.DontCast'></a>
 ## DontCast ##
 
+```lua
+dmodule = nn.DontCast(module)
+```
+
+This module is a decorator. Use it to decorate a module that you don't
+want to be cast when the `type()` method is called.
+
+```lua
+module = nn.DontCast(nn.Linear(3,4):float())
+module:double()
+th> print(module:forward(torch.FloatTensor{1,2,3}))
+ 1.0927
+-1.9380
+-1.8158
+-0.0805
+[torch.FloatTensor of size 4]
+```
+
 <a name='nn.Serial'></a>
 ## Serial ##
 ```lua
@@ -116,6 +134,73 @@ hidden layer like Linear.
 
 <a name='nn.Convert'></a>
 ## Convert ##
+
+```lua
+module = nn.Convert([inputShape, outputShape])
+```
+Module to convert between different data formats.
+For example, we can flatten images by using :
+```lua
+module = nn.Convert('bchw', 'bf')
+``` 
+or equivalently
+```lua
+module = nn.Convert('chw', 'f')
+```
+Lets try it with an input:
+```lua
+print(module:forward(torch.randn(3,2,3,1)))
+ 0.5692 -0.0190  0.5243  0.7530  0.4230  1.2483
+-0.9142  0.6013  0.5608 -1.0417 -1.4014  1.0177
+-1.5207 -0.1641 -0.4166  1.4810 -1.1725 -1.0037
+[torch.DoubleTensor of size 3x6]
+```
+You could also try:
+```lua
+module = nn.Convert('chw', 'hwc')
+input = torch.randn(1,2,3,2)
+input:select(2,1):fill(1)
+input:select(2,2):fill(2)
+print(input)
+(1,1,.,.) = 
+  1  1
+  1  1
+  1  1
+(1,2,.,.) = 
+  2  2
+  2  2
+  2  2
+[torch.DoubleTensor of size 1x2x3x2]
+print(module:forward(input))
+(1,1,.,.) = 
+  1  2
+  1  2
+
+(1,2,.,.) = 
+  1  2
+  1  2
+
+(1,3,.,.) = 
+  1  2
+  1  2
+[torch.DoubleTensor of size 1x3x2x2]
+```
+
+
+Furthermore, it automatically converts the `input` to have the same type as `self.output`
+(i.e. the type of the module).
+So you can also just use is for automatic input type converions:
+```lua
+module = nn.Convert()
+print(module.output) -- type of module
+[torch.DoubleTensor with no dimension]
+input = torch.FloatTensor{1,2,3}
+print(module:forward(input))
+ 1
+ 2
+ 3
+[torch.DoubleTensor of size 3]
+```
 
 <a name='nn.ZipTable'></a>
 ## ZipTable ##
