@@ -341,11 +341,11 @@ function Module:maxParamNorm(maxOutNorm, maxInNorm)
       for k,param in pairs(params) do -- pairs for sparse params
          -- By default, only affects non-1D params.
          if param:dim() > 1 then
-            if maxOutNorm then
+            if maxOutNorm and maxOutNorm > 0 then
                -- rows feed into output neurons 
                param:renorm(2, 1, maxOutNorm)
             end
-            if maxInNorm then
+            if maxInNorm and maxInNorm > 0 then
                -- cols feed out from input neurons
                param:renorm(2, param:dim(), maxInNorm)
             end
@@ -411,7 +411,7 @@ function Module:weightDecay(wdFactor, wdMinDim)
       if not params or gradParams then
          return
       end
-      print(params, gradParams)
+      
       for i,param in pairs(params) do -- pairs for sparse params
          if param:dim() >= wdMinDim then
             gradParams[i]:add(wdFactor, param)
