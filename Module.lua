@@ -356,7 +356,7 @@ end
 
 -- Similar to maxParamNorm, but norm is global to Module for which 
 -- this is called. Unless moduleLocal is true, in which case, the
--- norm is constraint is applied to the norm of all parameters in each
+-- norm constraint is applied to the norm of all parameters in each
 -- component (non-container) module.
 function Module:gradParamClip(cutoffNorm, moduleLocal)
    -- this allows each module to set its own cutoffNorm

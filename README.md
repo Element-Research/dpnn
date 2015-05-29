@@ -1,15 +1,12 @@
-# dpnn : extensions to nn Modules and Criterions. 
+# dpnn : deep extensions to nn
 
 This package provides many useful features that aren't part of the main nn package. 
-These include [sharedClone], which allows you to clone a module and share 
+These include [sharedClone](#nn.Module.sharedClone), which allows you to clone a module and share 
 parameters or gradParameters with the original module, without incuring any memory overhead.
-Or [sharedType], which preserves Tensor sharing within a structure of modules. 
-
-The Module interface has been further extended with methods that facilitate 
-stochastic gradient descent like [updateGradParameters] (i.e. momentum learning), 
-[weightDecay], [maxParamNorm] (for regularization), and so on.
+We also redefined [type](#nn.Module.type) such that the type-cast preserves Tensor sharing within a structure of modules. 
 
 The package provides the following Modules:
+
  * [Decorator](#nn.Decorator) : abstract class to change the behaviour of an encapsulated module ;
  * [DontCast](#nn.DontCast) : prevent encapsulated module from being casted by `Module:type()` ;
  * [Serial](#nn.Serial) : decorate a module makes its serialized output more compact ; 
@@ -28,7 +25,27 @@ which is one of the main reasons why we made it.
 <a name='nn.Module'></a>
 ## Module ##
 
-### Module:type(type_str) ###
+The Module interface has been further extended with methods that facilitate 
+stochastic gradient descent like [updateGradParameters](#nn.Module.updageGradParameters) (i.e. momentum learning), 
+[weightDecay](#nn.Module.weightDecay), [maxParamNorm](#nn.Module.maxParamNorm) (for regularization), and so on.
+
+<a name='nn.Module.dpnn_parameters'></a>
+### Module.dpnn_parameters ###
+
+A table that specifies the name of parameter attributes. 
+Defaults to `{'weight', 'bias'}`, which is a static variable (i.e. table exists in class namespace). 
+Sub-classes can define their own table statically. 
+
+<a name='nn.Module.dpnn_gradParameters'></a>
+### Module.dpnn_gradParameters ###
+
+A table that specifies the name of gradient w.r.t. parameter attributes. 
+Defaults to `{'gradWeight', 'gradBias'}`, which is a static variable (i.e. table exists in class namespace). 
+Sub-classes can define their own table statically. 
+
+<a name='nn.Module.type'></a>
+### [self] Module:type(type_str) ###
+
 This function converts all the parameters of a module to the given `type_str`. 
 The `type_str` can be one of the types defined for [torch.Tensor](https://github.com/torch/torch7/blob/master/doc/tensor.md)
 like `torch.DoubleTensor`, `torch.FloatTensor` and `torch.CudaTensor`. 
@@ -37,15 +54,89 @@ defined in [nn](https://github.com/torch/nn), this one was overriden to
 maintain the sharing of [storage](https://github.com/torch/torch7/blob/master/doc/storage.md#storage)
 among Tensors. This is especially useful when cloning modules share `parameters` and `gradParameters`.
 
-### Module:sharedClone() ###
+<a name='nn.Module.sharedClone'></a>
+### [clone] Module:sharedClone([shareParams, shareGradParams]) ###
 
+Similar to [clone](https://github.com/torch/nn/blob/master/doc/module.md#nn.Module.clone).
+Yet when `shareParams = true` (the default), the cloned module will share the parameters 
+with the original module. 
+Furthermore, when `shareGradParams = true` (the default), the clone module will share 
+the gradients w.r.t. parameters with the original module.
+This is equivalent to :
+```lua
+clone = mlp:clone()
+clone:share(mlp, 'weight', 'bias', 'gradWeight', 'gradBias')
+```
+yet it is much more efficient, especially for modules with lots of parameters, as these 
+Tensors aren't needlessly copied during the `clone`.
+This is particularly useful for [Recurrent neural networks](https://github.com/Element-Research/rnn/blob/master/README.md) 
+which require efficient copies with shared parameters and gradient w.r.t. parameters for each time-step.
+
+<a name='nn.Module.maxParamNorm'></a>
 ### Module:maxParamNorm([maxOutNorm, maxInNorm]) ###
 
+This method implements a hard constraint on the upper bound of the norm of output and/or input neuron weights 
+[(Hinton et al. 2012, p. 2)](http://arxiv.org/pdf/1207.0580.pdf) .
+In a weight matrix, this is a contraint on rows (`maxOutNorm`) and/or columns (`maxInNorm`), respectively. 
+Has a regularization effect analogous to [weightDecay](#nn.Module.weightDecay), but with easier to optimize hyper-parameters. 
+Assumes that parameters are arranged (`output dim x ... x input dim`). 
+Only affects parameters with more than one dimension.
+The method should normally be called after [updateParameters](https://github.com/torch/nn/blob/master/doc/module.md#nn.Module.updateParameters). 
+It uses the C/CUDA optimized [torch.renorm](https://github.com/torch/torch7/blob/master/doc/maths.md#torch.renorm) function.
+Hint : `maxOutNorm = 2` usually does the trick. 
+
+<a name='nn.Module.momentumGradParameters'></a>
+### [momGradParams] Module:momentumGradParameters() ###
+
+Returns a table of Tensors (`momGradParams`). For each element in the 
+table, a corresponding parameter (`params`) and gradient w.r.t. parameters 
+(`gradParams`) is returned by a call to [parameters](https://github.com/torch/nn/blob/master/doc/module.md#nn.Module.parameters).
+This method is used internally by [updateGradParameters](#nn.Module.updateGradParameters).
+
+<a name='nn.Module.updateGradParameters'></a>
 ### Module:updateGradParameters(momFactor [, momDamp, momNesterov]) ###
 
+Applies classic momentum or Nesterov momentum [(Sutskever, Martens et al, 2013)](http://www.cs.toronto.edu/~fritz/absps/momentum.pdf) to parameter gradients. 
+Each parameter Tensor (`params`) has a corresponding Tensor of the same size for gradients w.r.t. parameters (`gradParams`).
+When using momentum learning, another Tensor is added for each parameter Tensor (`momGradParams`).
+This method should be called before [updateParameters](https://github.com/torch/nn/blob/master/doc/module.md#nn.Module.updateParameters)
+as it affects the gradients w.r.t. parameters.
+
+Classic momentum is computed as follows :
+
+```lua
+momGradParams = momFactor*momGradParams + (1-momDamp)*gradParams
+gradParams = momGradParams
+```
+
+where `momDamp` has a default value of `momFactor`.
+
+Nesterov momentum (`momNesterov = true`) is computed as follows (the first line is the same as classic momentum):
+
+```lua
+momGradParams = momFactor*momGradParams + (1-momDamp)*gradParams
+gradParams = gradParams + momFactor*momGradParams
+```
+The default is to use classic momentum (`momNesterov = false`).
+
+<a name='nn.Module.weightDecay'></a>
 ### Module:weightDecay(wdFactor [, wdMinDim]) ###
 
+Decays the weight of the parameterized models. 
+Implements an L2 norm loss on parameters with dimensions greater or equal to `wdMinDim` (default is 2).
+The resulting gradients are stored into the corresponding gradients w.r.t. parameters.
+Such that this method should be called before [updateParameters](https://github.com/torch/nn/blob/master/doc/module.md#nn.Module.updateParameters).
+
+<a name='nn.Module.gradParamClip'></a>
 ### Module:gradParamClip(cutoffNorm [, moduleLocal]) ###
+
+Implements a contrainst on the norm of gradients w.r.t. parameters [(Pascanu et al. 2012)](http://arxiv.org/pdf/1211.5063.pdf).
+When `moduleLocal = false` (the default), the norm is calculated globally to Module for which this is called.
+So if you call it on an MLP, the norm is computed on the concatenation of all parameter Tensors.
+When `moduleLocal = true`, the norm constraint is applied 
+to the norm of all parameters in each component (non-container) module.
+This method is useful to prevent the exploding gradient in 
+[Recurrent neural networks](https://github.com/Element-Research/rnn/blob/master/README.md).
 
 <a name='nn.Decorator'></a>
 ## Decorator ##
@@ -156,6 +247,7 @@ print(module:forward(torch.randn(3,2,3,1)))
 [torch.DoubleTensor of size 3x6]
 ```
 You could also try:
+
 ```lua
 module = nn.Convert('chw', 'hwc')
 input = torch.randn(1,2,3,2)
