@@ -7,8 +7,8 @@ source = {
 }
 
 description = {
-   summary = "dp extensions to nn Modules and Criterions",
-   detailed = [[sharedClone, sharedType, outside, post-initialization, etc]],
+   summary = "deep extensions to nn Modules and Criterions",
+   detailed = [[sharedClone, type, outside, updateGradParameters, Serial, Inception, etc.]],
    homepage = "https://github.com/nicholas-leonard/dpnn",
    license = "BSD"
 }
