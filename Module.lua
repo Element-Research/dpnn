@@ -306,7 +306,7 @@ end
 function Module:outside(insize)
    local input
    if torch.type(insize) == 'table' then
-      input = torch.randn(unpack(insize))
+      input = torch.randn(table.unpack(insize))
    else
       input = torch.randn(insize)
    end
@@ -506,7 +506,7 @@ function Module:toBatch(tensor, nDim, batchDim)
       self.dpnn_online = true
       local size = tensor:size():totable()
       table.insert(size, batchDim, 1)
-      tensor = tensor:view(unpack(size))
+      tensor = tensor:view(table.unpack(size))
    else
       self.dpnn_online = false
    end
@@ -517,7 +517,7 @@ function Module:fromBatch(tensor, batchDim)
    if self.dpnn_online then
       local size = tensor:size():totable()
       assert(table.remove(size, batchDim) == 1)
-      tensor = tensor:view(unpack(size))
+      tensor = tensor:view(table.unpack(size))
    end
    return tensor
 end
@@ -551,4 +551,12 @@ function Module:profile()
       end
    end
    self.dpnn_profile = true
+end
+
+function Module:reinforce(reward)
+   if self.modules then
+      for i, module in ipairs(self.modules) do
+         module:reinforce(reward)
+      end
+   end
 end
