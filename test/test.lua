@@ -351,6 +351,23 @@ function dpnntest.ReinforceBernoulli()
    mytester:assertTensorEq(gradInput2, gradInput, 0.00001, "ReinforceBernoulli backward err")
 end
 
+function dpnntest.Clip()
+   local input = torch.randn(200,300)
+   local gradOutput = torch.randn(200,300)
+   local minval, maxval = -0.05, 0.1
+   local clip = nn.Clip(minval, maxval)
+   local output = clip:forward(input)
+   local output2 = input:clone()
+   local mask = input.new()
+   mask:gt(input, maxval)
+   output2[mask:type("torch.ByteTensor")] = maxval
+   mask:lt(input, minval)
+   output2[mask:type("torch.ByteTensor")] = minval   
+   mytester:assertTensorEq(output, output2, 0.00001, "Clip forward err")
+   local gradInput = clip:backward(input, gradOutput)
+   mytester:assertTensorEq(gradInput, gradOutput, 0.00001, "Clip backward err")
+end
+
 function dpnn.test(tests)
    mytester = torch.Tester()
    mytester:add(dpnntest)

@@ -4,9 +4,12 @@
 ------------------------------------------------------------------------
 local Clip, parent = torch.class("nn.Clip", "nn.Module")
 
-function Clip:__init(minval, maxVal)
+function Clip:__init(minval, maxval)
+   assert(torch.type(minval) == 'number')
+   assert(torch.type(maxval) == 'number')
    self.minval = minval
    self.maxval = maxval
+   parent.__init(self)
 end
 
 function Clip:updateOutput(input)
@@ -22,6 +25,7 @@ function Clip:updateOutput(input)
    byte = torch.type(self.output) == 'torch.CudaTensor' and self._mask 
       or self._byte:resize(self._mask:size()):copy(self._mask)
    self.output[byte] = self.minval
+   return self.output
 end
 
 function Clip:updateGradInput(input, gradOutput)
