@@ -24,7 +24,7 @@ function ReinforceNormal:updateOutput(input)
       -- multiply by standard deviations
       if torch.type(self.stdev) == 'number' then
          self.output:mul(self.stdev)
-      else torch.isTensor(self.stdev) then
+      elseif torch.isTensor(self.stdev) then
          if self.stdev:dim() == input:dim() then
             assert(self.stdev:isSameSizeAs(input))
             self.output:cmul(self.stdev)
@@ -36,6 +36,8 @@ function ReinforceNormal:updateOutput(input)
             self.__stdev:expandAs(self._stdev, input)
             self.output:cmul(self.__stdev)
          end
+      else
+         error"unsupported input type"
       end
       
       -- re-center the means to the input
@@ -63,8 +65,8 @@ function ReinforceNormal:updateGradInput(input, gradOutput)
    
    -- divide by squard standard deviations
    if torch.type(self.stdev) == 'number' then
-      self.gradInput:cdiv(self.stdev^2):
-   else torch.isTensor(self.stdev) then
+      self.gradInput:div(self.stdev^2)
+   else
       if self.stdev:dim() == input:dim() then
          self.gradInput:cdiv(self.stdev):cdiv(self.stdev)
       else

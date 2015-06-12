@@ -302,6 +302,26 @@ function dpnntest.ModuleCriterion()
    mytester:assertTensorEq(gradInput, gradInput2, 0.000001, "ModuleCriterion backward err")
 end
 
+function dpnntest.ReinforceNormal()
+   local input = torch.randn(500,1000) -- means
+   local gradOutput = torch.Tensor() -- will be ignored
+   local reward = torch.randn(500)
+   -- test scalar stdev
+   local stdev = 1
+   local rn = nn.ReinforceNormal(stdev)
+   local output = rn:forward(input)
+   mytester:assert(input:isSameSizeAs(output), "ReinforceNormal forward size err")
+   local outstd = math.sqrt((input - output):pow(2):mean())
+   local err = math.abs(outstd - stdev)
+   mytester:assert(err < 0.1, "ReinforceNormal forward std err")
+   rn:reinforce(reward)
+   local gradInput = rn:updateGradInput(input, gradOutput)
+   local gradInput2 = output:clone()
+   gradInput2:add(-1, input):div(stdev^2)
+   local reward2 = reward:view(500,1):expandAs(input)
+   gradInput2:cmul(reward2)
+   mytester:assertTensorEq(gradInput2, gradInput, 0.00001, "ReinforceNormal backward err")
+end
 
 function dpnn.test(tests)
    mytester = torch.Tester()
