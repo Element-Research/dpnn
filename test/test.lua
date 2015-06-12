@@ -321,6 +321,34 @@ function dpnntest.ReinforceNormal()
    local reward2 = reward:view(500,1):expandAs(input)
    gradInput2:cmul(reward2)
    mytester:assertTensorEq(gradInput2, gradInput, 0.00001, "ReinforceNormal backward err")
+   -- TODO test tensor stdev
+end
+
+function dpnntest.ReinforceBernoulli()
+   local input = torch.Tensor(1000,10) 
+   local p = torch.rand(1,10) -- probability of sampling a 1
+   input:copy(p:expandAs(input))
+   local gradOutput = torch.Tensor() -- will be ignored
+   local reward = torch.randn(1000)
+   local rb = nn.ReinforceBernoulli()
+   local output = rb:forward(input)
+   mytester:assert(input:isSameSizeAs(output), "ReinforceBernoulli forward size err")
+   mytester:assert(output:min() == 0, "ReinforceBernoulli forward min val err")
+   mytester:assert(output:max() == 1, "ReinforceBernoulli forward max val err")
+   local binary = true
+   output:apply(function(x) if not (x == 1 or x == 0) then binary = false end end)
+   mytester:assert(binary, "ReinforceBernoulli forward binary val err")
+   local p2 = output:mean(1)
+   local err = (p - p2):abs():mean()
+   mytester:assert(err < 0.05, "ReinforceBernoulli forward p err")
+   rb:reinforce(reward)
+   local gradInput = rb:updateGradInput(input, gradOutput)
+   local gradInput2 = output:clone()
+   local div = output:clone():fill(1):add(-1, input):cmul(input)
+   gradInput2:add(-1, input):cdiv(div)
+   local reward2 = reward:view(1000,1):expandAs(input)
+   gradInput2:cmul(reward2)
+   mytester:assertTensorEq(gradInput2, gradInput, 0.00001, "ReinforceBernoulli backward err")
 end
 
 function dpnn.test(tests)
