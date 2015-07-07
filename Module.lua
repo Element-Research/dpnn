@@ -371,12 +371,12 @@ function Module:gradParamClip(cutoffNorm, moduleLocal)
    local norm = 0
    if moduleLocal and self.modules then
       for i,module in ipairs(self.modules) do
-         norm = norm + module:gradParamClip(maxOutNorm, maxInNorm)
+         norm = norm + math.pow(module:gradParamClip(maxOutNorm, maxInNorm), 2)
       end
-      norm = norm/(#self.modules)
+      norm = math.sqrt(norm)
    else
       local params, gradParams = self:parameters()
-      if not params or gradParams then
+      if not (params and gradParams) then
          return norm
       end
       for k,gradParam in pairs(gradParams) do -- pairs for sparse params
@@ -409,7 +409,7 @@ function Module:weightDecay(wdFactor, wdMinDim)
       end
    else
       local params, gradParams = self:parameters()
-      if not params or gradParams then
+      if not (params and gradParams) then
          return
       end
       
