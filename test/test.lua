@@ -237,6 +237,27 @@ function dpnntest.ZipTable()
    mytester:assertTensorEq(input[3][2], gradInput[3][2], 0.000001, "ZipTable gradInput32")
 end
 
+function dpnntest.ReverseTable()
+   -- input : { a, b, c, d }
+   -- output : { c, b, a, d }
+   local r = nn.ReverseTable()
+   local input = {torch.randn(3,4), torch.randn(3,4), torch.randn(3,4), torch.randn(3,4)}
+   local output = r:forward(input)
+   
+   mytester:assert(#output == 4, "ReverseTable #output")
+   local k = 1
+   for i=#input,1,-1 do
+      mytester:assertTensorEq(input[i], output[k], 0.00001, "ReverseTable output err "..k)
+      k = k + 1
+   end
+   
+   local gradInput = r:backward(input, output)
+   mytester:assert(#gradInput == 4, "ReverseTable #gradInput")
+   for i=1,#input do
+      mytester:assertTensorEq(gradInput[i], input[i], 0.00001, "ReverseTable gradInput err "..i)
+   end
+end
+
 function dpnntest.Inception()
    local size = {8,3,32,32}
    local outputSize = {8,16+24+8+12,32,32}
