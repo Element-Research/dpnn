@@ -365,19 +365,20 @@ function Module:gradParamClip(cutoffNorm, moduleLocal)
       return
    end
    if self.moduleLocal ~= nil then
-      moduleLocal =  self.moduleLocal
+      moduleLocal = self.moduleLocal
    end
    
+   local norm = 0
    if moduleLocal and self.modules then
       for i,module in ipairs(self.modules) do
-         module:gradParamClip(maxOutNorm, maxInNorm)
+         norm = norm + module:gradParamClip(maxOutNorm, maxInNorm)
       end
+      norm = norm/(#self.modules)
    else
       local params, gradParams = self:parameters()
       if not params or gradParams then
-         return
+         return norm
       end
-      local norm = 0
       for k,gradParam in pairs(gradParams) do -- pairs for sparse params
          norm = norm + math.pow(gradParam:norm(),2)
       end

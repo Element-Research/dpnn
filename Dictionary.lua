@@ -93,8 +93,16 @@ function Dictionary:zeroGradParameters()
          self.gradWeight:select(1, k):zero()
       end
    end
-   self.inputs = {}
+   for k,v in pairs(self.inputs) do
+      self.inputs[k] = nil
+   end
    self.nBackward = 0
+end
+
+function Dictionary:sharedClone()
+   local clone = parent.sharedClone(self)
+   clone.inputs = self.inputs
+   return clone 
 end
 
    
