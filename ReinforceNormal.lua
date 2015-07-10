@@ -63,7 +63,7 @@ function ReinforceNormal:updateGradInput(input, gradOutput)
    -- (x - u)
    self.gradInput:copy(self.output):add(-1, input)
    
-   -- divide by squard standard deviations
+   -- divide by squared standard deviations
    if torch.type(self.stdev) == 'number' then
       self.gradInput:div(self.stdev^2)
    else
