@@ -8,7 +8,7 @@
 ------------------------------------------------------------------------
 local VRClassReward, parent = torch.class("nn.VRClassReward", "nn.Criterion")
 
-function VRClassReward:__init(module, basecoeff)
+function VRClassReward:__init(module, basecoeff, scale)
    self.module = module -- so it can call module:reinforce(reward)
    self.basecoeff = basecoeff or 0.9 -- weight of past baseline
    self.baseline = 0
