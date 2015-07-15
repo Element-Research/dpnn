@@ -61,6 +61,7 @@ torch.include('dpnn', 'Dictionary.lua')
 torch.include('dpnn', 'Inception.lua')
 torch.include('dpnn', 'SoftMaxTree.lua')
 torch.include('dpnn', 'SoftMaxForest.lua')
+torch.include('dpnn', 'SpatialUniformCrop.lua')
 
 -- criterions
 torch.include('dpnn', 'ModuleCriterion.lua')

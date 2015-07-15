@@ -304,6 +304,21 @@ function dpnntest.Dictionary()
    mytester:assertTensorEq(d.weight, d2.weight, 0.00001)
 end
 
+function dpnntest.SpatialUniformCrop()
+   local input = torch.Tensor(8,3,10,10):copy(torch.range(1,8):view(8,1,1,1):expand(8,3,10,10))
+   local gradOutput = torch.Tensor(8,3,4,4):copy(torch.range(1,8):view(8,1,1,1):expand(8,3,4,4))
+   local sc = nn.SpatialUniformCrop(4)
+   local output, gradInput
+   for i=1,100 do
+      output = sc:forward(input)
+      gradInput = sc:backward(input, gradOutput)
+   end
+   for i=1,8 do
+      mytester:assert(math.abs(output[i]:mean() - i) < 0.0001, "SpatialUniformCrop output err "..i)
+      mytester:assert(math.abs(gradInput[i]:mean() - ((i*4*4)/(10*10))) < 0.0001, "SpatialUniformCrop gradInput err"..i)
+   end
+end
+
 function dpnntest.ModuleCriterion()
    local input = torch.randn(8,4)
    local target = torch.randn(8,4)
