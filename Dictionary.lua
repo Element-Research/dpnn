@@ -10,7 +10,6 @@ function Dictionary:__init(dictSize, embeddingSize, accUpdate)
       self.gradWeight:zero()
    end
    self.accUpdate = accUpdate
-   self.dpnn_sparseParameters = true --disable for use with optim 
    self.inputs = {}
 end
 
@@ -31,38 +30,32 @@ function Dictionary:accGradParameters(input, gradOutput, scale)
    return parent.accGradParameters(self, input, gradOutput, scale)
 end
 
-function Dictionary:parameters()
-   if self.dpnn_sparseParameters then
-      -- only return the parameters affected by the forward/backward
-      local params, gradParams, scales = {}, {}, {}
-      for k,nBackward in pairs(self.inputs) do
-         params[k] = self.weight:select(1, k)
-         if self.gradWeight then
-            gradParams[k] = self.gradWeight:select(1, k)
-         end
-         scales[k] = 1
+function Dictionary:sparseParameters()
+   -- only return the parameters affected by the forward/backward
+   local params, gradParams, scales = {}, {}, {}
+   for k,nBackward in pairs(self.inputs) do
+      params[k] = self.weight:select(1, k)
+      if self.gradWeight then
+         gradParams[k] = self.gradWeight:select(1, k)
       end
-      return params, gradParams, scales, self.weight:size(1)
+      scales[k] = 1
    end
-   return parent.parameters(self)
+   return params, gradParams, scales, self.weight:size(1)
 end
 
 function Dictionary:momentumGradParameters()
-   if self.dpnn_sparseParameters then
-      -- get dense view of momGradParams
-      if not self.momGradParams or _.isEmpty(self.momGradParams) then
-         assert(not self.accUpdate, "cannot use momentum with accUpdate")
-         self.momGradParams = {self.gradWeight:clone():zero()}
-      end
-      local momGradWeight = self.momGradParams[1]
-      local momGradParams = {}
-      -- only return the parameters affected by the forward/backward
-      for k,nBackward in pairs(self.inputs) do
-         momGradParams[k] = momGradWeight:select(1, k)
-      end
-      return momGradParams
+   -- get dense view of momGradParams
+   if not self.momGradParams or _.isEmpty(self.momGradParams) then
+      assert(not self.accUpdate, "cannot use momentum with accUpdate")
+      self.momGradParams = {self.gradWeight:clone():zero()}
    end
-   return parent.momentumGradParameters(self)
+   local momGradWeight = self.momGradParams[1]
+   local momGradParams = {}
+   -- only return the parameters affected by the forward/backward
+   for k,nBackward in pairs(self.inputs) do
+      momGradParams[k] = momGradWeight:select(1, k)
+   end
+   return momGradParams
 end
 
 function Dictionary:maxParamNorm(maxOutNorm, maxInNorm)
@@ -72,19 +65,8 @@ function Dictionary:maxParamNorm(maxOutNorm, maxInNorm)
    end
    
    for k,nBackward in pairs(self.inputs) do
-      self.weight:narrow(1, k, 1):renorm(1, 2, maxOutNorm)
+      self.weight:narrow(1, k, 1):renorm(2, 2, maxOutNorm)
    end
-end
-
--- just to be safe (for optim)
-function Dictionary:getParameters()
-   local sp = self.dpnn_sparseParameters
-   self.dpnn_sparseParameters = false
-   
-   local flatParameters, flatGradParameters = parent.getParameters(self)
-   
-   self.dpnn_sparseParameters = sp
-   return flatParameters, flatGradParameters
 end
 
 function Dictionary:zeroGradParameters()

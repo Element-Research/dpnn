@@ -8,14 +8,13 @@ function Container:extend(...)
    return self
 end
 
--- overriden to handle sparse parameters
-function Container:parameters()
+function Container:sparseParameters()
     local params = {}
     local gradParams = {}
     local scales = {}
     local size = 0
     for i=1,#self.modules do
-        local mParams, mGradParams, mScales, mSize = self.modules[i]:parameters()
+        local mParams, mGradParams, mScales, mSize = self.modules[i]:sparseParameters()
         if mParams then
             for k,param in pairs(mParams) do
                assert(torch.type(param) ~= 'table')

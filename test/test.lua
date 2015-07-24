@@ -133,6 +133,31 @@ function dpnntest.Module_type()
    end
 end
 
+function dpnntest.Module_gradParamClip()
+   local mlp = nn.Sequential()
+   mlp:add(nn.Linear(10,10))
+   mlp:add(nn.Euclidean(15,12))
+   mlp:add(nn.SpatialConvolution(5,5,5,5))
+   mlp:add(nn.LookupTable(100,100))
+   local param, gradParam = mlp:getParameters()
+   gradParam:uniform(-1,1)
+   local norm = gradParam:norm()
+   local mlp2 = mlp:clone()
+   local cutoff = norm/2
+   local norm2 = mlp2:gradParamClip(cutoff)
+   mytester:assert(math.abs(norm2-norm) < 0.000001, "Module:gradParamClip norm err "..norm2.." ~= "..norm)
+   local shrink_factor = cutoff / norm
+   gradParam:mul(shrink_factor)
+   local param2, gradParam2 = mlp2:getParameters()
+   mytester:assertTensorEq(gradParam, gradParam2, 0.000001, "Module:gradParamClip clip err")
+   
+   local norm = gradParam:norm()
+   local cutoff = norm*2
+   local norm2 = mlp2:gradParamClip(cutoff)
+   mytester:assert(math.abs(norm2-norm) < 0.000001, "Module:gradParamClip norm 2 err "..norm2.." ~= "..norm)
+   mytester:assertTensorEq(gradParam, gradParam2, 0.000001, "Module:gradParamClip clip 2 err")
+end
+
 function dpnntest.Serial()
    local mlp = nn.Sequential():extend(
       nn.Linear(3,4),
@@ -302,6 +327,61 @@ function dpnntest.Dictionary()
    d:updateParameters(0.1)
    d2:updateParameters(0.1)
    mytester:assertTensorEq(d.weight, d2.weight, 0.00001)
+end
+
+function dpnntest.SpatialUniformCrop()
+   local input = torch.Tensor(8,3,10,10):copy(torch.range(1,8):view(8,1,1,1):expand(8,3,10,10))
+   local gradOutput = torch.Tensor(8,3,4,4):copy(torch.range(1,8):view(8,1,1,1):expand(8,3,4,4))
+   local sc = nn.SpatialUniformCrop(4)
+   local output, gradInput
+   for i=1,100 do
+      output = sc:forward(input)
+      gradInput = sc:backward(input, gradOutput)
+   end
+   for i=1,8 do
+      mytester:assert(math.abs(output[i]:mean() - i) < 0.0001, "SpatialUniformCrop output err "..i)
+      mytester:assert(math.abs(gradInput[i]:mean() - ((i*4*4)/(10*10))) < 0.0001, "SpatialUniformCrop gradInput err"..i)
+   end
+end
+
+function dpnntest.DontCast()
+   local input = torch.randn(3,4)
+   local gradOutput = torch.randn(3,2)
+   local linear = nn.Linear(4,2):float()
+   local mlp = nn.DontCast(linear, true)
+   linear:zeroGradParameters()
+   local linear = linear:clone()
+   local output = mlp:forward(input)
+   local gradInput = mlp:backward(input, gradOutput)
+   mytester:assert(torch.type(output) == 'torch.DoubleTensor')
+   mytester:assert(torch.type(gradInput) == 'torch.DoubleTensor')
+   local output2 = linear:forward(input:float())
+   local gradInput2 = linear:backward(input:float(), gradOutput:float())
+   mytester:assertTensorEq(output:float(), output2, 0.000001)
+   mytester:assertTensorEq(gradInput:float(), gradInput2, 0.000001)
+   local mlp3 = nn.DontCast(linear:clone())
+   mlp3:zeroGradParameters()
+   local output3 = mlp3:forward(input:float())
+   local gradInput3 = mlp3:backward(input:float(), gradOutput:float())
+   mytester:assert(torch.type(output3) == 'torch.FloatTensor')
+   mytester:assert(torch.type(gradInput3) == 'torch.FloatTensor')
+   mytester:assertTensorEq(output3, output2, 0.000001)
+   mytester:assertTensorEq(gradInput3, gradInput2, 0.000001)
+   mlp:float()
+   local output4 = mlp:forward(input:float())
+   local gradInput4 = mlp:backward(input:float(), gradOutput:float())
+   mytester:assert(torch.type(output4) == 'torch.FloatTensor')
+   mytester:assert(torch.type(gradInput4) == 'torch.FloatTensor')
+   mytester:assertTensorEq(output3, output4, 0.000001)
+   mytester:assertTensorEq(gradInput3, gradInput4, 0.000001)
+   mlp:double()
+   mytester:assert(torch.type(linear.output) == 'torch.FloatTensor')
+   local output = mlp:forward(input)
+   local gradInput = mlp:backward(input, gradOutput)
+   mytester:assert(torch.type(output4) == 'torch.FloatTensor')
+   mytester:assert(torch.type(gradInput4) == 'torch.FloatTensor')
+   mytester:assertTensorEq(output3, output:float(), 0.000001)
+   mytester:assertTensorEq(gradInput3, gradInput:float(), 0.000001)
 end
 
 function dpnntest.ModuleCriterion()

@@ -40,6 +40,7 @@ torch.include('dpnn', 'Module.lua')
 torch.include('dpnn', 'Container.lua')
 torch.include('dpnn', 'Sequential.lua')
 torch.include('dpnn', 'ParallelTable.lua')
+torch.include('dpnn', 'LookupTable.lua')
 
 -- extensions to make serialization more efficient
 torch.include('dpnn', 'SpatialMaxPooling.lua')
@@ -62,12 +63,14 @@ torch.include('dpnn', 'Inception.lua')
 torch.include('dpnn', 'SoftMaxTree.lua')
 torch.include('dpnn', 'SoftMaxForest.lua')
 torch.include('dpnn', 'Clip.lua')
+torch.include('dpnn', 'SpatialUniformCrop.lua')
 
 -- REINFORCE
 torch.include('dpnn', 'Reinforce.lua')
 torch.include('dpnn', 'ReinforceBernoulli.lua')
 torch.include('dpnn', 'ReinforceNormal.lua')
 torch.include('dpnn', 'VRClassReward.lua')
+
 
 -- criterions
 torch.include('dpnn', 'ModuleCriterion.lua')
