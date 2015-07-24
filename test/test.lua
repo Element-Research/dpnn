@@ -144,12 +144,18 @@ function dpnntest.Module_gradParamClip()
    local norm = gradParam:norm()
    local mlp2 = mlp:clone()
    local cutoff = norm/2
-   local norm2 = mlp2:gradParamClip(norm/2)
+   local norm2 = mlp2:gradParamClip(cutoff)
    mytester:assert(math.abs(norm2-norm) < 0.000001, "Module:gradParamClip norm err "..norm2.." ~= "..norm)
    local shrink_factor = cutoff / norm
    gradParam:mul(shrink_factor)
    local param2, gradParam2 = mlp2:getParameters()
    mytester:assertTensorEq(gradParam, gradParam2, 0.000001, "Module:gradParamClip clip err")
+   
+   local norm = gradParam:norm()
+   local cutoff = norm*2
+   local norm2 = mlp2:gradParamClip(cutoff)
+   mytester:assert(math.abs(norm2-norm) < 0.000001, "Module:gradParamClip norm 2 err "..norm2.." ~= "..norm)
+   mytester:assertTensorEq(gradParam, gradParam2, 0.000001, "Module:gradParamClip clip 2 err")
 end
 
 function dpnntest.Serial()
