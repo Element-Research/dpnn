@@ -42,7 +42,7 @@ function VRClassReward:udpateGradInput(input, target)
    -- update baseline using current and past rewards
    -- baseline is exponentially moving average of reward
    if self.baseline == 0 then
-      self.baseline == self.reward:mean()
+      self.baseline = self.reward:mean()
    else
       self.baseline = self.basecoeff*self.baseline + (1-self.basecoeff)*self.reward:mean()
    end
