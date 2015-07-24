@@ -40,6 +40,7 @@ torch.include('dpnn', 'Module.lua')
 torch.include('dpnn', 'Container.lua')
 torch.include('dpnn', 'Sequential.lua')
 torch.include('dpnn', 'ParallelTable.lua')
+torch.include('dpnn', 'LookupTable.lua')
 
 -- extensions to make serialization more efficient
 torch.include('dpnn', 'SpatialMaxPooling.lua')

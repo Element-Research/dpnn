@@ -133,6 +133,31 @@ function dpnntest.Module_type()
    end
 end
 
+function dpnntest.Module_gradParamClip()
+   local mlp = nn.Sequential()
+   mlp:add(nn.Linear(10,10))
+   mlp:add(nn.Euclidean(15,12))
+   mlp:add(nn.SpatialConvolution(5,5,5,5))
+   mlp:add(nn.LookupTable(100,100))
+   local param, gradParam = mlp:getParameters()
+   gradParam:uniform(-1,1)
+   local norm = gradParam:norm()
+   local mlp2 = mlp:clone()
+   local cutoff = norm/2
+   local norm2 = mlp2:gradParamClip(cutoff)
+   mytester:assert(math.abs(norm2-norm) < 0.000001, "Module:gradParamClip norm err "..norm2.." ~= "..norm)
+   local shrink_factor = cutoff / norm
+   gradParam:mul(shrink_factor)
+   local param2, gradParam2 = mlp2:getParameters()
+   mytester:assertTensorEq(gradParam, gradParam2, 0.000001, "Module:gradParamClip clip err")
+   
+   local norm = gradParam:norm()
+   local cutoff = norm*2
+   local norm2 = mlp2:gradParamClip(cutoff)
+   mytester:assert(math.abs(norm2-norm) < 0.000001, "Module:gradParamClip norm 2 err "..norm2.." ~= "..norm)
+   mytester:assertTensorEq(gradParam, gradParam2, 0.000001, "Module:gradParamClip clip 2 err")
+end
+
 function dpnntest.Serial()
    local mlp = nn.Sequential():extend(
       nn.Linear(3,4),
