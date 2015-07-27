@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 --[[ VRClassReward ]]--
 -- Variance reduced classification reinforcement criterion.
--- Reward is 1 for success, Reward is 0 otherwise.
+-- Reward is 1*scale for success, Reward is 0 otherwise.
 -- reward = (Reward - baseline) where baseline is exp moving avg of Reward
 -- Note : for RNNs with R = 1 for last step in sequence, encapsulate it
 -- in nn.ModuleCriterion(VRClassReward, nn.SelectTable(-1))
@@ -17,7 +17,7 @@ function VRClassReward:__init(module, basecoeff, scale)
 end
 
 function VRClassReward:updateOutput(input, target)
-   assert(input:dim() == 2, "only works with batches")
+   local input = self:toBatch(input, 1)
    self._maxVal = self._maxVal or input.new()
    self._maxIdx = self._maxIdx or torch.type(input) == 'torch.CudaTensor' and input.new() or torch.LongTensor()
    
@@ -30,9 +30,10 @@ function VRClassReward:updateOutput(input, target)
    end
    
    -- reward = scale when correctly classified
-   self._maxIdx:eq(self._maxIdx, target)
+   self._reward = self._maxIdx.new()
+   self._reward:eq(self._maxIdx, target)
    self.reward = self.reward or input.new()
-   self.reward:resize(self._maxIdx:size(1)):copy(self._maxIdx)
+   self.reward:resize(self._reward:size(1)):copy(self._reward)
    self.reward:mul(self.scale)
    
    -- loss = -sum(reward)
@@ -41,6 +42,7 @@ function VRClassReward:updateOutput(input, target)
 end
 
 function VRClassReward:updateGradInput(input, target)
+   local input = self:toBatch(input, 1)
    -- update baseline using current and past rewards
    -- baseline is exponentially moving average of reward
    if self.baseline == 0 then
@@ -58,6 +60,7 @@ function VRClassReward:updateGradInput(input, target)
    
    -- zero gradInput (this criterion has no gradInput)
    self.gradInput:resizeAs(input):zero()
+   self.gradInput = self:fromBatch(self.gradInput, 1)
    return self.gradInput
 end
 

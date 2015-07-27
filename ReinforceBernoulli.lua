@@ -41,8 +41,10 @@ function ReinforceBernoulli:updateGradInput(input, gradOutput)
    self._div:fill(1):add(-1, input):cmul(input)
    self.gradInput:cdiv(self._div)
    
-   -- multiply by reward (default : reinforceSignal-reinforceBaseline)
+   -- multiply by reward 
    self.gradInput:cmul(self:rewardAs(input))
+   -- multiply by -1 ( gradient descent on input )
+   self.gradInput:mul(-1)
    return self.gradInput
 end
 

@@ -1,5 +1,6 @@
 
 local dpnntest = {}
+local dpnnbigtest = {}
 local precision = 1e-5
 local mytester
 
@@ -420,7 +421,7 @@ function dpnntest.ReinforceNormal()
    local gradInput2 = output:clone()
    gradInput2:add(-1, input):div(stdev^2)
    local reward2 = reward:view(500,1):expandAs(input)
-   gradInput2:cmul(reward2)
+   gradInput2:cmul(reward2):mul(-1)
    mytester:assertTensorEq(gradInput2, gradInput, 0.00001, "ReinforceNormal backward err")
    -- TODO test tensor stdev
 end
@@ -448,7 +449,7 @@ function dpnntest.ReinforceBernoulli()
    local div = output:clone():fill(1):add(-1, input):cmul(input)
    gradInput2:add(-1, input):cdiv(div)
    local reward2 = reward:view(1000,1):expandAs(input)
-   gradInput2:cmul(reward2)
+   gradInput2:cmul(reward2):mul(-1)
    mytester:assertTensorEq(gradInput2, gradInput, 0.00001, "ReinforceBernoulli backward err")
 end
 
@@ -469,9 +470,99 @@ function dpnntest.Clip()
    mytester:assertTensorEq(gradInput, gradOutput, 0.00001, "Clip backward err")
 end
 
+function dpnnbigtest.Reinforce()
+   -- let us try to reinforce an mlp to learn a simple distribution
+   local n = 10
+   local inputs = torch.Tensor(n,3):uniform(0,0.1)
+   local targets = torch.Tensor(n):fill(0)
+   local stdev = 0.5
+   local beta = 0.9
+   local alpha = 1
+   local lr = 0.1
+   
+   for i=1,inputs:size(1) do
+      local j = (i % inputs:size(2)) + 1
+      inputs[{i,j}] = torch.uniform(0.9,1.1)
+      targets[i] = j
+   end
+   
+   local function train(mlp, cost, N, name) 
+      local baseReward = 0
+      for i=1,inputs:size(1) do
+         mlp:evaluate()
+         local target = targets:narrow(1,i,1)
+         local output = mlp:forward(inputs:narrow(1,i,1))
+         baseReward = baseReward - cost:forward(output, target)
+      end
+      baseReward = baseReward/inputs:size(1)
+
+      local reward
+      for k=1,N do
+         
+         for i=1,inputs:size(1) do
+            mlp:training()
+            mlp:zeroGradParameters()
+            local target = targets:narrow(1,i,1)
+            local output = mlp:forward(inputs:narrow(1,i,1))
+            local err = cost:forward(output, target)
+            local gradOutput = cost:backward(output, target)
+            mlp:backward(inputs:narrow(1,i,1), gradOutput)
+            mlp:updateParameters(lr)
+         end
+         
+         reward = 0
+         for i=1,inputs:size(1) do
+            mlp:evaluate()
+            local target = targets:narrow(1,i,1)
+            local output = mlp:forward(inputs:narrow(1,i,1))
+            reward = reward - cost:forward(output, target)
+         end
+         reward = reward/inputs:size(1)
+      end
+      
+      mytester:assert(reward*0.7 >= baseReward, name.." did not converge : "..reward.."*0.7 < "..baseReward)
+   end
+   
+   -- ReinforceNormal
+   local hiddenSize = 200
+   local N = 10
+   local mlp = nn.Sequential()
+   mlp:add(nn.Linear(inputs:size(2),hiddenSize))
+   mlp:add(nn.Tanh())
+   mlp:add(nn.ReinforceNormal(stdev))
+   mlp:add(nn.Clip(-1,1))
+   mlp:add(nn.Linear(hiddenSize, inputs:size(2)))
+   mlp:add(nn.LogSoftMax())
+   
+   local cost = nn.VRClassReward(mlp, beta, alpha)
+   
+   train(mlp, cost, N, 'ReinforceNormal')
+   
+   -- ReinforceBernoulli
+   local hiddenSize = 20
+   local N = 40
+   local mlp = nn.Sequential()
+   mlp:add(nn.Linear(inputs:size(2),hiddenSize))
+   mlp:add(nn.Sigmoid())
+   mlp:add(nn.ReinforceBernoulli())
+   mlp:add(nn.Linear(hiddenSize, inputs:size(2)))
+   mlp:add(nn.LogSoftMax())
+   
+   local cost = nn.VRClassReward(mlp, beta, alpha)
+   
+   train(mlp, cost, N, 'ReinforceBernoulli')
+end
+
 function dpnn.test(tests)
    mytester = torch.Tester()
    mytester:add(dpnntest)
+   math.randomseed(os.time())
+   mytester:run(tests)
+end
+
+function dpnn.bigtest(tests)
+   mytester = torch.Tester()
+   mytester:add(dpnnbigtest)
    math.randomseed(os.time())
    mytester:run(tests)
 end

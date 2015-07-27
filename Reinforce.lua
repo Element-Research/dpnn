@@ -21,7 +21,11 @@ function Reinforce:rewardAs(input)
    if input:isSameSizeAs(self.reward) then
       return self.reward
    else
-      assert(self.reward:size(1) == input:size(1))
+      if self.reward:size(1) ~= input:size(1) then
+         -- assume input is in online-mode
+         input = self:toBatch(input, input:dim())
+         assert(self.reward:size(1) == input:size(1), self.reward:size(1).." ~= "..input:size(1))
+      end
       self._reward = self._reward or self.reward.new()
       self.__reward = self.__reward or self.reward.new()
       local size = input:size():fill(1):totable()

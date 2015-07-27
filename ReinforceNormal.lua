@@ -73,7 +73,9 @@ function ReinforceNormal:updateGradInput(input, gradOutput)
          self.gradInput:cdiv(self.__stdev):cdiv(self.__stdev)
       end
    end
-   -- multiply by reward (default : reinforceSignal-reinforceBaseline)
+   -- multiply by reward 
    self.gradInput:cmul(self:rewardAs(input))
+   -- multiply by -1 ( gradient descent on input )
+   self.gradInput:mul(-1)
    return self.gradInput
 end

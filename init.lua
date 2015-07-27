@@ -42,6 +42,9 @@ torch.include('dpnn', 'Sequential.lua')
 torch.include('dpnn', 'ParallelTable.lua')
 torch.include('dpnn', 'LookupTable.lua')
 
+-- extensions to existing criterions
+torch.include('dpnn', 'Criterion.lua')
+
 -- extensions to make serialization more efficient
 torch.include('dpnn', 'SpatialMaxPooling.lua')
 torch.include('dpnn', 'SpatialConvolution.lua')
