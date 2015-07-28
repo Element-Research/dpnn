@@ -453,6 +453,34 @@ function dpnntest.ReinforceBernoulli()
    mytester:assertTensorEq(gradInput2, gradInput, 0.00001, "ReinforceBernoulli backward err")
 end
 
+function dpnntest.ReinforceCategorical()
+   local input = torch.Tensor(1000,10) 
+   local p = torch.rand(1,10)
+   p:div(p:sum())
+   input:copy(p:expandAs(input))
+   local gradOutput = torch.Tensor() -- will be ignored
+   local reward = torch.randn(1000)
+   local rc = nn.ReinforceCategorical()
+   local output = rc:forward(input)
+   mytester:assert(input:isSameSizeAs(output), "ReinforceCategorical forward size err")
+   mytester:assert(output:min() == 0, "ReinforceCategorical forward min val err")
+   mytester:assert(output:max() == 1, "ReinforceCategorical forward max val err")
+   mytester:assert(output:sum() == 1000, "ReinforceCategorical forward sum err")
+   local binary = true
+   output:apply(function(x) if not (x == 1 or x == 0) then binary = false end end)
+   mytester:assert(binary, "ReinforceCategorical forward binary val err")
+   local p2 = output:mean(1)
+   local err = (p - p2):abs():mean()
+   mytester:assert(err < 0.05, "ReinforceCategorical forward p err")
+   rc:reinforce(reward)
+   local gradInput = rc:updateGradInput(input, gradOutput)
+   local gradInput2 = output:clone()
+   gradInput2:cdiv(input)
+   local reward2 = reward:view(1000,1):expandAs(input)
+   gradInput2:cmul(reward2):mul(-1)
+   mytester:assertTensorEq(gradInput2, gradInput, 0.00001, "ReinforceCategorical backward err")
+end
+
 function dpnntest.Clip()
    local input = torch.randn(200,300)
    local gradOutput = torch.randn(200,300)
@@ -486,41 +514,58 @@ function dpnnbigtest.Reinforce()
       targets[i] = j
    end
    
+   local M = 10
    local function train(mlp, cost, N, name) 
-      local baseReward = 0
-      for i=1,inputs:size(1) do
-         mlp:evaluate()
-         local target = targets:narrow(1,i,1)
-         local output = mlp:forward(inputs:narrow(1,i,1))
-         baseReward = baseReward - cost:forward(output, target)
-      end
-      baseReward = baseReward/inputs:size(1)
-
+      local converged = false
+      local baseReward
       local reward
-      for k=1,N do
+      for i=1,M do
+         mlp:reset()
          
-         for i=1,inputs:size(1) do
-            mlp:training()
-            mlp:zeroGradParameters()
-            local target = targets:narrow(1,i,1)
-            local output = mlp:forward(inputs:narrow(1,i,1))
-            local err = cost:forward(output, target)
-            local gradOutput = cost:backward(output, target)
-            mlp:backward(inputs:narrow(1,i,1), gradOutput)
-            mlp:updateParameters(lr)
-         end
-         
-         reward = 0
+         baseReward = 0
          for i=1,inputs:size(1) do
             mlp:evaluate()
             local target = targets:narrow(1,i,1)
             local output = mlp:forward(inputs:narrow(1,i,1))
-            reward = reward - cost:forward(output, target)
+            baseReward = baseReward - cost:forward(output, target)
          end
-         reward = reward/inputs:size(1)
+         baseReward = baseReward/inputs:size(1)
+
+         for k=1,N do
+            
+            for i=1,inputs:size(1) do
+               mlp:training()
+               mlp:zeroGradParameters()
+               local target = targets:narrow(1,i,1)
+               local output = mlp:forward(inputs:narrow(1,i,1))
+               local err = cost:forward(output, target)
+               local gradOutput = cost:backward(output, target)
+               mlp:backward(inputs:narrow(1,i,1), gradOutput)
+               mlp:updateParameters(lr)
+            end
+            
+            reward = 0
+            for i=1,inputs:size(1) do
+               mlp:evaluate()
+               local target = targets:narrow(1,i,1)
+               local output = mlp:forward(inputs:narrow(1,i,1))
+               reward = reward - cost:forward(output, target)
+            end
+            reward = reward/inputs:size(1)
+            
+            if reward*0.7 >= baseReward then
+               converged = true
+               break
+            end
+         end
+         
+         if reward*0.7 >= baseReward then
+            converged = true
+            break
+         end
       end
       
-      mytester:assert(reward*0.7 >= baseReward, name.." did not converge : "..reward.."*0.7 < "..baseReward)
+      mytester:assert(converged, name.." did not converge : "..reward.."*0.7 < "..baseReward)
    end
    
    -- ReinforceNormal
@@ -532,7 +577,7 @@ function dpnnbigtest.Reinforce()
    mlp:add(nn.ReinforceNormal(stdev))
    mlp:add(nn.Clip(-1,1))
    mlp:add(nn.Linear(hiddenSize, inputs:size(2)))
-   mlp:add(nn.LogSoftMax())
+   mlp:add(nn.SoftMax())
    
    local cost = nn.VRClassReward(mlp, beta, alpha)
    
@@ -540,17 +585,32 @@ function dpnnbigtest.Reinforce()
    
    -- ReinforceBernoulli
    local hiddenSize = 20
-   local N = 40
+   local N = 30
    local mlp = nn.Sequential()
    mlp:add(nn.Linear(inputs:size(2),hiddenSize))
    mlp:add(nn.Sigmoid())
    mlp:add(nn.ReinforceBernoulli())
    mlp:add(nn.Linear(hiddenSize, inputs:size(2)))
-   mlp:add(nn.LogSoftMax())
+   mlp:add(nn.SoftMax())
    
    local cost = nn.VRClassReward(mlp, beta, alpha)
    
    train(mlp, cost, N, 'ReinforceBernoulli')
+   
+   -- ReinforceCategorical
+   local hiddenSize = 200
+   local N = 10
+   local mlp = nn.Sequential()
+   mlp:add(nn.Linear(inputs:size(2),hiddenSize))
+   mlp:add(nn.Tanh())
+   mlp:add(nn.Linear(hiddenSize, inputs:size(2)))
+   mlp:add(nn.SoftMax())
+   mlp:add(nn.AddConstant(0.00001))
+   mlp:add(nn.ReinforceCategorical())
+   
+   local cost = nn.VRClassReward(mlp, beta, alpha)
+   
+   train(mlp, cost, N, 'ReinforceCategorical')
 end
 
 function dpnn.test(tests)

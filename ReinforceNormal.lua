@@ -53,7 +53,7 @@ function ReinforceNormal:updateGradInput(input, gradOutput)
    -- Note that gradOutput is ignored
    -- f : normal probability density function
    -- x : the sampled values (self.output)
-   -- u : mean (mu) (self.input)
+   -- u : mean (mu) (input)
    -- s : standard deviation (sigma) (self.stdev)
    -- derivative of log normal w.r.t. mean
    -- d ln(f(x,u,s))   (x - u)

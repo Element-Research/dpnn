@@ -72,8 +72,8 @@ torch.include('dpnn', 'SpatialUniformCrop.lua')
 torch.include('dpnn', 'Reinforce.lua')
 torch.include('dpnn', 'ReinforceBernoulli.lua')
 torch.include('dpnn', 'ReinforceNormal.lua')
+torch.include('dpnn', 'ReinforceCategorical.lua')
 torch.include('dpnn', 'VRClassReward.lua')
-
 
 -- criterions
 torch.include('dpnn', 'ModuleCriterion.lua')
