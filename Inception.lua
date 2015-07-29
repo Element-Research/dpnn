@@ -87,30 +87,34 @@ function Inception:__init(config)
    mlp:add(self.pool)
    -- not sure if transfer should go here? mlp:add(transfer:clone())
    local i = #(self.kernelSize) + 1
-   local reduce = nn.SpatialConvolution(
-      self.inputSize, self.reduceSize[i], 1, 1, 
-      self.reduceStride[i] or 1, self.reduceStride[i] or 1
-   )
-   mlp:add(reduce)
-   if self.batchNorm then
-      mlp:add(nn.SpatialBatchNormalization(self.reduceSize[i]))
+   if self.reduceSize[i] then
+      local reduce = nn.SpatialConvolution(
+         self.inputSize, self.reduceSize[i], 1, 1, 
+         self.reduceStride[i] or 1, self.reduceStride[i] or 1
+      )
+      mlp:add(reduce)
+      if self.batchNorm then
+         mlp:add(nn.SpatialBatchNormalization(self.reduceSize[i]))
+      end
+      mlp:add(self.transfer:clone())
    end
-   mlp:add(self.transfer:clone())
    depthConcat:add(mlp)
       
    -- reduce: 1x1 conv (channel-wise pooling)
-   local mlp = nn.Sequential()
    i = i + 1
-   local reduce = nn.SpatialConvolution(
-      self.inputSize, self.reduceSize[i], 1, 1, 
-      self.reduceStride[i] or 1, self.reduceStride[i] or 1
-   )
-   mlp:add(reduce)
-   if self.batchNorm then
-      mlp:add(nn.SpatialBatchNormalization(self.reduceSize[i]))
+   if self.reduceSize[i] then
+      local mlp = nn.Sequential()
+      local reduce = nn.SpatialConvolution(
+          self.inputSize, self.reduceSize[i], 1, 1, 
+          self.reduceStride[i] or 1, self.reduceStride[i] or 1
+      )
+      mlp:add(reduce)
+      if self.batchNorm then
+          mlp:add(nn.SpatialBatchNormalization(self.reduceSize[i]))
+      end
+      mlp:add(self.transfer:clone())
+      depthConcat:add(mlp)
    end
-   mlp:add(self.transfer:clone())
-   depthConcat:add(mlp)
    
    parent.__init(self, depthConcat)
 end
