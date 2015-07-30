@@ -14,6 +14,7 @@ function VRClassReward:__init(module, basecoeff, scale)
    self.basecoeff = basecoeff or 0.9 -- weight of past baseline
    self.baseline = 0
    self.scale = scale or 1 -- scale of reward
+   self.sizeAverage = true
 end
 
 function VRClassReward:updateOutput(input, target)
@@ -35,6 +36,9 @@ function VRClassReward:updateOutput(input, target)
    self.reward = self.reward or input.new()
    self.reward:resize(self._reward:size(1)):copy(self._reward)
    self.reward:mul(self.scale)
+   if self.sizeAverage then
+      self.reward:div(input:size(1))
+   end
    
    -- loss = -sum(reward)
    self.output = -self.reward:sum()
