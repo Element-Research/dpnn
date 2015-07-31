@@ -32,4 +32,5 @@ end
 
 function Constant:updateGradInput(input, gradOutput)
    self.gradInput:resizeAs(input):zero()
+   return self.gradInput
 end
