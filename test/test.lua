@@ -498,6 +498,18 @@ function dpnntest.Clip()
    mytester:assertTensorEq(gradInput, gradOutput, 0.00001, "Clip backward err")
 end
 
+function dpnntest.Constant()
+   local input = torch.randn(20,3,7)
+   local gradOutput = torch.randn(20,30,6)
+   local value = torch.randn(30,6)
+   local const = nn.Constant(value:clone(), 2)
+   local output = const:forward(input)
+   local gradInput = const:backward(input, output)
+   local output2 = value:view(1,30,6):expand(20,30,6)
+   mytester:assertTensorEq(output2, output, 0.000001, "Constant forward err")
+   mytester:assertTensorEq(gradInput, input:zero(), 0.000001, "Constant backward err")
+end
+
 function dpnnbigtest.Reinforce()
    -- let us try to reinforce an mlp to learn a simple distribution
    local n = 10

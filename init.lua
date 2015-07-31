@@ -58,6 +58,7 @@ torch.include('dpnn', 'DontCast.lua')
 -- modules
 torch.include('dpnn', 'PrintSize.lua')
 torch.include('dpnn', 'Convert.lua')
+torch.include('dpnn', 'Constant.lua')
 torch.include('dpnn', 'Collapse.lua')
 torch.include('dpnn', 'ZipTable.lua')
 torch.include('dpnn', 'ReverseTable.lua')
