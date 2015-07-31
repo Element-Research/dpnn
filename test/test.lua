@@ -481,6 +481,22 @@ function dpnntest.ReinforceCategorical()
    mytester:assertTensorEq(gradInput2, gradInput, 0.00001, "ReinforceCategorical backward err")
 end
 
+function dpnntest.VRClassReward()
+   local input = {torch.randn(13,10), torch.randn(13,1)}
+   local target = torch.IntTensor(13):random(1,10)
+   local rf = nn.Reinforce()
+   local vrc = nn.VRClassReward(rf)
+   local err = vrc:forward(input, target)
+   local gradInput = vrc:backward(input, target)
+   local val, idx = input[1]:max(2)
+   local reward = torch.eq(idx:select(2,1):int(), target):double()
+   local err2 = -reward:mean()
+   mytester:assert(err == err2, "VRClassReward forward err")
+   local gradInput2 = nn.MSECriterion():backward(input[2], reward)
+   mytester:assertTensorEq(gradInput[2], gradInput2, 0.000001, "VRClassReward backward baseline err")
+   mytester:assertTensorEq(gradInput[1], input[1]:zero(), 0.000001, "VRClassReward backward class err")
+end
+
 function dpnntest.Clip()
    local input = torch.randn(200,300)
    local gradOutput = torch.randn(200,300)
