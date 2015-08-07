@@ -29,8 +29,8 @@ function SpatialUniformCrop:updateOutput(input)
       -- use center crop
       local h1 = math.ceil((iH-self.oheight)/2)
       local w1 = math.ceil((iW-self.owidth)/2)
-      local crop = input[i]:narrow(2,h1,self.oheight):narrow(3,w1,self.owidth)
-      self.output[i]:copy(crop)
+      local crop = input:narrow(3,h1,self.oheight):narrow(4,w1,self.owidth)
+      self.output:copy(crop)
    end
    
    return self.output
