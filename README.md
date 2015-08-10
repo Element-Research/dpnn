@@ -17,7 +17,8 @@ The package provides the following Modules:
  * [ZipTable](#nn.ZipTable) : zip a table of tables into a table of tables;
  * [ReverseTable](#nn.ReverseTable) : reverse the order of elements in a table;
  * [PrintSize](#nn.PrintSize) : prints the size of inputs and gradOutputs (useful for debugging);
- * [Clip](#nn.Clip) : clips the inputs to a min and max value.
+ * [Clip](#nn.Clip) : clips the inputs to a min and max value;
+ * [Constant](#nn.Constant) : outputs a constant value given an input (which is ignored);
  * [SpatialUniformCrop](#nn.SpatialUniformCrop) : uniformly crops patches from a input;
  * [SpatialGlimpse](#nn.SpatialGlimpse) : takes a fovead glimpse of an image at a given location;
 
@@ -354,3 +355,65 @@ fed through optional an `inputModule` and `targetModule` before being passed to 
 When `castTarget = true` (the default), the `targetModule` is cast along with the `inputModule` and 
 `criterion`. Otherwise, the `targetModule` isn't.  
 
+
+<a name='nn.Reinforce'></a>
+## Reinforce ##
+Ref A. [Simple Statistical Gradient-Following Algorithms for
+Connectionist Reinforcement Learning](http://incompleteideas.net/sutton/williams-92.pdf)
+
+Abstract class for modules that implement the REINFORCE algorithm (ref. A).
+The `reinforce(reward)` method is called by a special Reward Criterion (e.g. [VRClassReward](#nn.VRClassReward)).
+After which, when backward is called, the reward will be used to generate gradInputs. 
+
+The REINFORCE rule for a module can be summarized as follows :
+```lua
+            d ln(f(output,input))
+gradInput = -----------  * reward
+               d input
+```
+where the `reward` is what is provided by a Reward criterion via the `reinforce()` method.
+The criterion will normally be responsible for the following formula :
+```lua
+reward = a*(R - b)
+```
+where `a` is the alpha of the original paper, i.e. a reward scale,
+`R` is the raw reward (usually 0 or 1), and `b` is the baseline reward, 
+which is often taken to be the expected raw reward R.
+
+The `output` is usually sampled from a probability distribution `f()`
+parameterized by the `input`. 
+See [ReinforceBernoulli](#nn.ReinforceBernoulli) for a concrete derivation.
+
+Also, as you can see, the gradOutput is ignored. So within a backpropagation graph,
+the `Reinforce` modules will replace the backpropagated gradients with their own
+obtained from the broadcasted reward.
+
+<a name='nn.ReinforceBernoulli'></a>
+## ReinforceBernoulli ##
+Ref A. [Simple Statistical Gradient-Following Algorithms for
+Connectionist Reinforcement Learning](http://incompleteideas.net/sutton/williams-92.pdf)
+
+```lua
+module = nn.ReinforceBernoulli()
+```
+
+A [Reinforce](#nn.Reinforce) subclass that implements the REINFORCE algorithm 
+(ref. A sec 6. p.230-236) for the Bernoulli probability distribution.
+Inputs are bernoulli probabilities `p`. 
+During training, outputs are samples drawn from this distribution.
+During evaluation, outputs are the same as the inputs.
+Uses the REINFORCE algorithm (ref. A sec 6. p.230-236) which is 
+implemented through the nn.Module:reinforce(r) interface (`gradOutputs` are ignored).
+
+Given the following variables : 
+
+ * `f` : bernoulli probability mass function
+ * `x` : the sampled values (0 or 1) (i.e. `self.output`)
+ * `p` : probability of sampling a 1
+
+the derivative of the log bernoulli w.r.t. `p` is :
+```
+d ln(output)   d ln(f(x,p))    (x - p)
+------------ = ------------ = ---------
+   d input         d p         p(1 - p)
+```

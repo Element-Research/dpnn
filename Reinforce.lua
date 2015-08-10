@@ -1,6 +1,14 @@
+------------------------------------------------------------------------
+--[[ Reinforce ]]--
+-- Ref A. http://incompleteideas.net/sutton/williams-92.pdf
+-- Abstract class for modules that use the REINFORCE algorithm (ref A).
+-- The reinforce(reward) method is called by a special Reward Criterion.
+-- After which, when backward is called, the reward will be used to 
+-- generate gradInputs. The gradOutput is usually ignored.
+------------------------------------------------------------------------
 local Reinforce, parent = torch.class("nn.Reinforce", "nn.Module")
 
--- a ReinforceCriterion will call this
+-- a Reward Criterion will call this
 function Reinforce:reinforce(reward)
    parent.reinforce(self, reward)
    self.reward = reward

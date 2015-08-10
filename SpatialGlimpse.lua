@@ -1,3 +1,14 @@
+------------------------------------------------------------------------
+--[[ SpatialGlimpse ]]--
+-- Ref A.: http://papers.nips.cc/paper/5542-recurrent-models-of-visual-attention.pdf
+-- input is a pair of Tensors: {image, location}
+-- locations are x,y coordinates of the center of cropped patches. 
+-- Coordinates are between -1,-1 (top-left) and 1,1 (bottom right)
+-- output is a batch of glimpses taken in image at location (x,y)
+-- size specifies width = height of glimpses
+-- depth is number of patches to crop per glimpse (one patch per scale)
+-- scale is the scale * size of successive cropped patches
+------------------------------------------------------------------------
 local SpatialGlimpse, parent = torch.class("nn.SpatialGlimpse", "nn.Module")
 
 function SpatialGlimpse:__init(size, depth, scale)

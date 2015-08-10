@@ -4,7 +4,7 @@
 -- Inputs are bernoulli probabilities (p) 
 -- Ouputs are samples drawn from this distribution.
 -- Uses the REINFORCE algorithm (ref. A sec 6. p.230-236) which is 
--- implemented through the nn.Module:reinforce(r,b) interface.
+-- implemented through the nn.Module:reinforce(reward) interface.
 -- gradOutputs are ignored (REINFORCE algorithm).
 ------------------------------------------------------------------------
 local ReinforceBernoulli, parent = torch.class("nn.ReinforceBernoulli", "nn.Reinforce")
