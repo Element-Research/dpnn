@@ -21,7 +21,7 @@ function SpatialGlimpse:__init(size, depth, scale)
    assert(torch.type(self.depth) == 'number')
    assert(torch.type(self.scale) == 'number')
    parent.__init(self)
-   self.gradOutput = {torch.Tensor(), torch.Tensor()}
+   self.gradInput = {torch.Tensor(), torch.Tensor()}
 end
 
 -- a bandwidth limited sensor which focuses on a location.
@@ -33,21 +33,17 @@ function SpatialGlimpse:updateOutput(inputTable)
    
    self.output:resize(input:size(1), self.depth, input:size(2), self.size, self.size)
    
-   self._crop = self._crop or output.new()
+   self._crop = self._crop or self.output.new()
    self._pad = self._pad or input.new()
    
-   for sampleIdx=1,output:size(1) do
-      local outputSample = output[sampleIdx]
+   for sampleIdx=1,self.output:size(1) do
+      local outputSample = self.output[sampleIdx]
       local inputSample = input[sampleIdx]
       local xy = location[sampleIdx]
       -- (-1,-1) top left corner, (1,1) bottom right corner of image
       local x, y = xy:select(1,1), xy:select(1,2)
       -- (0,0), (1,1)
       x, y = (x+1)/2, (y+1)/2
-      -- (0,0), (input:size(3)-1, input:size(4)-1)
-      x, y = x*(input:size(3)-1), y*(input:size(4)-1)
-      x = math.min(input:size(3)-1,math.max(0,x))
-      y = math.min(input:size(4)-1,math.max(0,y))
       
       -- for each depth of glimpse : pad, crop, downscale
       for depth=1,self.depth do 
@@ -55,16 +51,15 @@ function SpatialGlimpse:updateOutput(inputTable)
          local glimpseSize = self.size*(self.scale^(depth-1))
          
          -- add zero padding (glimpse could be partially out of bounds)
-         local padSize = glimpseSize/2
+         local padSize = math.floor((glimpseSize-1)/2)
          self._pad:resize(input:size(2), input:size(3)+padSize*2, input:size(4)+padSize*2):zero()
-         local center = self._pad:narrow(2,padSize,input:size(3)):narrow(3,padSize,input:size(4))
+         local center = self._pad:narrow(2,padSize+1,input:size(3)):narrow(3,padSize+1,input:size(4))
          center:copy(inputSample)
          
-         -- coord of top-left corner of patch that will be cropped w.r.t padded input
-         -- is coord of center of patch w.r.t original non-padded input.
-        
          -- crop it
          self._crop:resize(input:size(2), glimpseSize, glimpseSize)
+         local h, w = self._pad:size(2)-glimpseSize, self._pad:size(3)-glimpseSize
+         local x, y = math.min(h,math.max(0,x*h)),  math.min(w,math.max(0,y*w))
          image.crop(self._crop, self._pad, x, y) -- crop is zero-indexed
          image.scale(dst, self._crop)
       end
@@ -86,15 +81,11 @@ function SpatialGlimpse:updateGradInput(inputTable, gradOutput)
    for sampleIdx=1,gradOutput:size(1) do
       local gradOutputSample = gradOutput[sampleIdx]
       local gradInputSample = gradInput[sampleIdx]
-      local xy = location[sampleIdx]
+      local xy = location[sampleIdx] -- height, width
       -- (-1,-1) top left corner, (1,1) bottom right corner of image
       local x, y = xy:select(1,1), xy:select(1,2)
       -- (0,0), (1,1)
       x, y = (x+1)/2, (y+1)/2
-      -- (0,0), (input:size(3)-1, input:size(4)-1)
-      x, y = x*(input:size(3)-1), y*(input:size(4)-1)
-      x = math.min(input:size(3)-1,math.max(0,x))
-      y = math.min(input:size(4)-1,math.max(0,y))
       
       -- for each depth of glimpse : pad, crop, downscale
       for depth=1,self.depth do 
@@ -102,20 +93,20 @@ function SpatialGlimpse:updateGradInput(inputTable, gradOutput)
          local glimpseSize = self.size*(self.scale^(depth-1))
          
          -- upscale glimpse for different depths
-         self._crop:resizeAs(input:size(2), glimpseSize, glimpseSize)
+         self._crop:resize(input:size(2), glimpseSize, glimpseSize)
          image.scale(self._crop, src)
          
          -- add zero padding (glimpse could be partially out of bounds)
-         local padSize = glimpseSize/2
+         local padSize = math.floor((glimpseSize-1)/2)
          self._pad:resize(input:size(2), input:size(3)+padSize*2, input:size(4)+padSize*2):zero()
          
-         -- coord of top-left corner of patch that will be cropped w.r.t padded input
-         -- is coord of center of patch w.r.t original non-padded input.
+         local h, w = self._pad:size(2)-glimpseSize, self._pad:size(3)-glimpseSize
+         local x, y = math.min(h,math.max(0,x*h)),  math.min(w,math.max(0,y*w))
          local pad = self._pad:narrow(2, x+1, glimpseSize):narrow(3, y+1, glimpseSize)
          pad:copy(self._crop)
         
          -- copy into gradInput tensor (excluding padding)
-         gradInputSample:add(pad:narrow(2, padSize+1, input:size(3)):narrow(3, padSize+1, input:size(4)))
+         gradInputSample:add(self._pad:narrow(2, padSize+1, input:size(3)):narrow(3, padSize+1, input:size(4)))
       end
    end
 end

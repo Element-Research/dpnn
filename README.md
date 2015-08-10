@@ -368,8 +368,8 @@ After which, when backward is called, the reward will be used to generate gradIn
 The REINFORCE rule for a module can be summarized as follows :
 ```lua
             d ln(f(output,input))
-gradInput = -----------  * reward
-               d input
+gradInput = ---------------------  * reward
+                  d input
 ```
 where the `reward` is what is provided by a Reward criterion via the `reinforce()` method.
 The criterion will normally be responsible for the following formula :
@@ -413,7 +413,7 @@ Given the following variables :
 
 the derivative of the log bernoulli w.r.t. `p` is :
 ```
-d ln(output)   d ln(f(x,p))    (x - p)
------------- = ------------ = ---------
-   d input         d p         p(1 - p)
+d d ln(f(output,input))   d ln(f(x,p))    (x - p)
+----------------------- = ------------ = ---------
+       d input                d p         p(1 - p)
 ```

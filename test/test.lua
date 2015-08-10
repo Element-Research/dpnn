@@ -526,6 +526,76 @@ function dpnntest.Constant()
    mytester:assertTensorEq(gradInput, input:zero(), 0.000001, "Constant backward err")
 end
 
+function dpnntest.SpatialGlimpse()
+   local batchSize = 1
+   local inputSize = {2,8,8}
+   local glimpseSize = 4
+   local input = torch.Tensor(batchSize, unpack(inputSize))
+   input:range(1,input:nElement())
+   input:resize(batchSize, unpack(inputSize))
+   local sg = nn.SpatialGlimpse(glimpseSize)
+   local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
+   local output = sg:forward{input,location}
+   local output_ = output:view(batchSize, 3, inputSize[1], glimpseSize, glimpseSize)
+   local output2 = input:narrow(3,3,glimpseSize):narrow(4,3,glimpseSize)
+   mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse center 4 output depth=1 err")
+   local outputSize = {batchSize, inputSize[1]*3, glimpseSize, glimpseSize}
+   mytester:assertTableEq(output:size():totable(), outputSize, 0.000001, "SpatialGlimpse output size err")
+   
+   print("input", input)
+   local glimpseSize = 5
+   local sg = nn.SpatialGlimpse(glimpseSize)
+   local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
+   local output = sg:forward{input,location}
+   local output_ = output:view(batchSize, 3, inputSize[1], glimpseSize, glimpseSize)
+   local output2 = input:narrow(3,2,glimpseSize):narrow(4,2,glimpseSize)
+   mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse center 5 output depth=1 err")
+   local gradInput = sg:backward({input,location}, output)
+   print(gradInput)
+   
+   local glimpseSize = 4
+   local sg = nn.SpatialGlimpse(glimpseSize)
+   local location = torch.Tensor(batchSize, 2):fill(-1) -- top left corner patch
+   local output = sg:forward{input,location}
+   local output_ = output:view(batchSize, 3, inputSize[1], glimpseSize, glimpseSize)
+   local padSize = math.floor((glimpseSize-1)/2)
+   local pad = torch.Tensor(batchSize, inputSize[1], inputSize[2]+padSize*2, inputSize[3]+padSize*2):zero()
+   pad:narrow(3, padSize + 1, inputSize[2]):narrow(4, padSize + 1, inputSize[3]):copy(input)
+   local output2 = pad:narrow(3,1,glimpseSize):narrow(4,1,glimpseSize)
+   mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse top-left 4 output depth=1 err")
+   
+   local glimpseSize = 5
+   local sg = nn.SpatialGlimpse(glimpseSize)
+   local location = torch.Tensor(batchSize, 2):fill(-1) -- top left corner patch
+   local output = sg:forward{input,location}
+   local output_ = output:view(batchSize, 3, inputSize[1], glimpseSize, glimpseSize)
+   local pad = torch.Tensor(batchSize, inputSize[1], inputSize[2]+glimpseSize, inputSize[3]+glimpseSize):zero()
+   pad:narrow(3, (glimpseSize-1)/2 + 1, inputSize[2]):narrow(4, (glimpseSize-1)/2 + 1, inputSize[3]):copy(input)
+   local output2 = pad:narrow(3,1,glimpseSize):narrow(4,1,glimpseSize)
+   mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse top-left 5 output depth=1 err")
+  
+   local glimpseSize = 4
+   local sg = nn.SpatialGlimpse(glimpseSize)
+   local location = torch.Tensor(batchSize, 2):fill(1) -- bottom-right corner patch
+   local output = sg:forward{input,location}
+   local output_ = output:view(batchSize, 3, inputSize[1], glimpseSize, glimpseSize)
+   local pad = torch.Tensor(batchSize, inputSize[1], inputSize[2]+glimpseSize, inputSize[3]+glimpseSize):zero()
+   pad:narrow(3, (glimpseSize-1)/2 + 1, inputSize[2]):narrow(4, (glimpseSize-1)/2 + 1, inputSize[3]):copy(input)
+   local output2 = pad:narrow(3,inputSize[2]-1,glimpseSize):narrow(4,inputSize[3]-1,glimpseSize)
+   mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse bottom-right 4 output depth=1 err")
+   
+   local glimpseSize = 5
+   local sg = nn.SpatialGlimpse(glimpseSize)
+   local location = torch.Tensor(batchSize, 2):fill(1) -- bottom-right corner patch
+   local output = sg:forward{input,location}
+   local output_ = output:view(batchSize, 3, inputSize[1], glimpseSize, glimpseSize)
+   local pad = torch.Tensor(batchSize, inputSize[1], inputSize[2]+glimpseSize, inputSize[3]+glimpseSize):zero()
+   pad:narrow(3, (glimpseSize-1)/2, inputSize[2]):narrow(4, (glimpseSize-1)/2, inputSize[3]):copy(input)
+   local output2 = pad:narrow(3,inputSize[2]-1,glimpseSize):narrow(4,inputSize[3]-1,glimpseSize)
+   mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse bottom-right 5 output depth=1 err")
+   
+end
+
 function dpnnbigtest.Reinforce()
    -- let us try to reinforce an mlp to learn a simple distribution
    local n = 10
