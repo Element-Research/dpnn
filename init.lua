@@ -68,6 +68,7 @@ torch.include('dpnn', 'SoftMaxTree.lua')
 torch.include('dpnn', 'SoftMaxForest.lua')
 torch.include('dpnn', 'Clip.lua')
 torch.include('dpnn', 'SpatialUniformCrop.lua')
+torch.include('dpnn', 'SpatialGlimpse.lua')
 
 -- REINFORCE
 torch.include('dpnn', 'Reinforce.lua')
