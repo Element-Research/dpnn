@@ -17,6 +17,17 @@ The package provides the following Modules:
  * [ZipTable](#nn.ZipTable) : zip a table of tables into a table of tables;
  * [ReverseTable](#nn.ReverseTable) : reverse the order of elements in a table;
  * [PrintSize](#nn.PrintSize) : prints the size of inputs and gradOutputs (useful for debugging);
+ * [Clip](#nn.Clip) : clips the inputs to a min and max value.
+ * [SpatialUniformCrop](#nn.SpatialUniformCrop) : uniformly crops patches from a input;
+ * [SpatialGlimpse](#nn.SpatialGlimpse) : takes a fovead glimpse of an image at a given location;
+
+The following modules and criterions can be used to implement the REINFORCE algorithm :
+
+ * [Reinforce](#nn.Reinforce) : abstract class for REINFORCE modules;
+ * [ReinforceBernoulli](#nn.ReinforceBernoulli) : samples from Bernoulli distribution;
+ * [ReinforceNormal](#nn.ReinforceNormal) : samples from Normal distribution;
+ * [ReinforceCategorical](#nn.ReinforceCategorical) : samples from Categorical (Multinomial with one sample) distribution;
+ * [VRClassReward](#nn.VRClassReward) : criterion for variance-reduced classification-based reward;
 
 A lot of the functionality implemented here was pulled from 
 [dp](https://github.com/nicholas-leonard/dp), which makes heavy use of this package. 
