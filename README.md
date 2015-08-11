@@ -413,7 +413,7 @@ Given the following variables :
 
 the derivative of the log bernoulli w.r.t. `p` is :
 ```
-d d ln(f(output,input))   d ln(f(x,p))    (x - p)
------------------------ = ------------ = ---------
-       d input                d p         p(1 - p)
+d ln(f(output,input))   d ln(f(x,p))    (x - p)
+--------------------- = ------------ = ---------
+      d input               d p         p(1 - p)
 ```
