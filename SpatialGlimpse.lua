@@ -1,6 +1,8 @@
 ------------------------------------------------------------------------
 --[[ SpatialGlimpse ]]--
 -- Ref A.: http://papers.nips.cc/paper/5542-recurrent-models-of-visual-attention.pdf
+-- a glimpse is the concatenation of down-scaled cropped images of 
+-- increasing scale around a given location in a given image.
 -- input is a pair of Tensors: {image, location}
 -- locations are x,y coordinates of the center of cropped patches. 
 -- Coordinates are between -1,-1 (top-left) and 1,1 (bottom right)
@@ -109,4 +111,6 @@ function SpatialGlimpse:updateGradInput(inputTable, gradOutput)
          gradInputSample:add(self._pad:narrow(2, padSize+1, input:size(3)):narrow(3, padSize+1, input:size(4)))
       end
    end
+   
+   return self.gradInput
 end
