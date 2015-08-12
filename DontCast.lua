@@ -10,7 +10,10 @@ local function recursiveTypeCopy(dst, src, type_str)
       end
    elseif torch.isTensor(src) then
       dst = (torch.type(dst) == type_str) and dst or torch.getmetatable(type_str).new()
-      dst:resize(src:size()):copy(src)
+      dst:resize(src:size())
+      if src:nElement() > 0 then
+         dst:copy(src)
+      end
    end
    return dst
 end
@@ -111,11 +114,11 @@ end
 
 -- dont cast (the essence thereof)
 function DontCast:type(type)
-   if self.castout then
-      self.output = recursiveTypeCopy(self.output, self.output, type)
+   if self.castout and tableTensorType(self.output) ~= type then
+      self.output = recursiveTypeCopy(nil, self.output, type)
    end
-   if self.castin then
-      self.gradInput = recursiveTypeCopy(self.gradInput, self.gradInput, type)
+   if self.castin and tableTensorType(self.gradInput) ~= type then
+      self.gradInput = recursiveTypeCopy(nil, self.gradInput, type)
    end
    return self
 end
