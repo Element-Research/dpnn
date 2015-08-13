@@ -582,6 +582,7 @@ function dpnntest.Constant()
 end
 
 function dpnntest.SpatialGlimpse()
+   if not pcall(function() require "image" end) then return end -- needs the image package
    local batchSize = 1
    local inputSize = {2,8,8}
    local glimpseSize = 4
@@ -667,11 +668,8 @@ function dpnntest.SpatialGlimpse()
    local gradOutput = output:clone()
    gradOutput:view(batchSize, 2, 2, glimpseSize, glimpseSize):select(2,1):fill(0) -- ignore first scale of glimpse
    local gradInput = sg:backward({input,location}, gradOutput)
-   local gradInput2 = input:clone():zero()
-   local buffer = torch.Tensor()
-   buffer:resize(batchSize, inputSize[1], glimpseSize*2, glimpseSize*2)
-   image.scale(buffer:view(buffer:size(1)*buffer:size(2),buffer:size(3),buffer:size(4)), output_:select(2,2):contiguous():view(batchSize*inputSize[1], glimpseSize, glimpseSize))
-   gradInput2:add(buffer)
+   local srs = nn.SpatialReSampling{oheight=glimpseSize*2,owidth=glimpseSize*2}
+   local gradInput2 = srs:updateGradInput(gradInput[1], output_:select(2,2))
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse backward 4 depth 2 error")
    
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
@@ -683,12 +681,8 @@ function dpnntest.SpatialGlimpse()
    local gradOutput = output:clone()
    local gradInput = sg:backward({input,location}, gradOutput)
    local gradInput2 = input:clone():zero()
-   local gradInput2 = input:clone():zero()
    gradInput2:narrow(3,3,glimpseSize):narrow(4,3,glimpseSize):copy(output_:select(2,1))
-   local buffer = torch.Tensor()
-   buffer:resize(batchSize, inputSize[1], glimpseSize*2, glimpseSize*2)
-   image.scale(buffer:view(buffer:size(1)*buffer:size(2),buffer:size(3),buffer:size(4)), output_:select(2,2):contiguous():view(batchSize*inputSize[1], glimpseSize, glimpseSize))
-   gradInput2:add(buffer)   
+   gradInput2:add(srs:updateGradInput(gradInput[1], output_:select(2,2)))
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse backward 4 depth 2 full error")
 end
 

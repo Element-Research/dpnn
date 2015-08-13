@@ -14,7 +14,7 @@
 local SpatialGlimpse, parent = torch.class("nn.SpatialGlimpse", "nn.Module")
 
 function SpatialGlimpse:__init(size, depth, scale)
-   require 'image'
+   require 'nnx'
    self.size = size -- height == width
    self.depth = depth or 3
    self.scale = scale or 2
@@ -24,6 +24,7 @@ function SpatialGlimpse:__init(size, depth, scale)
    assert(torch.type(self.scale) == 'number')
    parent.__init(self)
    self.gradInput = {torch.Tensor(), torch.Tensor()}
+   self.module = nn.SpatialReSampling{oheight=size,owidth=size}
 end
 
 -- a bandwidth limited sensor which focuses on a location.
@@ -62,8 +63,8 @@ function SpatialGlimpse:updateOutput(inputTable)
          self._crop:resize(input:size(2), glimpseSize, glimpseSize)
          local h, w = self._pad:size(2)-glimpseSize, self._pad:size(3)-glimpseSize
          local x, y = math.min(h,math.max(0,x*h)),  math.min(w,math.max(0,y*w))
-         image.crop(self._crop, self._pad, x, y) -- crop is zero-indexed
-         image.scale(dst, self._crop)
+         self._crop:copy(self._pad:narrow(2,x+1,glimpseSize):narrow(3,y+1,glimpseSize))
+         dst:copy(self.module:updateOutput(self._crop))
       end
    end
    
@@ -71,7 +72,7 @@ function SpatialGlimpse:updateOutput(inputTable)
    return self.output
 end
 
-function SpatialGlimpse:updateGradInput(inputTable, gradOutput)
+function SpatialGlimpse:updateGradInput(inputTable, gradOutput, scale)
    local input, location = unpack(inputTable)
    local gradInput, gradLocation = unpack(self.gradInput)
    
@@ -96,7 +97,7 @@ function SpatialGlimpse:updateGradInput(inputTable, gradOutput)
          
          -- upscale glimpse for different depths
          self._crop:resize(input:size(2), glimpseSize, glimpseSize)
-         image.scale(self._crop, src)
+         self._crop:copy(self.module:updateGradInput(self._crop, src, scale))
          
          -- add zero padding (glimpse could be partially out of bounds)
          local padSize = math.floor((glimpseSize-1)/2)
