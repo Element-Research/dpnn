@@ -686,6 +686,25 @@ function dpnntest.SpatialGlimpse()
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse backward 4 depth 2 full error")
 end
 
+function dpnntest.ArgMax()
+   local inputSize = 5
+   local batchSize = 3
+   local input = torch.randn(batchSize, inputSize)
+   local gradOutput = torch.randn(batchSize):long()
+   local am = nn.ArgMax(1,1)
+   local output = am:forward(input)
+   local gradInput = am:backward(input, gradOutput)
+   local val, idx = torch.max(input, 2)
+   mytester:assertTensorEq(idx:select(2,1), output, 0.000001, "ArgMax output asLong err")
+   mytester:assertTensorEq(gradInput, input:clone():zero(), 0.000001, "ArgMax gradInput asLong err")
+   local am = nn.ArgMax(1,1,false)
+   local output = am:forward(input)
+   local gradInput = am:backward(input, gradOutput)
+   local val, idx = torch.max(input, 2)
+   mytester:assertTensorEq(idx:select(2,1):double(), output, 0.000001, "ArgMax output not asLong err")
+   mytester:assertTensorEq(gradInput, input:clone():zero(), 0.000001, "ArgMax gradInput not asLong err") 
+end
+
 function dpnnbigtest.Reinforce()
    -- let us try to reinforce an mlp to learn a simple distribution
    local n = 10
