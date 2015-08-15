@@ -705,6 +705,28 @@ function dpnntest.ArgMax()
    mytester:assertTensorEq(gradInput, input:clone():zero(), 0.000001, "ArgMax gradInput not asLong err") 
 end
 
+function dpnntest.CategoricalEntropy()
+   local inputSize = 5
+   local batchSize = 10
+   local minEntropy = 12
+   local input_ = torch.randn(batchSize, inputSize)
+   local input = nn.SoftMax():updateOutput(input_)
+   local gradOutput = torch.Tensor(batchSize, inputSize):zero()
+   local ce = nn.CategoricalEntropy()
+   local output = ce:forward(input)
+   mytester:assertTensorEq(input, output, 0.0000001, "CategoricalEntropy output err")
+   local gradInput = ce:backward(input, gradOutput)
+   local output2 = input:sum(1)[1]
+   output2:div(output2:sum())
+   local log2 = torch.log(output2 + 0.000001)
+   local entropy2 = -output2:cmul(log2):sum()
+   mytester:assert(math.abs(ce.entropy - entropy2) < 0.000001, "CategoricalEntropy entropy err")
+   local gradEntropy2 = log2:add(1) -- -1*(-1 - log(p(x))) = 1 + log(p(x))
+   gradEntropy2:div(input:sum())
+   local gradInput2 = gradEntropy2:div(batchSize):view(1,inputSize):expandAs(input)
+   mytester:assertTensorEq(gradInput2, gradInput, 0.000001, "CategoricalEntropy gradInput err")
+end
+
 function dpnnbigtest.Reinforce()
    -- let us try to reinforce an mlp to learn a simple distribution
    local n = 10
