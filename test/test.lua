@@ -727,6 +727,28 @@ function dpnntest.CategoricalEntropy()
    mytester:assertTensorEq(gradInput2, gradInput, 0.000001, "CategoricalEntropy gradInput err")
 end
 
+function dpnntest.TotalDropout()
+   local batchSize = 4
+   local inputSize = 3
+   local input = torch.randn(batchSize, inputSize)
+   local gradOutput = torch.randn(batchSize, inputSize)
+   local td = nn.TotalDropout()
+   local nOne = 0
+   for i=1,10 do
+      local output = td:forward(input)
+      local gradInput = td:backward(input, gradOutput)
+      if td.noise == 0 then
+         mytester:assert(output:sum() == 0, "TotalDropout forward 0 err")
+         mytester:assert(gradInput:sum() == 0, "TotalDropout backward 0 err")
+      else
+         mytester:assertTensorEq(output, input, 0.000001, "TotalDropout forward 1 err")
+         mytester:assertTensorEq(gradInput, gradOutput, 0.000001, "TotalDropout backward 1 err")
+         nOne = nOne + 1
+      end
+   end
+   mytester:assert(nOne < 10 and nOne > 1, "TotalDropout bernoulli error")
+end
+
 function dpnnbigtest.Reinforce()
    -- let us try to reinforce an mlp to learn a simple distribution
    local n = 10
