@@ -19,7 +19,7 @@ end
 function ArgMax:updateOutput(input)
    self._value = self._value or input.new()
    self._indices = self._indices or
-      (torch.type(self.output) == 'torch.CudaTensor' and torch.CudaTensor() or torch.LongTensor())
+      (torch.type(input) == 'torch.CudaTensor' and torch.CudaTensor() or torch.LongTensor())
    local dim = (input:dim() > self.nInputDim) and (self.dim + 1) or self.dim
    
    torch.max(self._value, self._indices, input, dim)
