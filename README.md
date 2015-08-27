@@ -17,7 +17,7 @@ The package provides the following Modules:
  * [ZipTable](#nn.ZipTable) : zip a table of tables into a table of tables;
  * [ReverseTable](#nn.ReverseTable) : reverse the order of elements in a table;
  * [PrintSize](#nn.PrintSize) : prints the size of inputs and gradOutputs (useful for debugging);
- * [WhiteNoise](#nn.WhiteNoise) : Adds isotropic Gaussian noise to the signal when in training mode. Useful in training [Denoising Autoencoders] (http://arxiv.org/pdf/1507.02672v1.pdf). Take mean and standard deviation of the Gaussian as input. Default values for mean and standard deviation are 0 and 0.1 respectively and self.train is true. Noise is added during forward, during backward gradients are passed as it is.
+ * [WhiteNoise](#nn.WhiteNoise) : Adds isotropic Gaussian noise to the signal when in training mode. Useful in training [Denoising Autoencoders] (http://arxiv.org/pdf/1507.02672v1.pdf). Takes mean and standard deviation of the Gaussian as input. Default values for mean and standard deviation are 0 and 0.1 respectively and self.train is true. Noise is added during forward, and in backward gradients are passed as it is.
 
 A lot of the functionality implemented here was pulled from 
 [dp](https://github.com/nicholas-leonard/dp), which makes heavy use of this package. 
