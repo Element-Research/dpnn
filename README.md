@@ -334,9 +334,9 @@ print(module:forward{1,2,3,4})
 ## WhiteNoise ##
 
 ```lua
-addNoiseLayer = nn.WhiteNoise(mean, stdev)
+module = nn.WhiteNoise([mean, stdev])
 ```
-Useful in training [Denoising Autoencoders] (http://arxiv.org/pdf/1507.02672v1.pdf). Takes `mean` and `stdev` of the `Gaussian` as input. Default values for mean and standard deviation are 0 and 0.1 respectively. Noise is added during `forward`, and in `backward` gradients are passed as it is.
+Useful in training [Denoising Autoencoders] (http://arxiv.org/pdf/1507.02672v1.pdf). Takes `mean` and `stdev` of the `Gaussian` as input. Default values for mean and standard deviation are 0 and 0.1 respectively. With `module:training()`, noise is added during forward. During `backward` gradients are passed as it is. With `module:evaluate()` the mean is added to the input.
 <a name='nn.ModuleCriterion'></a>
 ## ModuleCriterion ##
 
