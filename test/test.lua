@@ -403,6 +403,14 @@ function dpnntest.ModuleCriterion()
    mytester:assertTensorEq(gradInput, gradInput2, 0.000001, "ModuleCriterion backward err")
 end
 
+-- Unit Test WhiteNoise
+function dpnntest.WhiteNoise()
+   print("Adding noise (0, 0.1) to 5x5 array of zeros.")
+   local input = torch.Zeros(5,5)
+   local addNoise = nn.WhiteNoise()
+   local output = addNoise:forward(input)
+   print("Noise added Sample. Mean: ".. output:mean() .." Std: ".. output:std())
+end
 
 function dpnn.test(tests)
    mytester = torch.Tester()
