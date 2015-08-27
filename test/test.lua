@@ -405,11 +405,27 @@ end
 
 -- Unit Test WhiteNoise
 function dpnntest.WhiteNoise()
-   print("Adding noise (0, 0.1) to 5x5 array of zeros.")
-   local input = torch.Zeros(5,5)
+   local input = torch.zeros(3, 28, 28)
    local addNoise = nn.WhiteNoise()
    local output = addNoise:forward(input)
-   print("Noise added Sample. Mean: ".. output:mean() .." Std: ".. output:std())
+   local meanValue = output:mean()
+   local stdValue = output:std()
+   mytester:assert(meanValue > -0.01 and meanValue < 0.01)
+   mytester:assert(stdValue < 0.15 and stdValue >= 0)
+
+   -- Evaluate
+   addNoise:evaluate() 
+   output = addNoise:forward(input)
+   meanValue = output:mean()
+   stdValue = output:std()
+   mytester:assert(meanValue == 0)
+   mytester:assert(stdValue == 0)
+
+   -- backprop
+   addNoise:training()
+   local gradOutput = torch.rand(3, 28, 28)
+   local gradInput = addNoise:updateGradInput(input, gradOutput)
+   mytester:assertTensorEq(gradOutput, gradInput, 0.000001, "WhiteNoise backward err")
 end
 
 function dpnn.test(tests)
