@@ -17,6 +17,7 @@ The package provides the following Modules:
  * [ZipTable](#nn.ZipTable) : zip a table of tables into a table of tables;
  * [ReverseTable](#nn.ReverseTable) : reverse the order of elements in a table;
  * [PrintSize](#nn.PrintSize) : prints the size of inputs and gradOutputs (useful for debugging);
+ * [WhiteNoise](#nn.WhiteNoise) : Adds isotropic Gaussian noise to the signal when in training mode.
 
 A lot of the functionality implemented here was pulled from 
 [dp](https://github.com/nicholas-leonard/dp), which makes heavy use of this package. 
@@ -329,6 +330,13 @@ print(module:forward{1,2,3,4})
 <a name='nn.PrintSize'></a>
 ## PrintSize ##
 
+<a name='nn.WhiteNoise'></a>
+## WhiteNoise ##
+
+```lua
+module = nn.WhiteNoise([mean, stdev])
+```
+Useful in training [Denoising Autoencoders] (http://arxiv.org/pdf/1507.02672v1.pdf). Takes `mean` and `stdev` of the `Gaussian` as input. Default values for mean and standard deviation are 0 and 0.1 respectively. With `module:training()`, noise is added during forward. During `backward` gradients are passed as it is. With `module:evaluate()` the mean is added to the input.
 <a name='nn.ModuleCriterion'></a>
 ## ModuleCriterion ##
 
@@ -342,4 +350,3 @@ fed through optional an `inputModule` and `targetModule` before being passed to 
 
 When `castTarget = true` (the default), the `targetModule` is cast along with the `inputModule` and 
 `criterion`. Otherwise, the `targetModule` isn't.  
-
