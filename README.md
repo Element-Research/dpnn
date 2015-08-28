@@ -267,7 +267,7 @@ The sole argument `config` is a table taking the following key-values :
    * `inputSize` : number of input channels or colors, e.g. 3;
    * `outputSize` : numbers of filters in the non-1x1 convolution kernel sizes, e.g. `{32,48}`
    * `reduceSize` : numbers of filters in the 1x1 convolutions (reduction) used in each column, e.g. `{48,64,32,32}`. The last 2 are used respectively for the max pooling (projection) column (the last column in the paper) and the column that has nothing but a 1x1 conv (the first column in the paper). This table should have two elements more than the outputSize
-  * Optional Arguments ]]--
+  * Optional Arguments :
    * `reduceStride` : strides of the 1x1 (reduction) convolutions. Defaults to `{1,1,...}`.
    * `transfer` : transfer function like `nn.Tanh`,`nn.Sigmoid`, `nn.ReLU`, `nn.Identity`, etc. It is used after each reduction (1x1 convolution) and convolution. Defaults to `nn.ReLU`.
    * `batchNorm` : set this to `true` to use batch normalization. Defaults to `false`. Note that batch normalization can be awesome
