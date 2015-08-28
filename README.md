@@ -389,7 +389,7 @@ The `output` is a batch of glimpses taken in image at location `(x,y)`.
 So basically, this module can be used to focus the attention of the model 
 on a region of the input `image`. 
 It is commonly used with the [RecurrentAttention](https://github.com/Element-Research/rnn#rnn.RecurrentAttention) 
-module (see [this example](https://github.com/Element-Research/rnn/blob/master/examples/recurrent-visual-attention.lua).
+module (see [this example](https://github.com/Element-Research/rnn/blob/master/examples/recurrent-visual-attention.lua)).
 
 <a name='nn.WhiteNoise'></a>
 ## WhiteNoise ##
