@@ -29,7 +29,7 @@ function ReinforceCategorical:updateGradInput(input, gradOutput)
    -- Note that gradOutput is ignored
    -- f : categorical probability mass function
    -- x : the sampled indices (one per sample) (self.output)
-   -- p : probability vector L (p[1], p[2], ..., p[k]) 
+   -- p : probability vector (p[1], p[2], ..., p[k]) 
    -- derivative of log categorical w.r.t. p
    -- d ln(f(x,p))     1/p[i]    if i = x  
    -- ------------ =   

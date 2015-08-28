@@ -3,7 +3,7 @@
 -- Ref A. http://incompleteideas.net/sutton/williams-92.pdf
 -- Inputs are bernoulli probabilities (p) 
 -- Ouputs are samples drawn from this distribution.
--- Uses the REINFORCE algorithm (ref. A sec 6. p.230-236) which is 
+-- Uses the REINFORCE algorithm (ref. A p.230-236) which is 
 -- implemented through the nn.Module:reinforce(reward) interface.
 -- gradOutputs are ignored (REINFORCE algorithm).
 ------------------------------------------------------------------------

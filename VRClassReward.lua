@@ -2,8 +2,8 @@
 --[[ VRClassReward ]]--
 -- Variance reduced classification reinforcement criterion.
 -- input : {class prediction, baseline reward}
--- Reward is 1*scale for success, Reward is 0 otherwise.
--- reward = (Reward - baseline) where baseline is 2nd input element
+-- Reward is 1 for success, Reward is 0 otherwise.
+-- reward = scale*(Reward - baseline) where baseline is 2nd input element
 -- Note : for RNNs with R = 1 for last step in sequence, encapsulate it
 -- in nn.ModuleCriterion(VRClassReward, nn.SelectTable(-1))
 ------------------------------------------------------------------------
