@@ -42,6 +42,9 @@ torch.include('dpnn', 'Sequential.lua')
 torch.include('dpnn', 'ParallelTable.lua')
 torch.include('dpnn', 'LookupTable.lua')
 
+-- extensions to existing criterions
+torch.include('dpnn', 'Criterion.lua')
+
 -- extensions to make serialization more efficient
 torch.include('dpnn', 'SpatialMaxPooling.lua')
 torch.include('dpnn', 'SpatialConvolution.lua')
@@ -55,6 +58,7 @@ torch.include('dpnn', 'DontCast.lua')
 -- modules
 torch.include('dpnn', 'PrintSize.lua')
 torch.include('dpnn', 'Convert.lua')
+torch.include('dpnn', 'Constant.lua')
 torch.include('dpnn', 'Collapse.lua')
 torch.include('dpnn', 'ZipTable.lua')
 torch.include('dpnn', 'ReverseTable.lua')
@@ -62,8 +66,20 @@ torch.include('dpnn', 'Dictionary.lua')
 torch.include('dpnn', 'Inception.lua')
 torch.include('dpnn', 'SoftMaxTree.lua')
 torch.include('dpnn', 'SoftMaxForest.lua')
+torch.include('dpnn', 'Clip.lua')
 torch.include('dpnn', 'SpatialUniformCrop.lua')
+torch.include('dpnn', 'SpatialGlimpse.lua')
 torch.include('dpnn', 'WhiteNoise.lua')
+torch.include('dpnn', 'ArgMax.lua')
+torch.include('dpnn', 'CategoricalEntropy.lua')
+torch.include('dpnn', 'TotalDropout.lua')
+
+-- REINFORCE
+torch.include('dpnn', 'Reinforce.lua')
+torch.include('dpnn', 'ReinforceBernoulli.lua')
+torch.include('dpnn', 'ReinforceNormal.lua')
+torch.include('dpnn', 'ReinforceCategorical.lua')
+torch.include('dpnn', 'VRClassReward.lua')
 
 -- criterions
 torch.include('dpnn', 'ModuleCriterion.lua')
