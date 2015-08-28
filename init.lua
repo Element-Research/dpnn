@@ -70,6 +70,9 @@ torch.include('dpnn', 'Clip.lua')
 torch.include('dpnn', 'SpatialUniformCrop.lua')
 torch.include('dpnn', 'SpatialGlimpse.lua')
 torch.include('dpnn', 'WhiteNoise.lua')
+torch.include('dpnn', 'ArgMax.lua')
+torch.include('dpnn', 'CategoricalEntropy.lua')
+torch.include('dpnn', 'TotalDropout.lua')
 
 -- REINFORCE
 torch.include('dpnn', 'Reinforce.lua')
