@@ -164,6 +164,9 @@ The `reward` is broadcast to all REINFORCE modules contained
 within `model` by calling `model:reinforce(reward)`. 
 Note that the `reward` should be a 1D tensor of size `batchSize`, 
 i.e. each example in a batch has its own scalar reward.
+
+Refer to [this example](https://github.com/Element-Research/rnn/blob/master/examples/recurrent-visual-attention.lua)
+for a complete training script making use of the REINFORCE interface.
  
 <a name='nn.Decorator'></a>
 ## Decorator ##
@@ -355,6 +358,39 @@ print(module:forward{1,2,3,4})
 <a name='nn.PrintSize'></a>
 ## PrintSize ##
 
+```lua
+module = nn.PrintSize(name)
+```
+
+This module is useful for debugging complicated module composites. 
+It prints the size of the `input` and `gradOutput` during `forward`
+and `backward` propagation respectively.
+
+<a name='nn.SpatialGlimpse'></a>
+## SpatialGlimpse ##
+Ref. A. [Recurrent Model for Visual Attention](http://papers.nips.cc/paper/5542-recurrent-models-of-visual-attention.pdf)
+
+```lua
+module = nn.SpatialGlimpse(size, depth, scale)
+```
+
+A glimpse is the concatenation of down-scaled cropped images of 
+increasing scale around a given location in a given image.
+The input is a pair of Tensors: `{image, location}`
+`location` are `x,y` coordinates of the center of the different scales 
+of patches to be cropped from image `image`. 
+Coordinates are between `(-1,-1)` (top-left) and `(1,1)` (bottom right).
+The `output` is a batch of glimpses taken in image at location `(x,y)`.
+
+`size` specifies the `width = height` of glimpses.
+`depth` is number of patches to crop per glimpse (one patch per depth).
+`scale` is determines the `size(t) = scale * size(t-1)` of successive cropped patches.
+
+So basically, this module can be used to focus the attention of the model 
+on a region of the input `image`. 
+It is commonly used with the [RecurrentAttention](https://github.com/Element-Research/rnn#rnn.RecurrentAttention) 
+module (see [this example](https://github.com/Element-Research/rnn/blob/master/examples/recurrent-visual-attention.lua).
+
 <a name='nn.WhiteNoise'></a>
 ## WhiteNoise ##
 
@@ -475,6 +511,9 @@ d ln(f(x,u,s))   (x - u)
      d u           s^2
 ```
 
+As an example, it is used to sample locations for the [RecurrentAttention](https://github.com/Element-Research/rnn#rnn.RecurrentAttention) 
+module (see [this example](https://github.com/Element-Research/rnn/blob/master/examples/recurrent-visual-attention.lua)).
+
 <a name='nn.ReinforceCategorical'></a>
 ## ReinforceCategorical ##
 Ref A. [Simple Statistical Gradient-Following Algorithms for Connectionist Reinforcement Learning](http://incompleteideas.net/sutton/williams-92.pdf)
@@ -547,3 +586,7 @@ The predicted `b` can be nothing more than the expectation `E(R)`.
 
 Note : for RNNs with R = 1 for last step in sequence, encapsulate it
 in `nn.ModuleCriterion(VRClassReward, nn.SelectTable(-1))`.
+
+For an example, this criterion is used along with the [RecurrentAttention](https://github.com/Element-Research/rnn#rnn.RecurrentAttention) 
+module to [train a recurrent model for visual attention](https://github.com/Element-Research/rnn/blob/master/examples/recurrent-visual-attention.lua).
+
