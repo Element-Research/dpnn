@@ -233,9 +233,63 @@ production (feed-forward-only models).
 
 <a name='nn.Inception'></a>
 ## Inception ##
+References :
+ 
+  * A. [Going Deeper with Convolutions](http://arxiv.org/abs/1409.4842)
+  * B. [GoogleLeNet](http://image-net.org/challenges/LSVRC/2014/slides/GoogLeNet.pptx)
+
+```lua
+module = nn.Inception(config)
+```
+
+This module uses `n`+2 parallel "columns". 
+The original paper uses 2+2 where the first two are (but there could be more than two):
+  
+  * 1x1 conv (reduce) -> relu -> 5x5 conv -> relu
+  * 1x1 conv (reduce) -> relu -> 3x3 conv -> relu 
+
+and where the other two are : 
+  
+  * 3x3 maxpool -> 1x1 conv (reduce/project) -> relu 
+  * 1x1 conv (reduce) -> relu. 
+
+This module allows the first group of columns to be of any 
+number while the last group consist of exactly two columns.
+The 1x1 convoluations are used to reduce the number of input channels 
+(or filters) such that the capacity of the network doesn't explode. 
+We refer to these here has *reduce*. 
+Since each column seems to have one and only one reduce, their initial 
+configuration options are specified in lists of n+2 elements.
+
+The sole argument `config` is a table taking the following key-values :
+
+  * Required Arguments :
+   * `inputSize` : number of input channels or colors, e.g. 3;
+   * `outputSize` : numbers of filters in the non-1x1 convolution kernel sizes, e.g. `{32,48}`
+   * `reduceSize` : numbers of filters in the 1x1 convolutions (reduction) used in each column, e.g. `{48,64,32,32}`. The last 2 are used respectively for the max pooling (projection) column (the last column in the paper) and the column that has nothing but a 1x1 conv (the first column in the paper). This table should have two elements more than the outputSize
+  * Optional Arguments :
+   * `reduceStride` : strides of the 1x1 (reduction) convolutions. Defaults to `{1,1,...}`.
+   * `transfer` : transfer function like `nn.Tanh`,`nn.Sigmoid`, `nn.ReLU`, `nn.Identity`, etc. It is used after each reduction (1x1 convolution) and convolution. Defaults to `nn.ReLU`.
+   * `batchNorm` : set this to `true` to use batch normalization. Defaults to `false`. Note that batch normalization can be awesome
+   * `padding` : set this to `true` to add padding to the input of the convolutions such that output width and height are same as that of the original non-padded `input`. Defaults to `true`.
+   * `kernelSize` : size (`height = width`) of the non-1x1 convolution kernels. Defaults to `{5,3}`.
+   * `kernelStride` : stride of the kernels (`height = width`) of the convolution. Defaults to `{1,1}`
+   * `poolSize`: size (`height = width`) of the spatial max pooling used in the next-to-last column. Defaults to 3.
+   * `poolStride` : stride (`height = width`) of the spatial max pooling. Defaults to 1.
+   
+See the [deep inception training script](https://github.com/nicholas-leonard/dp/blob/master/examples/deepinception.lua) for a complete example using this module.
 
 <a name='nn.Dictionary'></a>
 ## Dictionary ##
+DEPRECATED August 28, 2015
+
+```lua
+module = nn.Dictionary(dictSize, embeddingSize, accUpdate)
+```
+
+This module is a subclass of `LookupTable`. 
+The only difference is that it only updates embeddings (rows) that 
+have been used during a `forward`/`backward`. 
 
 <a name='nn.Collapse'></a>
 ## Collapse ##
@@ -365,6 +419,55 @@ module = nn.PrintSize(name)
 This module is useful for debugging complicated module composites. 
 It prints the size of the `input` and `gradOutput` during `forward`
 and `backward` propagation respectively.
+The `name` is a string used to identify the module along side the printed size.
+
+<a name='nn.Clip'></a>
+## Clip ##
+
+```lua
+module = nn.Clip(minval, maxval)
+```
+
+This module clips `input` values such that the output is between `minval` and `maxval`.
+
+<a name='nn.Constant'></a>
+## Constant ##
+
+```lua
+module = nn.Constant(value, nInputDim)
+```
+
+This module outputs a constant value given an input.
+If `nInputDim` is specified, it uses the input to determine the size of the batch. 
+The `value` is then replicated over the batch.
+During `backward`, the returned `gradInput` is a zero Tensor of the same size as the `input`.
+This module has no trainable parameters. 
+
+You can use this with nn.ConcatTable() to append constant inputs to an input : 
+
+```lua
+nn.ConcatTable():add(nn.Constant(v)):add(nn.Identity())
+```
+
+This is useful when you want to output a value that is independent of the 
+input to the neural network (see [this example](https://github.com/Element-Research/rnn/blob/master/examples/recurrent-visual-attention.lua)).
+
+<a name='nn.SpatialUniformCrop'></a>
+## SpatialUniformCrop ##
+
+```lua
+module = nn.SpatialUniformCrop(oheight, owidth)
+```
+
+During training, this module will output a cropped patch of size `oheight, owidth`
+within the boundaries of the `input` image.
+For each example, a location is sampled from a uniform distribution 
+such that each possible patch has an equal probability of being sampled.
+
+During evaluation, the center patch is cropped and output.
+
+This module is commonly used at the input layer to artificially 
+augment the size of the dataset to prevent overfitting.
 
 <a name='nn.SpatialGlimpse'></a>
 ## SpatialGlimpse ##

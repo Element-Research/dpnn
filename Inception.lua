@@ -41,7 +41,10 @@ function Inception:__init(config)
    self.batchNorm = config.batchNorm
    -- Adding padding to the input of the convolutions such that 
    -- input width and height are same as that of output. 
-   self.padding = (config.padding ~= nil) and config.padding or true
+   self.padding = true
+   if config.padding ~= nil then
+      self.padding = config.padding
+   end
    -- The size (height=width) of the non-1x1 convolution kernels. 
    self.kernelSize = config.kernelSize or {5,3}
    -- The stride (height=width) of the convolution. 
