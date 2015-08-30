@@ -33,6 +33,8 @@ function SpatialGlimpse:updateOutput(inputTable)
    assert(torch.type(inputTable) == 'table')
    assert(#inputTable >= 2)
    local input, location = unpack(inputTable)
+   input, location = self:toBatch(input, 3), self:toBatch(location, 1)
+   assert(input:dim() == 4 and location:dim() == 2)
    
    self.output:resize(input:size(1), self.depth, input:size(2), self.size, self.size)
    
@@ -69,12 +71,15 @@ function SpatialGlimpse:updateOutput(inputTable)
    end
    
    self.output:resize(input:size(1), self.depth*input:size(2), self.size, self.size)
+   self.output = self:fromBatch(self.output, 1)
    return self.output
 end
 
 function SpatialGlimpse:updateGradInput(inputTable, gradOutput, scale)
    local input, location = unpack(inputTable)
    local gradInput, gradLocation = unpack(self.gradInput)
+   input, location = self:toBatch(input, 3), self:toBatch(location, 1)
+   gradOutput = self:toBatch(gradOutput, 3)
    
    gradInput:resizeAs(input):zero()
    gradLocation:resizeAs(location):zero() -- no backprop through location
@@ -112,6 +117,9 @@ function SpatialGlimpse:updateGradInput(inputTable, gradOutput, scale)
          gradInputSample:add(self._pad:narrow(2, padSize+1, input:size(3)):narrow(3, padSize+1, input:size(4)))
       end
    end
+   
+   self.gradInput[1] = self:fromBatch(gradInput, 1)
+   self.gradInput[2] = self:fromBatch(gradLocation, 1)
    
    return self.gradInput
 end
