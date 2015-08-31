@@ -9,7 +9,8 @@
 -- output is a batch of glimpses taken in image at location (x,y)
 -- size specifies width = height of glimpses
 -- depth is number of patches to crop per glimpse (one patch per scale)
--- scale is the scale * size of successive cropped patches
+-- The largest cropped patch will have size : 
+-- (depth-1) * scale * size
 ------------------------------------------------------------------------
 local SpatialGlimpse, parent = torch.class("nn.SpatialGlimpse", "nn.Module")
 
@@ -53,7 +54,10 @@ function SpatialGlimpse:updateOutput(inputTable)
       -- for each depth of glimpse : pad, crop, downscale
       for depth=1,self.depth do 
          local dst = outputSample[depth]
-         local glimpseSize = self.size*(self.scale^(depth-1))
+         local glimpseSize = self.size
+         if depth > 1 then
+            glimpseSize = (depth-1)*self.scale*self.size
+         end
          
          -- add zero padding (glimpse could be partially out of bounds)
          local padSize = math.floor((glimpseSize-1)/2)
@@ -98,7 +102,10 @@ function SpatialGlimpse:updateGradInput(inputTable, gradOutput, scale)
       -- for each depth of glimpse : pad, crop, downscale
       for depth=1,self.depth do 
          local src = gradOutputSample[depth]
-         local glimpseSize = self.size*(self.scale^(depth-1))
+         local glimpseSize = self.size
+         if depth > 1 then
+            glimpseSize = (depth-1)*self.scale*self.size
+         end
          
          -- upscale glimpse for different depths
          self._crop:resize(input:size(2), glimpseSize, glimpseSize)
