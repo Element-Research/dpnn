@@ -60,7 +60,7 @@ end
 
 function Convert:updateOutput(input)
    assert(torch.isTensor(input), "expecting Tensor")
-   if not torch.isTypeOf(input, self.output) then
+   if not torch.isTypeOf(input, torch.type(self.output)) then
       -- handle different input type
       self._input = self._input or self.output.new()
       self._input:resize(input:size()):copy(input)
