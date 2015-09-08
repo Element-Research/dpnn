@@ -581,6 +581,84 @@ function dpnntest.Constant()
    mytester:assertTensorEq(gradInput, input:zero(), 0.000001, "Constant backward err")
 end
 
+function dpnntest.TemporalGlimpse()
+   local batchSize = 1
+   local inputSize = {8,3}
+   local glimpseSize = 4
+   local input = torch.Tensor(batchSize, unpack(inputSize))
+   input:range(1,input:nElement())
+   input:resize(batchSize, unpack(inputSize))
+   local tg = nn.TemporalGlimpse(glimpseSize)
+   local location = torch.Tensor(batchSize, 1):fill(0) -- center patch
+   local output = tg:forward{input,location}
+   local output2 = input:narrow(2,3,glimpseSize)
+   mytester:assertTensorEq(output2, output, 0.00001, "TemporalGlimpse center 4 output err")
+   
+   local input2 = torch.Tensor(unpack(inputSize))
+   input2:range(1,input2:nElement())
+   input2:resize(unpack(inputSize))
+   local tg = nn.TemporalGlimpse(glimpseSize)
+   local location2 = torch.Tensor(1):fill(0) -- center patch
+   local output2 = tg:forward{input2,location2}
+   mytester:assertTensorEq(output2, output, 0.00001, "TemporalGlimpse online output depth=1 err")
+   
+   local glimpseSize = 5
+   local tg = nn.TemporalGlimpse(glimpseSize)
+   local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
+   local output = tg:forward{input,location}
+   local output2 = input:narrow(2,2,glimpseSize)
+   mytester:assertTensorEq(output2, output, 0.00001, "TemporalGlimpse center 5 output err")
+   
+   local glimpseSize = 4
+   local sg = nn.TemporalGlimpse(glimpseSize)
+   local location = torch.Tensor(batchSize, 1):fill(-1) -- left corner patch
+   local output = sg:forward{input,location}
+   local padSize = math.floor((glimpseSize-1)/2)
+   local pad = torch.Tensor(batchSize, inputSize[1]+padSize*2, inputSize[2]):zero()
+   pad:narrow(2, padSize + 1, inputSize[1]):copy(input)
+   local output2 = pad:narrow(2,1,glimpseSize)
+   mytester:assertTensorEq(output2, output, 0.00001, "TemporalGlimpse left 4 output err")
+   
+   local glimpseSize = 5
+   local sg = nn.TemporalGlimpse(glimpseSize)
+   local location = torch.Tensor(batchSize, 1):fill(-1) -- left corner patch
+   local output = sg:forward{input,location}
+   local pad = torch.Tensor(batchSize, inputSize[1]+glimpseSize, inputSize[2]):zero()
+   pad:narrow(2, (glimpseSize-1)/2 + 1, inputSize[1]):copy(input)
+   local output2 = pad:narrow(2,1,glimpseSize)
+   mytester:assertTensorEq(output2, output, 0.00001, "TemporalGlimpse left 5 output err")
+   
+   local glimpseSize = 4
+   local sg = nn.TemporalGlimpse(glimpseSize)
+   local location = torch.Tensor(batchSize, 1):fill(1) -- right corner patch
+   local output = sg:forward{input,location}
+   local pad = torch.Tensor(batchSize, inputSize[1]+glimpseSize, inputSize[2]):zero()
+   pad:narrow(2, (glimpseSize-1)/2 + 1, inputSize[1]):copy(input)
+   local output2 = pad:narrow(2,inputSize[1]-1,glimpseSize)
+   mytester:assertTensorEq(output2, output, 0.00001, "TemporalGlimpse right 4 output err")
+   
+   local glimpseSize = 5
+   local sg = nn.TemporalGlimpse(glimpseSize)
+   local location = torch.Tensor(batchSize, 1):fill(1) -- right corner patch
+   local output = sg:forward{input,location}
+   local pad = torch.Tensor(batchSize, inputSize[1]+glimpseSize, inputSize[2]):zero()
+   pad:narrow(2, (glimpseSize-1)/2, inputSize[1]):copy(input)
+   local output2 = pad:narrow(2,inputSize[1]-1,glimpseSize)
+   mytester:assertTensorEq(output2, output, 0.00001, "TemporalGlimpse right 5 output err")
+   
+   local glimpseSize = 4
+   local sg = nn.TemporalGlimpse(glimpseSize)
+   local location = torch.Tensor(batchSize, 1):fill(0) -- center patch
+   local output = sg:forward{input,location}
+   local output2 = input:narrow(2,3,glimpseSize)
+   mytester:assertTensorEq(output2, output, 0.00001, "TemporalGlimpse center 4 output err")
+   local gradOutput = output:clone()
+   local gradInput = sg:backward({input,location}, gradOutput)
+   local gradInput2 = input:clone():zero()
+   gradInput2:narrow(2,3,glimpseSize):copy(gradOutput)
+   mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "TemporalGlimpse backward 4 depth 2 error")
+end
+
 function dpnntest.SpatialGlimpse()
    if not pcall(function() require "image" end) then return end -- needs the image package
    local batchSize = 1

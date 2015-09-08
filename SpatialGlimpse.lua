@@ -6,7 +6,7 @@
 -- input is a pair of Tensors: {image, location}
 -- locations are x,y coordinates of the center of cropped patches. 
 -- Coordinates are between -1,-1 (top-left) and 1,1 (bottom right)
--- output is a batch of glimpses taken in image at location (x,y)
+-- output is a batch of glimpses taken in image at locations (x,y)
 -- size specifies width = height of glimpses
 -- depth is number of patches to crop per glimpse (one patch per scale)
 -- Each successive patch is scale x size of the previous patch
@@ -78,7 +78,7 @@ function SpatialGlimpse:updateOutput(inputTable)
    return self.output
 end
 
-function SpatialGlimpse:updateGradInput(inputTable, gradOutput, scale)
+function SpatialGlimpse:updateGradInput(inputTable, gradOutput)
    local input, location = unpack(inputTable)
    local gradInput, gradLocation = unpack(self.gradInput)
    input, location = self:toBatch(input, 3), self:toBatch(location, 1)
@@ -108,7 +108,7 @@ function SpatialGlimpse:updateGradInput(inputTable, gradOutput, scale)
          
          -- upscale glimpse for different depths
          self._crop:resize(input:size(2), glimpseSize, glimpseSize)
-         self._crop:copy(self.module:updateGradInput(self._crop, src, scale))
+         self._crop:copy(self.module:updateGradInput(self._crop, src))
          
          -- add zero padding (glimpse could be partially out of bounds)
          local padSize = math.floor((glimpseSize-1)/2)
