@@ -37,3 +37,12 @@ function Decorator:__tostring__()
    end
 end
 
+-- useful for multiple-inheritance
+function Decorator.decorate(class)
+   class.updateOutput = nn.Decorator.updateOutput
+   class.updateGradInput = nn.Decorator.updateGradInput
+   class.accGradParameters = nn.Decorator.accGradParameters
+   class.accUpdateGradParameters = nn.Decorator.accUpdateGradParameters
+   class.sharedAccUpdateGradParameters = nn.Decorator.sharedAccUpdateGradParameters
+   class.__tostring__ =  nn.Decorator.__tostring__
+end
