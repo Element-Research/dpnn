@@ -10,17 +10,16 @@
 ------------------------------------------------------------------------
 local ReinforceNormal, parent = torch.class("nn.ReinforceNormal", "nn.Reinforce")
 
-function ReinforceNormal:__init(stdev)
-   parent.__init(self)
+function ReinforceNormal:__init(stdev, stochastic)
+   parent.__init(self, stochastic)
    self.stdev = stdev
 end
 
 function ReinforceNormal:updateOutput(input)
    -- TODO : input could also be a table of mean and stdev tensors
    self.output:resizeAs(input)
-   if self.train ~= false then
+   if self.stochastic or self.train ~= false then
       self.output:normal()
-      
       -- multiply by standard deviations
       if torch.type(self.stdev) == 'number' then
          self.output:mul(self.stdev)

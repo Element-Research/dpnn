@@ -11,7 +11,7 @@ local ReinforceBernoulli, parent = torch.class("nn.ReinforceBernoulli", "nn.Rein
 
 function ReinforceBernoulli:updateOutput(input)
    self.output:resizeAs(input)
-   if self.train ~= false then
+   if self.stochastic or self.train ~= false then
       -- sample from bernoulli with P(output=1) = input
       self._uniform = self._uniform or input.new()
       self._uniform:resizeAs(input):uniform(0,1)
