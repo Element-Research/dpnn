@@ -51,9 +51,9 @@ function dpnntest.Module_sharedClone()
       mytester:assert(#gradParams == #gradParams3, name.." num gradParams err")
       
       for i,param in ipairs(params) do
-         mytester:assertTensorEq(param, params2[i], 0.00001, name.." params2 err "..i)
-         mytester:assertTensorEq(param, params4[i], 0.00001, name.." params4 err "..i)
-         mytester:assertTensorEq(param, params3[i], 0.00001, name.." params3 err "..i)
+         mytester:assertTensorEq(param, params2[i], 0.00001, name.." params2 (mlp vs mlp:clone():sharedClone()) err "..i)
+         mytester:assertTensorEq(param, params4[i], 0.00001, name.." params4 (mlp vs mlp:clone():share()) err "..i)
+         mytester:assertTensorEq(param, params3[i], 0.00001, name.." params3 (mlp vs mlp:clone()) err "..i)
          mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.00001, name.." gradParams2 err "..i)
          mytester:assertTensorEq(gradParams[i], gradParams4[i], 0.00001, name.." gradParams4 err "..i)
          mytester:assertTensorEq(gradParams[i], gradParams3[i], 0.00001, name.." gradParams3 err "..i)
@@ -67,6 +67,70 @@ function dpnntest.Module_sharedClone()
    mlp:add(nn.Euclidean(7,4))
    mlp:add(nn.LogSoftMax())
    test(mlp, 'sequential')
+   
+   
+   local function test2(rnn, name)
+      rnn:zeroGradParameters()
+      local clone = rnn:sharedClone()
+      
+      local input = torch.randn(2,3)
+      local gradOutput = torch.randn(2,4)
+      
+      local output = rnn:forward(input)
+      local gradInput = rnn:backward(input, gradOutput)
+      local output2 = clone:forward(input)
+      local gradInput2 = clone:backward(input, gradOutput)
+      
+      mytester:assertTensorEq(output, output2, 0.00001, name.." updateOutput")
+      mytester:assertTensorEq(gradInput, gradInput2, 0.00001, name.." updateGradInput")
+      
+      rnn:updateParameters(0.1)
+      clone:updateParameters(0.1)
+      
+      local params, gradParams = rnn:parameters()
+      local params2, gradParams2 = clone:parameters()
+      
+      mytester:assert(#params == #params2, name.." num params err")
+      mytester:assert(#gradParams == #gradParams2, name.." num gradParams err")
+      
+      for i,param in ipairs(params) do
+         mytester:assertTensorEq(param, params2[i], 0.00001, name.." params (rnn vs rnn:sharedClone()) err "..i)
+         mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.00001, name.." gradParams (rnn vs rnn:sharedClone()) err "..i)
+      end
+      
+      local output = rnn:forward(input)
+      local gradInput = rnn:backward(input, gradOutput)
+      local output2 = clone:forward(input)
+      local gradInput2 = clone:backward(input, gradOutput)
+      
+      mytester:assertTensorEq(output, output2, 0.00001, name.." updateOutput")
+      mytester:assertTensorEq(gradInput, gradInput2, 0.00001, name.." updateGradInput")
+      
+      rnn:updateParameters(0.1)
+      clone:updateParameters(0.1)
+      
+      local params, gradParams = rnn:parameters()
+      local params2, gradParams2 = clone:parameters()
+      
+      mytester:assert(#params == #params2, name.." num params err")
+      mytester:assert(#gradParams == #gradParams2, name.." num gradParams err")
+      
+      for i,param in ipairs(params) do
+         mytester:assertTensorEq(param, params2[i], 0.00001, name.." params (rnn vs rnn:sharedClone()) err "..i)
+         mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.00001, name.." gradParams (rnn vs rnn:sharedClone()) err "..i)
+      end
+   end
+   
+   if pcall(function() require 'rnn' end) then
+      local rnn = nn.Recurrent(4,nn.Linear(3,4),nn.Linear(4,4), nn.Sigmoid(), 999)
+      test(rnn, 'rnn1')
+      local seq = nn.Sequential()
+      seq:add(nn.Repeater(nn.Recurrent(2,nn.Linear(3,2),nn.Linear(2,2), nn.Sigmoid(), 999), 3))
+      seq:add(nn.Sequencer(nn.Linear(2,4)))
+      seq:add(nn.SelectTable(-1))
+      test2(seq, 'rnn2')
+      test2(seq, 'rnn3')
+   end
 end
 
 function dpnntest.Module_type()
@@ -99,8 +163,7 @@ function dpnntest.Module_type()
       mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.00001, " gradParams err "..i)
    end
    
-   if cutorch then
-      require 'cunn'
+   if pcall(function() require 'cunn' end) then
       local input = torch.randn(3,32,32)
       local cnn = nn.Sequential()
       cnn:add(nn.SpatialConvolutionMM(3,8,5,5))
@@ -160,6 +223,46 @@ function dpnntest.Module_gradParamClip()
 end
 
 function dpnntest.Serial()
+   function test(mlp, name)
+      local input = torch.randn(4,3)
+      local gradOutput = torch.randn(4,7)
+      local mlp2 = mlp:clone():Serial()
+      
+      local output = mlp:forward(input):clone()
+      local gradInput = mlp:backward(input, gradOutput):clone()
+      
+      local output2 = mlp2:forward(input)
+      local gradInput2 = mlp2:backward(input, gradOutput)
+      
+      mytester:assertTensorEq(output, output2, 0.000001, name.." serial forward error")
+      mytester:assertTensorEq(gradInput, gradInput2, 0.00001, name.." serial backward error")
+      
+      mlp2:mediumSerial()
+      local mlp3 = mlp2:clone()
+      
+      mytester:assert(mlp3.module.output:nElement() == 0, name.." serial medium empty err")
+      mytester:assert(torch.type(mlp3.module.output) == 'torch.FloatTensor', name.." serial medium type err")
+      
+      mlp:zeroGradParameters()
+      local output = mlp:forward(input)
+      local gradInput = mlp:backward(input, gradOutput)
+
+      mlp3:zeroGradParameters()
+      local output2 = mlp3:forward(input:float())
+      local gradInput2 = mlp3:backward(input:float(), gradOutput:float())
+      
+      mytester:assertTensorEq(output:float(), output2, 0.000001, name.." serial forward error")
+      mytester:assertTensorEq(gradInput:float(), gradInput2, 0.00001, name.." serial backward error")
+      
+      local params, gradParams = mlp:parameters()
+      local params2, gradParams2 = mlp3:parameters()
+      mytester:assert(#params == #params2)
+      for i,param in ipairs(params) do
+         mytester:assertTensorEq(param:float(), params2[i], 0.00001, "params err "..i)
+         mytester:assertTensorEq(gradParams[i]:float(), gradParams2[i], 0.00001, "gradParams err "..i)
+      end
+   end
+   
    local mlp = nn.Sequential():extend(
       nn.Linear(3,4),
       nn.Tanh(),
@@ -170,21 +273,16 @@ function dpnntest.Serial()
          nn.Linear(6,7)
       )
    )
-   mlp:forward(torch.randn(4,3))
-   mlp:backward(torch.randn(4,3), torch.randn(4,7))
-   local mlp2 = mlp:Serial()
-   mlp2:mediumSerial()
-   local mlp3 = mlp2:clone()
-   mytester:assert(mlp3.module.output:nElement() == 0, "serial medium empty err")
-   mytester:assert(torch.type(mlp3.module.output) == 'torch.FloatTensor', "serial medium type err")
-   local input = torch.randn(4,3)
-   local gradOutput = torch.randn(4,7)
-   local output = mlp:forward(input)
-   local gradInput = mlp:backward(input, gradOutput)
-   local output2 = mlp3:forward(input:float())
-   local gradInput2 = mlp3:backward(input:float(), gradOutput:float())
-   mytester:assertTensorEq(output:float(), output2, 0.000001, "serial forward error")
-   mytester:assertTensorEq(gradInput:float(), gradInput2, 0.00001, "serial backward error")
+   
+   test(mlp, 'mlp')
+   
+   if pcall(function() require 'rnn' end) then
+      local seq = nn.Sequential()
+      seq:add(nn.Repeater(nn.Recurrent(2,nn.Linear(3,2),nn.Linear(2,2), nn.Sigmoid(), 999), 3))
+      seq:add(nn.Sequencer(nn.Linear(2,7)))
+      seq:add(nn.SelectTable(-1))
+      test(seq, 'rnn2')
+   end
 end
 
 function dpnntest.Convert()

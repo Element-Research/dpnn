@@ -29,7 +29,10 @@ end
 Module.dpnn_parameters = {'weight', 'bias'}
 Module.dpnn_gradParameters = {'gradWeight', 'gradBias'}
 
-
+-- Note : this method expects component modules to be stored in either
+-- self.modules, self.sharedClones or as an attribute to self.
+-- So if you store a module in self.mytbl = {mymodule}, it will be cloned
+-- independently of sharedClone (i.e. deep copy).
 function Module:sharedClone(shareParams, shareGradParams, clones, pointers)
    shareParams = (shareParams == nil) and true or shareParams
    shareGradParams = (shareGradParams == nil) and true or shareGradParams
@@ -78,6 +81,7 @@ function Module:sharedClone(shareParams, shareGradParams, clones, pointers)
    local attributeClones, attributes = {}, {}
    for k,module in pairs(self) do
       if torch.isTypeOf(module,'nn.Module') then
+         
          local clone
          if not clones[torch.pointer(module)] then
             clone = module:sharedClone(shareParams, shareGradParams, clones, pointers)
