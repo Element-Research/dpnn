@@ -13,37 +13,48 @@ local ReinforceNormal, parent = torch.class("nn.ReinforceNormal", "nn.Reinforce"
 function ReinforceNormal:__init(stdev, stochastic)
    parent.__init(self, stochastic)
    self.stdev = stdev
+   if not stdev then
+      self.gradInput = {torch.Tensor(), torch.Tensor()}
+   end
 end
 
 function ReinforceNormal:updateOutput(input)
-   -- TODO : input could also be a table of mean and stdev tensors
-   self.output:resizeAs(input)
+   local mean, stdev = input, self.stdev
+   if torch.type(input) == 'table' then
+      -- input is {mean, stdev}
+      assert(#input == 2)
+      mean, stdev = unpack(input)
+   end
+   assert(stdev)
+   
+   self.output:resizeAs(mean)
+   
    if self.stochastic or self.train ~= false then
       self.output:normal()
       -- multiply by standard deviations
-      if torch.type(self.stdev) == 'number' then
-         self.output:mul(self.stdev)
-      elseif torch.isTensor(self.stdev) then
-         if self.stdev:dim() == input:dim() then
-            assert(self.stdev:isSameSizeAs(input))
-            self.output:cmul(self.stdev)
+      if torch.type(stdev) == 'number' then
+         self.output:mul(stdev)
+      elseif torch.isTensor(stdev) then
+         if stdev:dim() == mean:dim() then
+            assert(stdev:isSameSizeAs(mean))
+            self.output:cmul(stdev)
          else
-            assert(self.stdev:dim()+1 == input:dim())
-            self._stdev = self._stdev or self.stdev.new()
-            self._stdev:view(self.stdev,1,table.unpack(self.stdev:size():totable()))
-            self.__stdev = self.__stdev or self.stdev.new()
-            self.__stdev:expandAs(self._stdev, input)
+            assert(stdev:dim()+1 == mean:dim())
+            self._stdev = self._stdev or stdev.new()
+            self._stdev:view(stdev,1,table.unpack(stdev:size():totable()))
+            self.__stdev = self.__stdev or stdev.new()
+            self.__stdev:expandAs(self._stdev, mean)
             self.output:cmul(self.__stdev)
          end
       else
-         error"unsupported input type"
+         error"unsupported mean type"
       end
       
-      -- re-center the means to the input
-      self.output:add(input)
+      -- re-center the means to the mean
+      self.output:add(mean)
    else
       -- use maximum a posteriori (MAP) estimate
-      self.output:copy(input)
+      self.output:copy(mean)
    end
    return self.output
 end
@@ -52,29 +63,59 @@ function ReinforceNormal:updateGradInput(input, gradOutput)
    -- Note that gradOutput is ignored
    -- f : normal probability density function
    -- x : the sampled values (self.output)
-   -- u : mean (mu) (input)
-   -- s : standard deviation (sigma) (self.stdev)
-   -- derivative of log normal w.r.t. mean
+   -- u : mean (mu) (mean)
+   -- s : standard deviation (sigma) (stdev)
+   
+   local mean, stdev = input, self.stdev
+   local gradMean, gradStdev = self.gradInput, nil
+   if torch.type(input) == 'table' then
+      mean, stdev = unpack(input)
+      gradMean, gradStdev = unpack(self.gradInput)
+   end
+   assert(stdev)   
+    
+   -- Derivative of log normal w.r.t. mean :
    -- d ln(f(x,u,s))   (x - u)
    -- -------------- = -------
    --      d u           s^2
-   self.gradInput:resizeAs(input)
+   
+   gradMean:resizeAs(mean)
    -- (x - u)
-   self.gradInput:copy(self.output):add(-1, input)
+   gradMean:copy(self.output):add(-1, mean)
    
    -- divide by squared standard deviations
-   if torch.type(self.stdev) == 'number' then
-      self.gradInput:div(self.stdev^2)
+   if torch.type(stdev) == 'number' then
+      gradMean:div(stdev^2)
    else
-      if self.stdev:dim() == input:dim() then
-         self.gradInput:cdiv(self.stdev):cdiv(self.stdev)
+      if stdev:dim() == mean:dim() then
+         gradMean:cdiv(stdev):cdiv(stdev)
       else
-         self.gradInput:cdiv(self.__stdev):cdiv(self.__stdev)
+         gradMean:cdiv(self.__stdev):cdiv(self.__stdev)
       end
    end
    -- multiply by reward 
-   self.gradInput:cmul(self:rewardAs(input))
-   -- multiply by -1 ( gradient descent on input )
-   self.gradInput:mul(-1)
+   gradMean:cmul(self:rewardAs(mean))
+   -- multiply by -1 ( gradient descent on mean )
+   gradMean:mul(-1)
+   
+   
+   -- Derivative of log normal w.r.t. stdev :
+   -- d ln(f(x,u,s))   (x - u)^2 - s^2
+   -- -------------- = ---------------
+   --      d s              s^3
+   
+   if gradStdev then
+      gradStdev:resizeAs(stdev)
+      -- (x - u)^2
+      gradStdev:copy(self.output):add(-1, mean):pow(2)
+      -- subtract s^2
+      self._stdev2 = self._stdev2 or stdev.new()
+      self._stdev2:resizeAs(stdev):copy(stdev):cmul(stdev)
+      gradStdev:add(-1, self._stdev2)
+      -- divide by s^3
+      self._stdev2:cmul(stdev)
+      gradStdev:cdiv(self._stdev2)
+   end
+   
    return self.gradInput
 end

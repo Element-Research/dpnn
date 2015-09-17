@@ -576,7 +576,23 @@ function dpnntest.ReinforceNormal()
    local reward2 = reward:view(500,1):expandAs(input)
    gradInput2:cmul(reward2):mul(-1)
    mytester:assertTensorEq(gradInput2, gradInput, 0.00001, "ReinforceNormal backward err")
-   -- TODO test tensor stdev
+   -- test input {mean, stdev}
+   local mean, stdev = torch.randn(4,10), torch.rand(4,10)
+   local input = {mean, stdev}
+   local rn = nn.ReinforceNormal()
+   local output = rn:updateOutput(input)
+   local reward = torch.randn(4)
+   rn:reinforce(reward)
+   local gradInput = rn:backward(input, gradOutput)
+   mytester:assert(mean:isSameSizeAs(output), "ReinforceNormal forward table input - output size err")
+   mytester:assert(gradInput[1]:isSameSizeAs(mean), "ReinforceNormal backward table input - mean size err")
+   mytester:assert(gradInput[2]:isSameSizeAs(stdev), "ReinforceNormal backward table input - stdev size err")
+   local gradStdev = output:clone():add(-1, mean):pow(2)
+   local stdev2 = torch.cmul(stdev,stdev)
+   gradStdev:add(-1,stdev2)
+   stdev2:cmul(stdev)
+   gradStdev:cdiv(stdev2)
+   mytester:assertTensorEq(gradInput[2], gradStdev, 0.000001, "ReinforceNormal backward table input - gradStdev err")
 end
 
 function dpnntest.ReinforceBernoulli()
