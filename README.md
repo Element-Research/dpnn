@@ -487,7 +487,7 @@ The `output` is a batch of glimpses taken in image at location `(x,y)`.
 
 `size` specifies the `width = height` of glimpses.
 `depth` is number of patches to crop per glimpse (one patch per depth).
-`scale` is determines the `size(t) = scale * size(t-1)` of successive cropped patches.
+`scale` determines the `size(t) = scale * size(t-1)` of successive cropped patches.
 
 So basically, this module can be used to focus the attention of the model 
 on a region of the input `image`. 
