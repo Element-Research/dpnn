@@ -12,7 +12,7 @@ local ReinforceCategorical, parent = torch.class("nn.ReinforceCategorical", "nn.
 function ReinforceCategorical:updateOutput(input)
    self.output:resizeAs(input)
    self._index = self._index or ((torch.type(input) == 'torch.CudaTensor') and torch.CudaTensor() or torch.LongTensor())
-   if self.train ~= false then
+   if self.stochastic or self.train ~= false then
       -- sample from categorical with p = input
       input.multinomial(self._index, input, 1)
       -- one hot encoding

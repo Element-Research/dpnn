@@ -29,21 +29,74 @@ end
 Module.dpnn_parameters = {'weight', 'bias'}
 Module.dpnn_gradParameters = {'gradWeight', 'gradBias'}
 
-function Module:sharedClone(shareParams, shareGradParams)
+-- Note : this method expects component modules to be stored in either
+-- self.modules, self.sharedClones or as an attribute to self.
+-- So if you store a module in self.mytbl = {mymodule}, it will be cloned
+-- independently of sharedClone (i.e. deep copy).
+function Module:sharedClone(shareParams, shareGradParams, clones, pointers)
    shareParams = (shareParams == nil) and true or shareParams
    shareGradParams = (shareGradParams == nil) and true or shareGradParams
    
+   clones = clones or {} -- module clones (clone once)
+   pointers = pointers or {} -- parameters (dont clone params/gradParams)
+   
+   -- 1. remove all the component modules
+   -- containers keep modules in self.modules table
    local moduleClones, modules
    if self.modules then
       moduleClones = {}
       for i,module in ipairs(self.modules) do
-         moduleClones[i] = module:sharedClone(shareParams, shareGradParams)
+         local clone
+         if not clones[torch.pointer(module)] then
+            clone = module:sharedClone(shareParams, shareGradParams, clones, pointers)
+            clones[torch.pointer(module)] = clone
+         else
+            clone = clones[torch.pointer(module)]
+         end
+         moduleClones[i] = clone
       end
       modules = self.modules
       self.modules = nil -- to prevent recloning
    end
    
-   local params, pointers = {}, {}
+   -- rnns keep modules in self.sharedClones table
+   local sharedCloneClones, sharedClones
+   if self.sharedClones then
+      sharedCloneClones = {}
+      for i,sharedClone in pairs(self.sharedClones) do
+         local clone
+         if not clones[torch.pointer(sharedClone)] then
+            clone = sharedClone:sharedClone(shareParams, shareGradParams, clones, pointers)
+            clones[torch.pointer(sharedClone)] = clone
+         else
+            clone = clones[torch.pointer(sharedClone)]
+         end
+         sharedCloneClones[i] = clone
+      end
+      sharedClones = self.sharedClones
+      self.sharedClones = nil -- to prevent recloning
+   end
+   
+   -- some modules will keep modules as attributes (self.[key])
+   local attributeClones, attributes = {}, {}
+   for k,module in pairs(self) do
+      if torch.isTypeOf(module,'nn.Module') then
+         
+         local clone
+         if not clones[torch.pointer(module)] then
+            clone = module:sharedClone(shareParams, shareGradParams, clones, pointers)
+            clones[torch.pointer(module)] = clone
+         else
+            clone = clones[torch.pointer(module)]
+         end
+         attributeClones[k] = clone
+         attributes[k] = module
+         self[k] = nil
+      end
+   end
+   
+   -- 2. remove the params, gradParams. Save for later.
+   local params = {}
    if shareParams then
       for i,paramName in ipairs(self.dpnn_parameters) do
          local param = self[paramName]
@@ -80,9 +133,11 @@ function Module:sharedClone(shareParams, shareGradParams)
       end
    end
    
-   -- clone everything but parameters and/or gradients
+   -- 3. clone everything but parameters, gradients and modules (removed above)
    local clone = self:clone()
    
+   
+   -- 4. add back to self/clone everything that was removed in steps 1 and 2
    for paramName, param in pairs(params) do
       assert(self[paramName] == nil)
       self[paramName] = param
@@ -94,6 +149,18 @@ function Module:sharedClone(shareParams, shareGradParams)
       self.modules = modules
       clone.modules = moduleClones
    end
+   
+   if sharedCloneClones then
+      assert(self.sharedClones == nil)
+      self.sharedClones = sharedClones
+      clone.sharedClones = sharedCloneClones
+   end
+   
+   for k,v in pairs(attributes) do
+      self[k] = v
+      clone[k] = attributeClones[k]
+   end
+   
    return clone
 end      
 

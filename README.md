@@ -526,8 +526,16 @@ When `castTarget = true` (the default), the `targetModule` is cast along with th
 Ref A. [Simple Statistical Gradient-Following Algorithms for Connectionist Reinforcement Learning](http://incompleteideas.net/sutton/williams-92.pdf)
 
 Abstract class for modules that implement the REINFORCE algorithm (ref. A).
+
+```lua
+module = nn.Reinforce([stochastic])
+```
+
 The `reinforce(reward)` method is called by a special Reward Criterion (e.g. [VRClassReward](#nn.VRClassReward)).
 After which, when backward is called, the reward will be used to generate gradInputs. 
+When `stochastic=true`, the module is stochastic (i.e. samples from a distribution) 
+during evaluation and training.
+When `stochastic=false` (the default), the module is only stochastic during training.
 
 The REINFORCE rule for a module can be summarized as follows :
 ```lua
@@ -559,14 +567,14 @@ Ref A. [Simple Statistical Gradient-Following Algorithms for
 Connectionist Reinforcement Learning](http://incompleteideas.net/sutton/williams-92.pdf)
 
 ```lua
-module = nn.ReinforceBernoulli()
+module = nn.ReinforceBernoulli([stochastic])
 ```
 
 A [Reinforce](#nn.Reinforce) subclass that implements the REINFORCE algorithm 
 (ref. A p.230-236) for the Bernoulli probability distribution.
 Inputs are bernoulli probabilities `p`. 
 During training, outputs are samples drawn from this distribution.
-During evaluation, outputs are the same as the inputs.
+During evaluation, when `stochastic=false`, outputs are the same as the inputs.
 Uses the REINFORCE algorithm (ref. A p.230-236) which is 
 implemented through the [reinforce](#nn.Module.reinforce) interface (`gradOutputs` are ignored).
 
@@ -588,7 +596,7 @@ d ln(f(output,input))   d ln(f(x,p))    (x - p)
 Ref A. [Simple Statistical Gradient-Following Algorithms for Connectionist Reinforcement Learning](http://incompleteideas.net/sutton/williams-92.pdf)
 
 ```lua
-module = nn.ReinforceNormal(stdev)
+module = nn.ReinforceNormal(stdev, [stochastic])
 ```
 
 A [Reinforce](#nn.Reinforce) subclass that implements the REINFORCE algorithm 
@@ -596,7 +604,7 @@ A [Reinforce](#nn.Reinforce) subclass that implements the REINFORCE algorithm
 Inputs are the means of the normal distribution.
 The `stdev` argument specifies the standard deviation of the distribution. 
 During training, outputs are samples drawn from this distribution.
-During evaluation, outputs are the same as the inputs, i.e. the means.
+During evaluation, when `stochastic=false`, outputs are the same as the inputs, i.e. the means.
 Uses the REINFORCE algorithm (ref. A p.238-239) which is 
 implemented through the [reinforce](#nn.Module.reinforce) interface (`gradOutputs` are ignored).
 
@@ -622,7 +630,7 @@ module (see [this example](https://github.com/Element-Research/rnn/blob/master/e
 Ref A. [Simple Statistical Gradient-Following Algorithms for Connectionist Reinforcement Learning](http://incompleteideas.net/sutton/williams-92.pdf)
 
 ```lua
-module = nn.ReinforceCategorical()
+module = nn.ReinforceCategorical([stochastic])
 ```
 
 A [Reinforce](#nn.Reinforce) subclass that implements the REINFORCE algorithm 
@@ -633,7 +641,7 @@ For `n` categories, both the `input` and `output` ares of size `batchSize x n`.
 During training, outputs are samples drawn from this distribution.
 The outputs are returned in one-hot encoding i.e. 
 the output for each example has exactly one category having a 1, while the remainder are zero.
-During evaluation, outputs are the same as the inputs, i.e. the means.
+During evaluation, when `stochastic=false`, outputs are the same as the inputs, i.e. the probabilities `p`.
 Uses the REINFORCE algorithm (ref. A) which is 
 implemented through the [reinforce](#nn.Module.reinforce) interface (`gradOutputs` are ignored).
 

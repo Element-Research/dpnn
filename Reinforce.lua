@@ -8,6 +8,13 @@
 ------------------------------------------------------------------------
 local Reinforce, parent = torch.class("nn.Reinforce", "nn.Module")
 
+function Reinforce:__init(stochastic)
+   parent.__init(self)
+   -- true makes it stochastic during evaluation and training
+   -- false makes it stochastic only during training
+   self.stochastic = stochastic
+end
+
 -- a Reward Criterion will call this
 function Reinforce:reinforce(reward)
    parent.reinforce(self, reward)
