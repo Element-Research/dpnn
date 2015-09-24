@@ -49,8 +49,13 @@ function Inception:__init(config)
    self.kernelSize = config.kernelSize or {5,3}
    -- The stride (height=width) of the convolution. 
    self.kernelStride = config.kernelStride or {1,1}
+   -- The size (height=width) of the spatial max pooling used 
+   -- in the next-to-last column.
+   self.poolSize = config.poolSize or 3
+   -- The stride (height=width) of the spatial max pooling.
+   self.poolStride = config.poolStride or 1
    -- The pooling layer.
-   self.pool = config.pool or nn.SpatialMaxPooling(3, 3, 1, 1)
+   self.pool = config.pool or nn.SpatialMaxPooling(self.poolSize, self.poolSize, self.poolStride, self.poolStride)
    
    -- [[ Module Construction ]]--
    local depthConcat = nn.DepthConcat(2) -- concat on 'c' dimension

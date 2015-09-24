@@ -591,7 +591,7 @@ function dpnntest.ReinforceNormal()
    local stdev2 = torch.cmul(stdev,stdev)
    gradStdev:add(-1,stdev2)
    stdev2:cmul(stdev)
-   gradStdev:cdiv(stdev2)
+   gradStdev:cdiv(stdev2):mul(-1)
    mytester:assertTensorEq(gradInput[2], gradStdev, 0.000001, "ReinforceNormal backward table input - gradStdev err")
 end
 
