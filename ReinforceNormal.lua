@@ -115,6 +115,8 @@ function ReinforceNormal:updateGradInput(input, gradOutput)
       -- divide by s^3
       self._stdev2:cmul(stdev)
       gradStdev:cdiv(self._stdev2)
+       -- multiply by -1 ( gradient descent on stdev )
+      gradStdev:mul(-1)
    end
    
    return self.gradInput
