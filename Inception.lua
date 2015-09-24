@@ -49,11 +49,8 @@ function Inception:__init(config)
    self.kernelSize = config.kernelSize or {5,3}
    -- The stride (height=width) of the convolution. 
    self.kernelStride = config.kernelStride or {1,1}
-   -- The size (height=width) of the spatial max pooling used 
-   -- in the next-to-last column.
-   self.poolSize = config.poolSize or 3
-   -- The stride (height=width) of the spatial max pooling.
-   self.poolStride = config.poolStride or 1
+   -- The pooling layer.
+   self.pool = config.pool or nn.SpatialMaxPooling(3, 3, 1, 1)
    
    -- [[ Module Construction ]]--
    local depthConcat = nn.DepthConcat(2) -- concat on 'c' dimension
@@ -90,8 +87,7 @@ function Inception:__init(config)
    
    -- 3x3 max pool -> 1x1 conv
    local mlp = nn.Sequential()
-   local maxPool = nn.SpatialMaxPooling(self.poolSize, self.poolSize, self.poolStride, self.poolStride)
-   mlp:add(maxPool)
+   mlp:add(self.pool)
    -- not sure if transfer should go here? mlp:add(transfer:clone())
    local i = #(self.kernelSize) + 1
    if self.reduceSize[i] then
