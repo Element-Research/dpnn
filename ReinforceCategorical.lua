@@ -14,6 +14,9 @@ function ReinforceCategorical:updateOutput(input)
    self._index = self._index or ((torch.type(input) == 'torch.CudaTensor') and torch.CudaTensor() or torch.LongTensor())
    if self.stochastic or self.train ~= false then
       -- sample from categorical with p = input
+      self._input = self._input or input.new()
+      -- prevent division by zero error (see updateGradInput)
+      self._input:resizeAs(input):copy(input):add(0.00000001) 
       input.multinomial(self._index, input, 1)
       -- one hot encoding
       self.output:zero()
@@ -36,7 +39,10 @@ function ReinforceCategorical:updateGradInput(input, gradOutput)
    --     d p          0         otherwise
    self.gradInput:resizeAs(input):zero()
    self.gradInput:copy(self.output)
-   self.gradInput:cdiv(input)
+   self._input = self._input or input.new()
+   -- prevent division by zero error
+   self._input:resizeAs(input):copy(input):add(0.00000001) 
+   self.gradInput:cdiv(self._input)
    
    -- multiply by reward 
    self.gradInput:cmul(self:rewardAs(input))

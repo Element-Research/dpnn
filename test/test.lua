@@ -644,7 +644,7 @@ function dpnntest.ReinforceCategorical()
    rc:reinforce(reward)
    local gradInput = rc:updateGradInput(input, gradOutput)
    local gradInput2 = output:clone()
-   gradInput2:cdiv(input)
+   gradInput2:cdiv(input+0.00000001)
    local reward2 = reward:view(1000,1):expandAs(input)
    gradInput2:cmul(reward2):mul(-1)
    mytester:assertTensorEq(gradInput2, gradInput, 0.00001, "ReinforceCategorical backward err")
@@ -878,6 +878,7 @@ function dpnntest.TotalDropout()
 end
 
 function dpnnbigtest.Reinforce()
+   error"this needs to be updated with new VRClassReward interface"
    -- let us try to reinforce an mlp to learn a simple distribution
    local n = 10
    local inputs = torch.Tensor(n,3):uniform(0,0.1)
