@@ -277,7 +277,10 @@ The sole argument `config` is a table taking the following key-values :
    * `poolSize`: size (`height = width`) of the spatial max pooling used in the next-to-last column. Defaults to 3.
    * `poolStride` : stride (`height = width`) of the spatial max pooling. Defaults to 1.
    
-See the [deep inception training script](https://github.com/nicholas-leonard/dp/blob/master/examples/deepinception.lua) for a complete example using this module.
+
+For a complete example using this module, refer to the following :
+ * [deep inception training script](https://github.com/nicholas-leonard/dp/blob/master/examples/deepinception.lua) ;
+ * [openface facial recognition](https://github.com/cmusatyalab/openface) (the model definition is [here](https://github.com/cmusatyalab/openface/blob/master/models/openface/nn4.def.lua)).
 
 <a name='nn.Dictionary'></a>
 ## Dictionary ##
