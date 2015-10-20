@@ -28,7 +28,7 @@ function SpatialUniformCrop:updateOutput(input)
       if self.scale ~= nil then
          for i=1,input:size(1) do
             -- do random crop
-            local s = torch.uniform(scale['min'], scale['max'])
+            local s = torch.uniform(self.scale['min'], self.scale['max'])
             local soheight = math.ceil(s*self.oheight)
             local sowidth = math.ceil(s*self.owidth)
 

@@ -32,6 +32,8 @@ _ = require 'moses'
 -- create global dpnn table
 dpnn = {}
 
+unpack = unpack or table.unpack -- lua 5.2 compat
+
 -- for testing:
 torch.include('dpnn', 'test.lua')
 
