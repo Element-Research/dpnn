@@ -441,6 +441,18 @@ function dpnntest.SpatialUniformCrop()
       mytester:assert(math.abs(output[i]:mean() - i) < 0.0001, "SpatialUniformCrop output err "..i)
       mytester:assert(math.abs(gradInput[i]:mean() - ((i*4*4)/(10*10))) < 0.0001, "SpatialUniformCrop gradInput err"..i)
    end
+
+   local input = torch.zeros(1, 1, 120, 120)
+   local temp = input[1]:narrow(2, 30, 60):narrow(3, 30, 60)
+   temp:fill(1)
+   local scale = {}
+   scale['min'] = 0.8
+   scale['max'] = 1.2
+
+   local layer = nn.SpatialUniformCrop(100, 100, scale)
+   local o = layer:forward(input)
+   gradInput = layer:backward(input, o)
+   mytester:assert(gradInput:max() ~= nil, "SpatialUniformCrop scaling error.")
 end
 
 function dpnntest.DontCast()
