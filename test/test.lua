@@ -793,7 +793,9 @@ function dpnntest.SpatialGlimpse()
    gradInput2:narrow(3,3,glimpseSize):narrow(4,3,glimpseSize):copy(output_:select(2,1))
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse backward 4 depth 1 error")
    
+   -- test with spatial resampling
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
+   sg.module = nn.SpatialReSampling{owidth=glimpseSize,oheight=glimpseSize}
    local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
    local output = sg:forward{input,location}
    local output_ = output:view(batchSize, 2, inputSize[1], glimpseSize, glimpseSize)
@@ -807,6 +809,7 @@ function dpnntest.SpatialGlimpse()
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse backward 4 depth 2 error")
    
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
+   sg.module = nn.SpatialReSampling{owidth=glimpseSize,oheight=glimpseSize}
    local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
    local output = sg:forward{input,location}
    local output_ = output:view(batchSize, 2, inputSize[1], glimpseSize, glimpseSize)
@@ -820,10 +823,107 @@ function dpnntest.SpatialGlimpse()
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse backward 4 depth 2 full error")
    
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
+   sg.module = nn.SpatialReSampling{owidth=glimpseSize,oheight=glimpseSize}
    local output2 = sg:forward{input[1], location[1]}
    local gradInput2 = sg:backward({input[1], location[1]}, gradOutput[1])
    mytester:assertTensorEq(gradInput[1][1], gradInput2[1], 0.000001, "SpatialGlimpse backward online img err")
    mytester:assertTensorEq(gradInput[2][1], gradInput2[2], 0.000001, "SpatialGlimpse backward online loc err")
+   
+   -- test with spatial avg pool
+   local sg = nn.SpatialGlimpse(glimpseSize, 2)
+   local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
+   local output = sg:forward{input,location}
+   local output_ = output:view(batchSize, 2, inputSize[1], glimpseSize, glimpseSize)
+   local output2 = input:narrow(3,3,glimpseSize):narrow(4,3,glimpseSize)
+   mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse avgpool center 4 output depth=1 err")
+   local gradOutput = output:clone()
+   gradOutput:view(batchSize, 2, 2, glimpseSize, glimpseSize):select(2,1):fill(0) -- ignore first scale of glimpse
+   local gradInput = sg:backward({input,location}, gradOutput)
+   local srs = nn.SpatialAveragePooling(2,2,2,2)
+   local gradInput2 = srs:updateGradInput(gradInput[1], output_:select(2,2))
+   mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse avgpool backward 4 depth 2 error")
+   
+   local sg = nn.SpatialGlimpse(glimpseSize, 2)
+   local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
+   local output = sg:forward{input,location}
+   local output_ = output:view(batchSize, 2, inputSize[1], glimpseSize, glimpseSize)
+   local output2 = input:narrow(3,3,glimpseSize):narrow(4,3,glimpseSize)
+   mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse avgpool center 4 output depth=1 err")
+   local gradOutput = output:clone()
+   local gradInput = sg:backward({input,location}, gradOutput)
+   local gradInput2 = input:clone():zero()
+   gradInput2:narrow(3,3,glimpseSize):narrow(4,3,glimpseSize):copy(output_:select(2,1))
+   gradInput2:add(srs:updateGradInput(gradInput[1], output_:select(2,2)))
+   mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse avgpool backward 4 depth 2 full error")
+   
+   local sg = nn.SpatialGlimpse(glimpseSize, 2)
+   local output2 = sg:forward{input[1], location[1]}
+   local gradInput2 = sg:backward({input[1], location[1]}, gradOutput[1])
+   mytester:assertTensorEq(gradInput[1][1], gradInput2[1], 0.000001, "SpatialGlimpse avgpool backward online img err")
+   mytester:assertTensorEq(gradInput[2][1], gradInput2[2], 0.000001, "SpatialGlimpse avgpool backward online loc err")
+   
+   -- test avg pool with cuda
+   if not pcall(function() require "cunn" end) then return end -- needs the cunn package
+   local input = input:cuda()
+   
+   local sg = nn.SpatialGlimpse(glimpseSize, 2):cuda()
+   local location = torch.CudaTensor(batchSize, 2):fill(0) -- center patch
+   local output = sg:forward{input,location}
+   local output_ = output:view(batchSize, 2, inputSize[1], glimpseSize, glimpseSize)
+   local output2 = input:narrow(3,3,glimpseSize):narrow(4,3,glimpseSize)
+   mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse avgpool center 4 output depth=1 err")
+   local gradOutput = output:clone()
+   gradOutput:view(batchSize, 2, 2, glimpseSize, glimpseSize):select(2,1):fill(0) -- ignore first scale of glimpse
+   local gradInput = sg:backward({input,location}, gradOutput)
+   local srs = nn.SpatialAveragePooling(2,2,2,2):cuda()
+   local gradInput2 = srs:updateGradInput(gradInput[1], output_:select(2,2))
+   mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse avgpool backward 4 depth 2 error")
+   
+   local sg = nn.SpatialGlimpse(glimpseSize, 2):cuda()
+   local location = torch.CudaTensor(batchSize, 2):fill(0) -- center patch
+   local output = sg:forward{input,location}
+   local output_ = output:view(batchSize, 2, inputSize[1], glimpseSize, glimpseSize)
+   local output2 = input:narrow(3,3,glimpseSize):narrow(4,3,glimpseSize)
+   mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse avgpool center 4 output depth=1 err")
+   local gradOutput = output:clone()
+   local gradInput = sg:backward({input,location}, gradOutput)
+   local gradInput2 = input:clone():zero()
+   gradInput2:narrow(3,3,glimpseSize):narrow(4,3,glimpseSize):copy(output_:select(2,1))
+   gradInput2:add(srs:updateGradInput(gradInput[1], output_:select(2,2)))
+   mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse avgpool backward 4 depth 2 full error")
+   
+   local sg = nn.SpatialGlimpse(glimpseSize, 2):cuda()
+   local output2 = sg:forward{input[1], location[1]}
+   local gradInput2 = sg:backward({input[1], location[1]}, gradOutput[1])
+   mytester:assertTensorEq(gradInput[1][1], gradInput2[1], 0.000001, "SpatialGlimpse avgpool backward online img err")
+   mytester:assertTensorEq(gradInput[2][1], gradInput2[2], 0.000001, "SpatialGlimpse avgpool backward online loc err")
+   
+   if false then
+      -- benchmark GPU vs CPU
+      local location = torch.FloatTensor(32,2):uniform(-1,1)
+      local input = torch.FloatTensor(32,3,224,224):uniform(0,1)
+      local gradOutput = torch.FloatTensor(32,9,32,32):uniform(0,1)
+      local sg = nn.SpatialGlimpse(32, 3, 2):float()
+      sg:forward{input,location}
+      local a = torch.Timer()
+      for i=1,5 do
+         sg:forward{input,location}
+      end
+      local fwdCPUtime = a:time().real
+      
+      sg:cuda()
+      location = location:cuda()
+      input = input:cuda()
+      gradOutput = gradOutput:cuda()
+      sg:forward{input,location}
+      a = torch.Timer()
+      for i=1,5 do
+         sg:forward{input,location}
+      end
+      local fwdGPUtime = a:time().real
+      print(fwdGPUtime, fwdCPUtime, fwdCPUtime/fwdGPUtime)
+      -- 0.13885092735291  2.0344181060791  14.651815042678
+   end
 end
 
 function dpnntest.ArgMax()

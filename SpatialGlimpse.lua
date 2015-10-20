@@ -24,7 +24,12 @@ function SpatialGlimpse:__init(size, depth, scale)
    assert(torch.type(self.scale) == 'number')
    parent.__init(self)
    self.gradInput = {torch.Tensor(), torch.Tensor()}
-   self.module = nn.SpatialReSampling{oheight=size,owidth=size}
+   if self.scale == 2 then
+      self.module = nn.SpatialAveragePooling(2,2,2,2)
+   else
+      self.module = nn.SpatialReSampling{oheight=size,owidth=size}
+   end
+   self.modules = {self.module}
 end
 
 -- a bandwidth limited sensor which focuses on a location.
@@ -65,11 +70,25 @@ function SpatialGlimpse:updateOutput(inputTable)
          center:copy(inputSample)
          
          -- crop it
-         self._crop:resize(input:size(2), glimpseSize, glimpseSize)
          local h, w = self._pad:size(2)-glimpseSize, self._pad:size(3)-glimpseSize
          local x, y = math.min(h,math.max(0,x*h)),  math.min(w,math.max(0,y*w))
-         self._crop:copy(self._pad:narrow(2,x+1,glimpseSize):narrow(3,y+1,glimpseSize))
-         dst:copy(self.module:updateOutput(self._crop))
+         
+         if depth == 1 then
+            dst:copy(self._pad:narrow(2,x+1,glimpseSize):narrow(3,y+1,glimpseSize))
+         else
+            self._crop:resize(input:size(2), glimpseSize, glimpseSize)
+            self._crop:copy(self._pad:narrow(2,x+1,glimpseSize):narrow(3,y+1,glimpseSize))
+         
+            if torch.type(self.module) == 'nn.SpatialAveragePooling' then
+               local poolSize = glimpseSize/self.size
+               assert(poolSize % 2 == 0)
+               self.module.kW = poolSize
+               self.module.kH = poolSize
+               self.module.dW = poolSize
+               self.module.dH = poolSize
+            end
+            dst:copy(self.module:updateOutput(self._crop))
+         end
       end
    end
    
@@ -78,7 +97,7 @@ function SpatialGlimpse:updateOutput(inputTable)
    return self.output
 end
 
-function SpatialGlimpse:updateGradInput(inputTable, gradOutput, scale)
+function SpatialGlimpse:updateGradInput(inputTable, gradOutput)
    local input, location = unpack(inputTable)
    local gradInput, gradLocation = unpack(self.gradInput)
    input, location = self:toBatch(input, 3), self:toBatch(location, 1)
@@ -106,10 +125,6 @@ function SpatialGlimpse:updateGradInput(inputTable, gradOutput, scale)
             glimpseSize = glimpseSize*self.scale
          end
          
-         -- upscale glimpse for different depths
-         self._crop:resize(input:size(2), glimpseSize, glimpseSize)
-         self._crop:copy(self.module:updateGradInput(self._crop, src, scale))
-         
          -- add zero padding (glimpse could be partially out of bounds)
          local padSize = math.floor((glimpseSize-1)/2)
          self._pad:resize(input:size(2), input:size(3)+padSize*2, input:size(4)+padSize*2):zero()
@@ -117,7 +132,24 @@ function SpatialGlimpse:updateGradInput(inputTable, gradOutput, scale)
          local h, w = self._pad:size(2)-glimpseSize, self._pad:size(3)-glimpseSize
          local x, y = math.min(h,math.max(0,x*h)),  math.min(w,math.max(0,y*w))
          local pad = self._pad:narrow(2, x+1, glimpseSize):narrow(3, y+1, glimpseSize)
-         pad:copy(self._crop)
+         
+         -- upscale glimpse for different depths
+         if depth == 1 then
+            pad:copy(src)
+         else
+            self._crop:resize(input:size(2), glimpseSize, glimpseSize)
+            
+            if torch.type(self.module) == 'nn.SpatialAveragePooling' then
+               local poolSize = glimpseSize/self.size
+               assert(poolSize % 2 == 0)
+               self.module.kW = poolSize
+               self.module.kH = poolSize
+               self.module.dW = poolSize
+               self.module.dH = poolSize
+            end
+            
+            pad:copy(self.module:updateGradInput(self._crop, src))
+         end
         
          -- copy into gradInput tensor (excluding padding)
          gradInputSample:add(self._pad:narrow(2, padSize+1, input:size(3)):narrow(3, padSize+1, input:size(4)))
