@@ -12,7 +12,7 @@ function SpatialUniformCrop:__init(oheight, owidth, scale)
 end
 
 function SpatialUniformCrop:updateOutput(input)
-   assert(input:dim() == 4, "only batchmode is supported")
+   input = self:toBatch(input, 3)
    
    self.output:resize(input:size(1), input:size(2), self.oheight, self.owidth)
    self.coord = self.coord or torch.IntTensor()
@@ -28,7 +28,7 @@ function SpatialUniformCrop:updateOutput(input)
       if self.scale ~= nil then
          for i=1,input:size(1) do
             -- do random crop
-            local s = torch.uniform(self.scale['min'], self.scale['max'])
+            local s = torch.uniform(self.scale['min'] or self.scale[1], self.scale['max'] or self.scale[2])
             local soheight = math.ceil(s*self.oheight)
             local sowidth = math.ceil(s*self.owidth)
 
@@ -71,10 +71,14 @@ function SpatialUniformCrop:updateOutput(input)
       self.output:copy(crop)
    end
    
+   self.output = self:fromBatch(self.output, 1)
    return self.output
 end
 
 function SpatialUniformCrop:updateGradInput(input, gradOutput)
+   input = self:toBatch(input, 3)
+   gradOutput = self:toBatch(gradOutput, 3)
+   
    self.gradInput:resizeAs(input):zero()
    if self.scale ~= nil then
       local iH, iW = input:size(3), input:size(4)
@@ -105,6 +109,7 @@ function SpatialUniformCrop:updateGradInput(input, gradOutput)
       end
    end
    
+   self.gradInput = self:fromBatch(self.gradInput, 1)
    return self.gradInput
 end
 
