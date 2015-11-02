@@ -93,11 +93,10 @@ function ReinforceNormal:updateGradInput(input, gradOutput)
          gradMean:cdiv(self.__stdev):cdiv(self.__stdev)
       end
    end
-   -- multiply by reward 
-   gradMean:cmul(self:rewardAs(mean))
+   -- multiply by reward
+   gradMean:cmul(self:rewardAs(mean) )
    -- multiply by -1 ( gradient descent on mean )
    gradMean:mul(-1)
-   
    
    -- Derivative of log normal w.r.t. stdev :
    -- d ln(f(x,u,s))   (x - u)^2 - s^2
@@ -113,8 +112,10 @@ function ReinforceNormal:updateGradInput(input, gradOutput)
       self._stdev2:resizeAs(stdev):copy(stdev):cmul(stdev)
       gradStdev:add(-1, self._stdev2)
       -- divide by s^3
-      self._stdev2:cmul(stdev)
+      self._stdev2:cmul(stdev):add(0.00000001)
       gradStdev:cdiv(self._stdev2)
+      -- multiply by reward
+      gradStdev:cmul(self:rewardAs(stdev))
        -- multiply by -1 ( gradient descent on stdev )
       gradStdev:mul(-1)
    end

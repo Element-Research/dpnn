@@ -33,7 +33,7 @@ Module.dpnn_gradParameters = {'gradWeight', 'gradBias'}
 -- self.modules, self.sharedClones or as an attribute to self.
 -- So if you store a module in self.mytbl = {mymodule}, it will be cloned
 -- independently of sharedClone (i.e. deep copy).
-function Module:sharedClone(shareParams, shareGradParams, clones, pointers)
+function Module:sharedClone(shareParams, shareGradParams, clones, pointers, stepClone)   
    shareParams = (shareParams == nil) and true or shareParams
    shareGradParams = (shareGradParams == nil) and true or shareGradParams
    
@@ -48,7 +48,7 @@ function Module:sharedClone(shareParams, shareGradParams, clones, pointers)
       for i,module in ipairs(self.modules) do
          local clone
          if not clones[torch.pointer(module)] then
-            clone = module:sharedClone(shareParams, shareGradParams, clones, pointers)
+            clone = module:sharedClone(shareParams, shareGradParams, clones, pointers, stepClone)
             clones[torch.pointer(module)] = clone
          else
             clone = clones[torch.pointer(module)]
@@ -66,7 +66,7 @@ function Module:sharedClone(shareParams, shareGradParams, clones, pointers)
       for i,sharedClone in pairs(self.sharedClones) do
          local clone
          if not clones[torch.pointer(sharedClone)] then
-            clone = sharedClone:sharedClone(shareParams, shareGradParams, clones, pointers)
+            clone = sharedClone:sharedClone(shareParams, shareGradParams, clones, pointers, stepClone)
             clones[torch.pointer(sharedClone)] = clone
          else
             clone = clones[torch.pointer(sharedClone)]
@@ -84,7 +84,7 @@ function Module:sharedClone(shareParams, shareGradParams, clones, pointers)
          
          local clone
          if not clones[torch.pointer(module)] then
-            clone = module:sharedClone(shareParams, shareGradParams, clones, pointers)
+            clone = module:sharedClone(shareParams, shareGradParams, clones, pointers, stepClone)
             clones[torch.pointer(module)] = clone
          else
             clone = clones[torch.pointer(module)]
