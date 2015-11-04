@@ -36,6 +36,8 @@ A lot of the functionality implemented here was pulled from
 However, dpnn can be used without dp (for e.g. you can use it with optim), 
 which is one of the main reasons why we made it.
 
+A brief (1 hours) overview of Torch7, which includes some details about __dpnn__, is available via this [NVIDIA GTC Webinar video](http://on-demand.gputechconf.com/gtc/2015/webinar/torch7-applied-deep-learning-for-vision-natural-language.mp4). In any case, this presentation gives a nice overview of Logistic Regression, Multi-Layer Perceptrons, Convolutional Neural Networks and Recurrent Neural Networks using Torch7.
+
 <a name='nn.Module'></a>
 ## Module ##
 
