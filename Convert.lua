@@ -98,7 +98,7 @@ function Convert:updateGradInput(input, gradOutput)
    if not self.batchMode then
       input = self.__input
       self.__gradOutput = self.__gradOutput or gradOutput.new()
-      self.__gradOutput:set(gradOutput):resizeAs(self.converter.output)
+      self.__gradOutput:set(gradOutput):resize(self.converter.output:size())
       gradOutput = self.__gradOutput
    end
    
@@ -106,7 +106,7 @@ function Convert:updateGradInput(input, gradOutput)
    
    if not self.batchMode then
       self.__gradInput = self.__gradInput or gradInput.new()
-      self.__gradInput:set(gradInput):resizeAs(input_)
+      self.__gradInput:set(gradInput):resize(input_:size())
       gradInput = self.__gradInput
    end
    if self._input then
