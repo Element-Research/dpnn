@@ -1132,6 +1132,66 @@ function dpnntest.WhiteNoise()
    mytester:assertTensorEq(gradOutput, gradInput, 0.000001, "WhiteNoise backward err")
 end
 
+-- Unit Test SpatialBinaryLogisticRegression criterion
+function dpnntest.SpatialBinaryLogisticRegression()
+   print("Testing SpatialBinaryLogisticRegression criterion")
+   local crit = nn.SpatialBinaryLogisticRegression()
+   local k = 32
+   local h = 28
+   local w = 28
+
+   -- Working with batch of images
+   local input = torch.zeros(k, 1, h, w)
+   local target = torch.zeros(k, 1, h, w)
+   local inputs = {1, 0, -1}
+   local targets = {1, 0, -1}
+   for _,i in pairs(inputs) do
+      for _,t in pairs(targets) do
+
+      input:fill(i)
+      target:fill(t)
+      -- Check forward
+      local loss = crit:updateOutput(input, target)
+      local myLoss = math.log(1+math.exp(-1*i*t))
+      mytester:assert( loss >= myLoss-precision and loss <= myLoss+precision,
+                       "SpatialBinaryLogisticRegression cost incorrect.")
+
+      -- Check backward
+      local gradInput = crit:updateGradInput(input, target)
+      local g1 = gradInput[1][1][1][1]
+      local gi = (1/(1+math.exp(-1*i*t)))*math.exp(-1*i*t)*(-1*t)/(k*h*w)
+      mytester:assert( g1 >= gi-precision and g1 <= gi+precision,
+                      "SpatialBinaryLogisticRegression gradInput error.")
+      end
+   end
+
+   -- Working with single image
+   k = 1
+   local input = torch.zeros(1, h, w)
+   local target = torch.zeros(1, h, w)
+   local inputs = {1, 0, -1}
+   local targets = {1, 0, -1}
+   for _,i in pairs(inputs) do
+      for _,t in pairs(targets) do
+
+      input:fill(i)
+      target:fill(t)
+      -- Check forward
+      local loss = crit:updateOutput(input, target)
+      local myLoss = math.log(1+math.exp(-1*i*t))
+      mytester:assert( loss >= myLoss-precision and loss <= myLoss+precision,
+                       "SpatialBinaryLogisticRegression cost incorrect.")
+
+      -- Check backward
+      local gradInput = crit:updateGradInput(input, target)
+      local g1 = gradInput[1][1][1]
+      local gi = (1/(1+math.exp(-1*i*t)))*math.exp(-1*i*t)*(-1*t)/(k*h*w)
+      mytester:assert( g1 >= gi-precision and g1 <= gi+precision,
+                      "SpatialBinaryLogisticRegression gradInput error.")
+      end
+   end
+end
+
 function dpnn.test(tests)
    mytester = torch.Tester()
    mytester:add(dpnntest)

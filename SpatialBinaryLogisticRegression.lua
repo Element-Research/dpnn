@@ -21,11 +21,11 @@ function SpatialBinaryLogisticRegression:updateOutput(input, target)
    local targetDim = target:nDimension()
 
    -- Check dimensions of input and target
-   assert(inputDim == tarDim, "nDimension of input and target don't match.")
+   assert(inputDim == targetDim, "nDimension of input and target don't match.")
    assert(inputDim == 4 or inputDim == 3, "Expecting image or batch on images")
 
    for i=1,inputDim do
-      assert(input:size(i) == target:size(1),
+      assert(input:size(i) == target:size(i),
                                   "Input and target dimensions don't match.")
    end
 
