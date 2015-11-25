@@ -719,7 +719,7 @@ This criterion implements the spatial component of the criterion mentioned in  (
 criterion = nn.SpatialBinaryLogisticRegression()
 ```
 
-SpatialBinaryLogisticRegression implements following cost function
+SpatialBinaryLogisticRegression implements following cost function for binary pixel classification.
 ```
    1
 _______ sum_ij [ log(1+exp(-m_ij*f_ij)) ]
