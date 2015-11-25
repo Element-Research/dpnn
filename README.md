@@ -725,4 +725,4 @@ SpatialBinaryLogisticRegression implements following cost function
 _______ sum_ij [ log(1+exp(-m_ij*f_ij)) ]
   w*h
 ```
-where ```m_ij``` is target binary image and ```f_ij``` is the corresponding prediction. Value of ```m_ij``` and ```f_ij``` are in range ```[-1, -1]```.
+where ```m_ij``` is target binary image and ```f_ij``` is the corresponding prediction. ```m_ij``` has value ```{-1, -1}```.
