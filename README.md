@@ -31,6 +31,9 @@ The following modules and criterions can be used to implement the REINFORCE algo
  * [ReinforceCategorical](#nn.ReinforceCategorical) : samples from Categorical (Multinomial with one sample) distribution;
  * [VRClassReward](#nn.VRClassReward) : criterion for variance-reduced classification-based reward;
 
+Additional differentiable criterions
+ * [SpatialBinaryLogisticRegression](#nn.SpatialBLR) : criterion for pixel wise binary logistic regression.
+
 A lot of the functionality implemented here was pulled from 
 [dp](https://github.com/nicholas-leonard/dp), which makes heavy use of this package. 
 However, dpnn can be used without dp (for e.g. you can use it with optim), 
@@ -706,3 +709,8 @@ in `nn.ModuleCriterion(VRClassReward, nn.SelectTable(-1))`.
 For an example, this criterion is used along with the [RecurrentAttention](https://github.com/Element-Research/rnn#rnn.RecurrentAttention) 
 module to [train a recurrent model for visual attention](https://github.com/Element-Research/rnn/blob/master/examples/recurrent-visual-attention.lua).
 
+<a name='nn.SpatialBLR'></a>
+## SpatialBinaryLogisticRegression ##
+Ref A. [Learning to Segment Object Candidates](http://arxiv.org/pdf/1506.06204v2.pdf)
+
+This criterion implements the spatial component of the criterion mentioned in  (ref. A).
