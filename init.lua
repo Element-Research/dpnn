@@ -85,3 +85,4 @@ torch.include('dpnn', 'VRClassReward.lua')
 
 -- criterions
 torch.include('dpnn', 'ModuleCriterion.lua')
+torch.include('dpnn', 'SpatialBinaryLogisticRegression.lua')
