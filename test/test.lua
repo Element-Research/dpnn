@@ -1134,7 +1134,6 @@ end
 
 -- Unit Test SpatialBinaryLogisticRegression criterion
 function dpnntest.SpatialBinaryLogisticRegression()
-   print("Testing SpatialBinaryLogisticRegression criterion")
    local crit = nn.SpatialBinaryLogisticRegression()
    local k = 32
    local h = 28
