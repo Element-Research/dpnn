@@ -714,3 +714,14 @@ module to [train a recurrent model for visual attention](https://github.com/Elem
 Ref A. [Learning to Segment Object Candidates](http://arxiv.org/pdf/1506.06204v2.pdf)
 
 This criterion implements the spatial component of the criterion mentioned in  (ref. A).
+
+```lua
+criterion = nn.SpatialBinaryLogisticRegression()
+```
+
+SpatialBinaryLogisticRegression implements following cost function
+```
+   1
+_______ sum_ij [ log(1+exp(-m_ij*f_ij)) ]
+ 2*w*h
+```
