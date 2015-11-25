@@ -7,13 +7,9 @@
 
 local SpatialBinaryLogisticRegression, parent = torch.class('nn.SpatialBinaryLogisticRegression', 'nn.Criterion')
 
-function SpatialBinaryLogisticRegression:__init(sizeAverage)
+function SpatialBinaryLogisticRegression:__init()
    parent.__init(self)
-   if sizeAverage ~= nil then
-      self.sizeAverage = sizeAverage
-   else
-      self.sizeAverage = true
-   end
+   self.sizeAverage = true
 end
 
 function SpatialBinaryLogisticRegression:updateOutput(input, target)
