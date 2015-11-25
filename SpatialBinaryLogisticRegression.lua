@@ -58,9 +58,9 @@ function SpatialBinaryLogisticRegression:updateOutput(input, target)
    self._logCoeff:log()
 
    if self.sizeAverage then
-      return self._logCoeff:sum()/(self._k * self._h * self._w)
+      return self._logCoeff:sum()/(2 * self._k * self._h * self._w)
    else
-      return self._logCoeff:sum()/(self._h * self._w)
+      return self._logCoeff:sum()/(2 * self._h * self._w)
    end
 end
 
@@ -72,9 +72,9 @@ function SpatialBinaryLogisticRegression:updateGradInput(input, target)
    gradInput:cmul(self._baseExponents)
    gradInput:cdiv(self._coeff)
    if self.sizeAverage then
-      gradInput:div(self._k * self._h * self._w)
+      gradInput:div(2 * self._k * self._h * self._w)
    else
-      gradInput:div(self._h * self._w)
+      gradInput:div(2 * self._h * self._w)
    end
    return gradInput
 end

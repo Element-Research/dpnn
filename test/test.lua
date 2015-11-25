@@ -1151,14 +1151,14 @@ function dpnntest.SpatialBinaryLogisticRegression()
       target:fill(t)
       -- Check forward
       local loss = crit:updateOutput(input, target)
-      local myLoss = math.log(1+math.exp(-1*i*t))
+      local myLoss = math.log(1+math.exp(-1*i*t))/2
       mytester:assert( loss >= myLoss-precision and loss <= myLoss+precision,
                        "SpatialBinaryLogisticRegression cost incorrect.")
 
       -- Check backward
       local gradInput = crit:updateGradInput(input, target)
       local g1 = gradInput[1][1][1][1]
-      local gi = (1/(1+math.exp(-1*i*t)))*math.exp(-1*i*t)*(-1*t)/(k*h*w)
+      local gi = (1/(1+math.exp(-1*i*t)))*math.exp(-1*i*t)*(-1*t)/(2*k*h*w)
       mytester:assert( g1 >= gi-precision and g1 <= gi+precision,
                       "SpatialBinaryLogisticRegression gradInput error.")
       end
@@ -1177,14 +1177,14 @@ function dpnntest.SpatialBinaryLogisticRegression()
       target:fill(t)
       -- Check forward
       local loss = crit:updateOutput(input, target)
-      local myLoss = math.log(1+math.exp(-1*i*t))
+      local myLoss = math.log(1+math.exp(-1*i*t))/2
       mytester:assert( loss >= myLoss-precision and loss <= myLoss+precision,
                        "SpatialBinaryLogisticRegression cost incorrect.")
 
       -- Check backward
       local gradInput = crit:updateGradInput(input, target)
       local g1 = gradInput[1][1][1]
-      local gi = (1/(1+math.exp(-1*i*t)))*math.exp(-1*i*t)*(-1*t)/(k*h*w)
+      local gi = (1/(1+math.exp(-1*i*t)))*math.exp(-1*i*t)*(-1*t)/(2*k*h*w)
       mytester:assert( g1 >= gi-precision and g1 <= gi+precision,
                       "SpatialBinaryLogisticRegression gradInput error.")
       end
