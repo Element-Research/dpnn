@@ -51,6 +51,8 @@ torch.include('dpnn', 'Criterion.lua')
 torch.include('dpnn', 'SpatialMaxPooling.lua')
 torch.include('dpnn', 'SpatialConvolution.lua')
 torch.include('dpnn', 'SpatialConvolutionMM.lua')
+torch.include('dpnn', 'SpatialBatchNormalization.lua')
+torch.include('dpnn', 'BatchNormalization.lua')
 
 -- decorator modules
 torch.include('dpnn', 'Decorator.lua')
