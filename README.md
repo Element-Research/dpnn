@@ -15,7 +15,7 @@ The package provides the following Modules:
  * [Collapse](#nn.Collapse) : just like `nn.View(-1)`;
  * [Convert](#nn.Convert) : convert between different tensor types or shapes;
  * [ZipTable](#nn.ZipTable) : zip a table of tables into a table of tables;
- * [ZipTableOneToMany](#nn.ZipTableOneToMany) : zip a table of vector and table of vectors into a table of vector and table vectors;
+ * [ZipTableOneToMany](#nn.ZipTableOneToMany) : zip a table of element `el` and table of elements into a table of pairs of element and table elements;
  * [ReverseTable](#nn.ReverseTable) : reverse the order of elements in a table;
  * [PrintSize](#nn.PrintSize) : prints the size of inputs and gradOutputs (useful for debugging);
  * [Clip](#nn.Clip) : clips the inputs to a min and max value;
