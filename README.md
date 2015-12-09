@@ -409,7 +409,7 @@ print(module:forward{ {'a1','a2'}, {'b1','b2'}, {'c1','c2'} })
 module = nn.ZipTableOneToMany()
 ```
 
-Zips a table of element `el` and table of elements `tab` into a table of tables, where the i-th table containins the element `el` and the i-th element in table `tab`
+Zips a table of element `el` and table of elements `tab` into a table of tables, where the i-th table contains the element `el` and the i-th element in table `tab`
 
 Example:
 ```lua
