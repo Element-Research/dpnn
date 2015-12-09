@@ -15,6 +15,7 @@ The package provides the following Modules:
  * [Collapse](#nn.Collapse) : just like `nn.View(-1)`;
  * [Convert](#nn.Convert) : convert between different tensor types or shapes;
  * [ZipTable](#nn.ZipTable) : zip a table of tables into a table of tables;
+ * [ZipTableOneToMany](#nn.ZipTableOneToMany) : zip a table of vector and table of vectors into a table of vector and table vectors;
  * [ReverseTable](#nn.ReverseTable) : reverse the order of elements in a table;
  * [PrintSize](#nn.PrintSize) : prints the size of inputs and gradOutputs (useful for debugging);
  * [Clip](#nn.Clip) : clips the inputs to a min and max value;
@@ -399,6 +400,21 @@ Example:
 ```lua
 print(module:forward{ {'a1','a2'}, {'b1','b2'}, {'c1','c2'} })
 { {'a1','b1','c1'}, {'a2','b2','c2'} }
+```
+
+<a name='nn.ZipTableOneToMany'></a>
+## ZipTableOneToMany ##
+
+```lua
+module = nn.ZipTableOneToMany()
+```
+
+Zips a table of element `el` and table of elements `tab` into a table of tables, where the i-th table containins the element `el` and the i-th element in table `tab`
+
+Example:
+```lua
+print(module:forward{ 'el', {'a','b','c'} })
+{ {'el','a'}, {'el','b'}, {'el','c'} }
 ```
 
 <a name='nn.ReverseTable'></a>

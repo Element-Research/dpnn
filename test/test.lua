@@ -361,6 +361,31 @@ function dpnntest.ZipTable()
    mytester:assertTensorEq(input[3][2], gradInput[3][2], 0.000001, "ZipTable gradInput32")
 end
 
+function dpnntest.ZipTableOneToMany()
+   -- input : { v, {a,b,c} }
+   -- output : { {v,a}, {v,b}, {v,c} }
+   local z = nn.ZipTableOneToMany()
+   local input = { torch.randn(3), { torch.randn(4), torch.rand(4), torch.rand(4) } }
+   local output = z:forward(input)
+   mytester:assert(#output == 3, "ZipTableOneToMany #output")
+   mytester:assert(#(output[1]) == 2, "ZipTableOneToMany #output[1]")
+   mytester:assert(#(output[2]) == 2, "ZipTableOneToMany #output[2]")
+   mytester:assert(#(output[3]) == 2, "ZipTableOneToMany #output[3]")
+   mytester:assertTensorEq(input[1], output[1][1], 0.000001, "ZipTableOneToMany input1 output11")
+   mytester:assertTensorEq(input[1], output[2][1], 0.000001, "ZipTableOneToMany input1 output21")
+   mytester:assertTensorEq(input[1], output[3][1], 0.000001, "ZipTableOneToMany input1 output31")
+   mytester:assertTensorEq(input[2][1], output[1][2], 0.000001, "ZipTableOneToMany input21")
+   mytester:assertTensorEq(input[2][2], output[2][2], 0.000001, "ZipTableOneToMany input22")
+   mytester:assertTensorEq(input[2][3], output[3][2], 0.000001, "ZipTableOneToMany input23")
+   local gradInput = z:backward(input, output)
+   mytester:assert(#gradInput == 2, "ZipTableOneToMany #gradInput")
+   mytester:assert(#(gradInput[2]) == 3, "ZipTableOneToMany #gradInput[2]")
+   mytester:assertTensorEq(input[2][1], gradInput[2][1], 0.000001, "ZipTableOneToMany gradInput21")
+   mytester:assertTensorEq(input[2][2], gradInput[2][2], 0.000001, "ZipTableOneToMany gradInput22")
+   mytester:assertTensorEq(input[2][3], gradInput[2][3], 0.000001, "ZipTableOneToMany gradInput32")
+   mytester:assertTensorEq(torch.mul(input[1], 3), gradInput[1], 0.000001, "ZipTableOneToMany gradInput21")
+end
+
 function dpnntest.ReverseTable()
    -- input : { a, b, c, d }
    -- output : { c, b, a, d }
