@@ -37,7 +37,7 @@ function Kmeans:initRandom(input)
    indices:random(1, noOfSamples)
 
    for i=1, self.k do
-      centers[i]:copy(inputs[indices[i]])
+      self.centers[i]:copy(input[indices[i]])
    end
 end
 
