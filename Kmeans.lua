@@ -23,6 +23,24 @@ function Kmeans:__init(k, dim, a, b, centers)
    self.currentLoss = 0 -- sum of within cluster error
 end
 
+-- Initialize Kmeans centers with random samples from input.
+function Kmeans:initRandom(input)
+   local inputDim = input:nDimension()
+   assert(inputDim == 2, "Incorrect input dimensionality. Expecting 2D.")
+
+   local noOfSamples = input:size(1)
+   local dim = input:size(2)
+   assert(dim == self.dim, "Dimensionality of input and centers don't match.")
+   assert(noOfSamples >= self.k, "Need atleast k samples for initialization.")
+
+   local indices = torch.zeros(self.k)
+   indices:random(1, noOfSamples)
+
+   for i=1, self.k do
+      centers[i]:copy(inputs[indices[i]])
+   end
+end
+
 function Kmeans:updateOutput(input)
    local inputDim = input:nDimension()
    assert(inputDim == 2, "Incorrect input dimensionality. Expecting 2D.")
