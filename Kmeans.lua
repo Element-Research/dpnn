@@ -1,11 +1,13 @@
 -- Online (Hard) Kmeans layer.
 local Kmeans, parent = torch.class('nn.Kmeans', 'nn.Module')
 
-function Kmeans:__init(k, dim, mean, std, centers)
+function Kmeans:__init(k, dim, a, b, centers)
    self.k = k
    self.dim = dim
-   self.mean = mean or 0
-   self.mean = std or 0.01
+
+   -- Range of initialization: Using uniform distribution.
+   self.a = a or 0
+   self.b = a or 1
    assert(k > 0, "Clusters cannot be 0 or negative.")
    assert(dim > 0, "Dimensionality cannot be 0 or negative.")
 
@@ -14,10 +16,11 @@ function Kmeans:__init(k, dim, mean, std, centers)
    else
       self.centers = torch.Tensor()
       self.centers:resize(self.k, self.dim)
-      self.centers:normal(self.mean, self.std)
+      self.centers:uniform(self.a, self.b)
    end
    self.gradWeight = self.centers.new()
-   self.gradWeight:resizeAs(centers)
+   self.gradWeight:resizeAs(self.centers)
+   self.currentLoss = 0 -- sum of within cluster error
 end
 
 function Kmeans:updateOutput(input)
@@ -44,6 +47,7 @@ function Kmeans:updateOutput(input)
    self._temp = self._temp or input.new()
    self._minScore = self._minScore or self.centers.new()
    self._minIndx = self._minIndx or self.centers.new()
+   self.currentLoss = 0
    local clusterIndx
    for i=1, noOfSamples do
       self._temp:expand(input[{{i}}], self.k, self.dim)
@@ -59,6 +63,7 @@ function Kmeans:updateOutput(input)
       self._minScore, self._minIndx = self._clusterDistances:min(1)
       clusterIndx = self._minIndx[1][1]
       self.output[i] = clusterIndx
+      self.currentLoss = self.currentLoss + self._minScore[1][1]
 
       -- center update rule c -> c + 1/n (x-c)
       -- Saving (x-c). Negate gradWeight in accGradParameters since
@@ -86,8 +91,6 @@ function Kmeans:accGradParameters(input, gradOutput, beta)
    self.beta = beta
    assert(self.beta <= 1, "Beta greater than 1.")
 
-   self.alpha = 1 - self.beta
-
    -- 1/n * sum_i (x-c)
    for i=1, self.k do
       if self._clusterSampleCount[i] > 0 then
@@ -96,7 +99,7 @@ function Kmeans:accGradParameters(input, gradOutput, beta)
    end
 
    -- beta * 1/n * sum_i (x-c)
-   self.gradWeight:mul(beta)
+   if self.beta ~= 1 then self.gradWeight:mul(beta) end
 
    -- Update kmeans centers
    self.centers:add(self.gradWeight)
