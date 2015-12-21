@@ -69,7 +69,7 @@ end
 function BinaryLogisticRegression:updateGradInput(input, target)
    self.gradInput = self.gradInput or input.new()
    local gradInput = self.gradInput
-   gradInput:resize(target:size()):copy(target)
+   gradInput:resize(input:size()):copy(target)
    gradInput:mul(-1)
    gradInput:cmul(self._baseExponents)
    gradInput:cdiv(self._coeff)
@@ -77,4 +77,13 @@ function BinaryLogisticRegression:updateGradInput(input, target)
       gradInput:div(self._k)
    end
    return gradInput
+end
+
+function BinaryLogisticRegression:type(type, tensorCache)
+   if type then
+      self._baseExponents = nil
+      self._coeff = nil
+      self._logCoeff = nil
+   end
+   return parent.type(self, type, tensorCache)
 end
