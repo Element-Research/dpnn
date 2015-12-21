@@ -26,10 +26,12 @@ function BinaryLogisticRegression:updateOutput(input, target)
    assert(targetDim == 1 or targetDim == 2,
                                  "Target:Expecting batchSize or batchSize x 1")
    if inputDim == 2 then
-      assert(input:size(2) == 1, "Input: Expecting batchSize x 1.")
+      assert(input:size(1)==1 or input:size(2)==1, 
+                                        "Input: Expecting batchSize x 1.")
    end
    if targetDim == 2 then
-      assert(target:size(2) == 1, "Target: Expecting batchSize x 1.")
+      assert(target:size(1)==1 or target:size(2)==1,
+                                        "Target: Expecting batchSize x 1.")
    end
 
    local inputElements = input:nElement()
