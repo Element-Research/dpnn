@@ -33,6 +33,7 @@ The following modules and criterions can be used to implement the REINFORCE algo
  * [VRClassReward](#nn.VRClassReward) : criterion for variance-reduced classification-based reward;
 
 Additional differentiable criterions
+ * [BinaryLogisticRegression](#nn.BLR) : criterion for binary logistic regression.
  * [SpatialBinaryLogisticRegression](#nn.SpatialBLR) : criterion for pixel wise binary logistic regression.
 
 A lot of the functionality implemented here was pulled from 
@@ -724,6 +725,23 @@ in `nn.ModuleCriterion(VRClassReward, nn.SelectTable(-1))`.
 
 For an example, this criterion is used along with the [RecurrentAttention](https://github.com/Element-Research/rnn#rnn.RecurrentAttention) 
 module to [train a recurrent model for visual attention](https://github.com/Element-Research/rnn/blob/master/examples/recurrent-visual-attention.lua).
+
+<a name='nn.BLR'></a>
+## BinaryLogisticRegression ##
+Ref A. [Learning to Segment Object Candidates](http://arxiv.org/pdf/1506.06204v2.pdf)
+This criterion implements the score criterion mentioned in (ref. A).
+
+```lua
+criterion = nn.BinaryLogisticRegression()
+```
+
+BinaryLogisticRegression implements following cost function for binary classification.
+```
+
+ log( 1 + exp( -y_k * score(x_k) ) )
+
+```
+where ```y_k``` is binary target ```score(x_k)``` is the corresponding prediction. ```y_k``` has value ```{-1, +1}``` and ```score(x_k)``` has value in ```[-1, +1]```.
 
 <a name='nn.SpatialBLR'></a>
 ## SpatialBinaryLogisticRegression ##
