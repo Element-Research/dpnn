@@ -1216,6 +1216,62 @@ function dpnntest.SpatialBinaryLogisticRegression()
    end
 end
 
+-- Unit Test BinaryLogisticRegression criterion
+function dpnntest.BinaryLogisticRegression()
+   local crit = nn.BinaryLogisticRegression()
+   local k = 32
+
+   -- Working with batch of images
+   local input = torch.zeros(k, 1)
+   local target = torch.zeros(k, 1)
+   local inputs = {1, 0, -1}
+   local targets = {1, 0, -1}
+   for _,i in pairs(inputs) do
+      for _,t in pairs(targets) do
+
+      input:fill(i)
+      target:fill(t)
+      -- Check forward
+      local loss = crit:updateOutput(input, target)
+      local myLoss = math.log(1+math.exp(-1*i*t))
+      mytester:assert( loss >= myLoss-precision and loss <= myLoss+precision,
+                       "BinaryLogisticRegression cost incorrect.")
+
+      -- Check backward
+      local gradInput = crit:updateGradInput(input, target)
+      local g1 = gradInput[1][1]
+      local gi = (1/(1+math.exp(-1*i*t)))*math.exp(-1*i*t)*(-1*t)/(k)
+      mytester:assert( g1 >= gi-precision and g1 <= gi+precision,
+                      "BinaryLogisticRegression gradInput error.")
+      end
+   end
+
+   -- Working nElements not matching.
+   local input = torch.zeros(1, k)
+   local target = torch.zeros(k, 1)
+   local inputs = {1, 0, -1}
+   local targets = {1, 0, -1}
+   for _,i in pairs(inputs) do
+      for _,t in pairs(targets) do
+
+      input:fill(i)
+      target:fill(t)
+      -- Check forward
+      local loss = crit:updateOutput(input, target)
+      local myLoss = math.log(1+math.exp(-1*i*t))
+      mytester:assert( loss >= myLoss-precision and loss <= myLoss+precision,
+                       "BinaryLogisticRegression cost incorrect.")
+
+      -- Check backward
+      local gradInput = crit:updateGradInput(input, target)
+      local g1 = gradInput[1][1]
+      local gi = (1/(1+math.exp(-1*i*t)))*math.exp(-1*i*t)*(-1*t)/(k)
+      mytester:assert( g1 >= gi-precision and g1 <= gi+precision,
+                      "BinaryLogisticRegression gradInput error.")
+      end
+   end
+end
+
 -- Unit Test Kmeans layer
 function dpnntest.Kmeans()
    local k = 4
@@ -1226,42 +1282,41 @@ function dpnntest.Kmeans()
       input[i]:fill(torch.random(1, k))
    end
 
-attempts = 20
-iter = 100
-bestLoss = 100000000
-bestKm = nil
-useCuda = false
-deviceId = 2
-tempLoss = 0
-if useCuda then cutorch.setDevice(deviceId) end
+   attempts = 20
+   iter = 100
+   bestLoss = 100000000
+   bestKm = nil
+   useCuda = false
+   deviceId = 2
+   tempLoss = 0
+   if useCuda then cutorch.setDevice(deviceId) end
 
-for j=1, attempts do
-   local km = nn.Kmeans(k, dim)
-   km:initRandom(input)
-   if useCuda then km:cuda() end
-   sys.tic()
-   for i=1, iter do
-      km:forward(input)
-      km:backward(input, gradOutput)
+   for j=1, attempts do
+      local km = nn.Kmeans(k, dim)
+      km:initRandom(input)
+      if useCuda then km:cuda() end
+      sys.tic()
+      for i=1, iter do
+         km:forward(input)
+         km:backward(input, gradOutput)
 
-      -- Gradient descent
-      km.weight:add(-1, km.gradWeight)
-      tempLoss = km.loss
-      km:resetNonWeight()
+         -- Gradient descent
+         km.weight:add(-1, km.gradWeight)
+         tempLoss = km.loss
+         km:resetNonWeight()
+      end
+      print("Attempt time: " .. sys.toc())
+      print("Attempt Loss: " .. tempLoss)
+      if tempLoss < bestLoss then
+         bestLoss = tempLoss
+         bestKm = km:clone()
+      end
    end
-   print("Attempt time: " .. sys.toc())
-   print("Attempt Loss: " .. tempLoss)
-   if tempLoss < bestLoss then
-      bestLoss = tempLoss
-      bestKm = km:clone()
-   end
-end
-print("Best Loss: " .. bestKm.loss)
-print("Best centers")
-print(bestKm.weight)
+   print("Best Loss: " .. bestKm.loss)
+   print("Best centers")
+   print(bestKm.weight)
 
 end
-
 
 function dpnn.test(tests)
    mytester = torch.Tester()
