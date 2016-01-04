@@ -1216,6 +1216,53 @@ function dpnntest.SpatialBinaryLogisticRegression()
    end
 end
 
+-- Unit Test Kmeans layer
+function dpnntest.Kmeans()
+   local k = 4
+   local dim = 2
+   local batchSize = 1000
+   local input = torch.rand(batchSize, dim)
+   local for i=1, batchSize do
+      input[i]:fill(torch.random(1, k))
+   end
+
+attempts = 20
+iter = 100
+bestLoss = 100000000
+bestKm = nil
+useCuda = false
+deviceId = 2
+tempLoss = 0
+if useCuda then cutorch.setDevice(deviceId) end
+
+for j=1, attempts do
+   local km = nn.Kmeans(k, dim)
+   km:initRandom(input)
+   if useCuda then km:cuda() end
+   sys.tic()
+   for i=1, iter do
+      km:forward(input)
+      km:backward(input, gradOutput)
+
+      -- Gradient descent
+      km.weight:add(-1, km.gradWeight)
+      tempLoss = km.loss
+      km:resetNonWeight()
+   end
+   print("Attempt time: " .. sys.toc())
+   print("Attempt Loss: " .. tempLoss)
+   if tempLoss < bestLoss then
+      bestLoss = tempLoss
+      bestKm = km:clone()
+   end
+end
+print("Best Loss: " .. bestKm.loss)
+print("Best centers")
+print(bestKm.weight)
+
+end
+
+
 function dpnn.test(tests)
    mytester = torch.Tester()
    mytester:add(dpnntest)

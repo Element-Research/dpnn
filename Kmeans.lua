@@ -56,6 +56,27 @@ function Kmeans:initRandom(input)
    end
 end
 
+-- Initialize using Kmeans++
+function Kmeans:intiKmeansPlus(input, p)
+   self.p = p or 0.95
+
+   local inputDim = input:nDimension()
+   assert(inputDim == 2, "Incorrect input dimensionality. Expecting 2D.")
+   local noOfSamples = input:size(1)
+
+   local initializedK = 1
+   self.weight[initializedK]:copy(input[torch.random(noOfSamples)])
+   initializedK = initializedK + 1
+
+   local clusters = self.weight.new()
+   local expandedSamples = input.new()
+   local distances = torch.zeros(noOfSamples)
+   for k=initializedK, self.k do
+      
+   end
+   
+end
+
 -- Kmeans updateOutput (forward)
 function Kmeans:updateOutput(input)
    local inputDim = input:nDimension()
