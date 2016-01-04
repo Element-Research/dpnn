@@ -1278,7 +1278,7 @@ function dpnntest.Kmeans()
    local dim = 2
    local batchSize = 1000
    local input = torch.rand(batchSize, dim)
-   local for i=1, batchSize do
+   for i=1, batchSize do
       input[i]:fill(torch.random(1, k))
    end
 
@@ -1286,10 +1286,14 @@ function dpnntest.Kmeans()
    iter = 100
    bestLoss = 100000000
    bestKm = nil
-   useCuda = false
+   useCuda = true
    deviceId = 2
    tempLoss = 0
-   if useCuda then cutorch.setDevice(deviceId) end
+   if useCuda then
+      require 'cutorch'
+      require 'cunn'
+      cutorch.setDevice(deviceId)
+   end
 
    for j=1, attempts do
       local km = nn.Kmeans(k, dim)
