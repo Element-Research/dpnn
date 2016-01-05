@@ -158,7 +158,7 @@ end
 
 -- Kmeans has its own criterion hence gradInput are zeros
 function Kmeans:updateGradInput(input, gradOuput)
-   self.gradInput = self.weight.new()
+   self.gradInput = self.gradInput or self.weight.new()
    self.gradInput:resize(input:size(1), input:size(2)):zero()
    return self.gradInput
 end
