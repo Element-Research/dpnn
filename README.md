@@ -22,7 +22,8 @@ The package provides the following Modules:
  * [Constant](#nn.Constant) : outputs a constant value given an input (which is ignored);
  * [SpatialUniformCrop](#nn.SpatialUniformCrop) : uniformly crops patches from a input;
  * [SpatialGlimpse](#nn.SpatialGlimpse) : takes a fovead glimpse of an image at a given location;
- * [WhiteNoise](#nn.WhiteNoise) : Adds isotropic Gaussian noise to the signal when in training mode.
+ * [WhiteNoise](#nn.WhiteNoise) : adds isotropic Gaussian noise to the signal when in training mode;
+ * [OneHot](#nn.OneHot) : transforms a tensor of indices into [one-hot](https://en.wikipedia.org/wiki/One-hot) encoding.
 
 The following modules and criterions can be used to implement the REINFORCE algorithm :
 
@@ -525,6 +526,7 @@ module (see [this example](https://github.com/Element-Research/rnn/blob/master/e
 ```lua
 module = nn.WhiteNoise([mean, stdev])
 ```
+
 Useful in training [Denoising Autoencoders] (http://arxiv.org/pdf/1507.02672v1.pdf). 
 Takes `mean` and `stdev` of the normal distribution as input. 
 Default values for mean and standard deviation are 0 and 0.1 respectively. 
@@ -532,12 +534,57 @@ With `module:training()`, noise is added during forward.
 During `backward` gradients are passed as it is. 
 With `module:evaluate()` the mean is added to the input.
 
+<a name = 'nn.OneHot'></a>
+## OneHot ##
+
+```lua
+module = nn.OneHot(outputSize)
+```
+
+Transforms a tensor of `input` indices having integer values between 1 and `outputSize` into
+a tensor of one-hot vectors of size `outputSize`. 
+
+Forward an index to get a one-hot vector :
+
+```lua
+> module = nn.OneHot(5) -- 5 classes
+> module:forward(torch.LongTensor{3})
+ 0  0  1  0  0
+[torch.DoubleTensor of size 1x5]
+``` 
+
+Forward a batch of 3 indices. Notice that these need not be stored as `torch.LongTensor` :
+
+```lua
+> module:forward(torch.Tensor{3,2,1})
+ 0  0  1  0  0
+ 0  1  0  0  0
+ 1  0  0  0  0
+[torch.DoubleTensor of size 3x5]
+``` 
+
+Forward batch of `2 x 3` indices :
+
+```lua
+oh:forward(torch.Tensor{{3,2,1},{1,2,3}})
+(1,.,.) = 
+  0  0  1  0  0
+  0  1  0  0  0
+  1  0  0  0  0
+
+(2,.,.) = 
+  1  0  0  0  0
+  0  1  0  0  0
+  0  0  1  0  0
+[torch.DoubleTensor of size 2x3x5]
+``` 
+
 <a name='nn.ModuleCriterion'></a>
 ## ModuleCriterion ##
 
 ```lua
 criterion = nn.ModuleCriterion(criterion [, inputModule, targetModule, castTarget])
-```
+``` 
 
 This criterion decorates a `criterion` by allowing the `input` and `target` to be 
 fed through optional an `inputModule` and `targetModule` before being passed to the 

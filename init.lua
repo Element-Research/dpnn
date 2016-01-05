@@ -79,6 +79,7 @@ torch.include('dpnn', 'ArgMax.lua')
 torch.include('dpnn', 'CategoricalEntropy.lua')
 torch.include('dpnn', 'TotalDropout.lua')
 torch.include('dpnn', 'Kmeans.lua')
+torch.include('dpnn', 'OneHot.lua')
 
 -- REINFORCE
 torch.include('dpnn', 'Reinforce.lua')

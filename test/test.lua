@@ -1329,6 +1329,83 @@ function dpnntest.Kmeans()
          print("Best Loss: " .. bestLoss)
          print("Total time: " .. sys.toc())
       end
+
+function dpnntest.OneHot()
+   local nClass = 10
+   
+   -- batch mode
+   local batchSize = 3
+   local input = torch.LongTensor(batchSize):random(1, nClass)
+   local gradOutput = torch.randn(batchSize, nClass)
+   
+   local oh = nn.OneHot(nClass)
+
+   local output = oh:forward(input)
+   local output2 = torch.Tensor(batchSize, nClass):zero()
+   local eye = torch.eye(nClass)
+   output2:index(eye, 1, input)
+   mytester:assertTensorEq(output, output2, 0.000001, "OneHot forward batch err")
+   mytester:assert(output:dim() == 2)
+
+   local gradInput = oh:backward(input, gradOutput)
+   mytester:assertTensorEq(gradInput, input:double():zero(), 0.000001, "OneHot backward batch err")
+   
+   if pcall(function() require 'cunn' end) then
+      oh:cuda()
+      
+      -- test with long input
+      local output = oh:forward(input)
+      mytester:assert(torch.type(output) == 'torch.CudaTensor')
+      mytester:assertTensorEq(output:double(), output2, 0.000001, "OneHot forward batch long-cuda err")
+      
+      -- test with cuda input
+      local input = input:cuda()
+      gradOutput = gradOutput:cuda()
+      
+      local output = oh:forward(input)
+      mytester:assert(torch.type(output) == 'torch.CudaTensor')
+      mytester:assertTensorEq(output:double(), output2, 0.000001, "OneHot forward batch cuda err")
+      
+      local gradInput2 = oh:backward(input, gradOutput)
+      mytester:assertTensorEq(gradInput, gradInput2:double(), 0.000001, "OneHot backward batch err")
+   end
+   
+   -- multi-dimensional input
+   local inputSize = 2
+   local input = torch.LongTensor(batchSize, inputSize):random(1, nClass)
+   local gradOutput = torch.randn(batchSize, inputSize, nClass)
+   
+   local oh = nn.OneHot(nClass, 2)
+   
+   local output = oh:forward(input)
+   local output2 = torch.Tensor(batchSize*inputSize, nClass):zero()
+   local eye = torch.eye(nClass)
+   output2:index(eye, 1, input:view(-1))
+   output2:resize(batchSize, inputSize, nClass)
+   mytester:assertTensorEq(output, output2, 0.000001, "OneHot 2d forward batch err")
+   mytester:assert(output:dim() == 3)
+
+   local gradInput = oh:backward(input, gradOutput)
+   mytester:assertTensorEq(gradInput, input:double():zero(), 0.000001, "OneHot 2d backward batch err")
+   
+   if pcall(function() require 'cunn' end) then
+      oh:cuda()
+      
+      -- test with long input
+      local output = oh:forward(input)
+      mytester:assert(torch.type(output) == 'torch.CudaTensor')
+      mytester:assertTensorEq(output:double(), output2, 0.000001, "OneHot 2d forward batch long-cuda err")
+      
+      -- test with cuda input
+      local input = input:cuda()
+      gradOutput = gradOutput:cuda()
+      
+      local output = oh:forward(input)
+      mytester:assert(torch.type(output) == 'torch.CudaTensor')
+      mytester:assertTensorEq(output:double(), output2, 0.000001, "OneHot 2d forward batch cuda err")
+      
+      local gradInput2 = oh:backward(input, gradOutput)
+      mytester:assertTensorEq(gradInput, gradInput2:double(), 0.000001, "OneHot 2d backward batch err")
    end
 end
 
