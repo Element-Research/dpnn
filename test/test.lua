@@ -1274,52 +1274,62 @@ end
 
 -- Unit Test Kmeans layer
 function dpnntest.Kmeans()
-   local k = 4
-   local dim = 2
+   local k = 10
+   local dim = 5
    local batchSize = 1000
    local input = torch.rand(batchSize, dim)
    for i=1, batchSize do
       input[i]:fill(torch.random(1, k))
    end
 
-   attempts = 20
-   iter = 100
-   bestLoss = 100000000
-   bestKm = nil
-   useCuda = true
-   deviceId = 2
-   tempLoss = 0
-   if useCuda then
-      require 'cutorch'
-      require 'cunn'
-      cutorch.setDevice(deviceId)
-   end
+   local attempts = 10
+   local iter = 100
+   local bestLoss = 100000000
+   local bestKm = nil
+   local deviceId = 2
+   local tempLoss = 0
 
-   for j=1, attempts do
-      local km = nn.Kmeans(k, dim)
-      km:initRandom(input)
-      if useCuda then km:cuda() end
-      sys.tic()
-      for i=1, iter do
-         km:forward(input)
-         km:backward(input, gradOutput)
+   local initTypes = {'random', 'kmeans++'}
+   local useCudas = {false, true}
+   for _, initType in pairs(initTypes) do
+      for _, useCuda in pairs(useCudas) do 
+         if useCuda then
+            require 'cutorch'
+            require 'cunn'
+            cutorch.setDevice(deviceId)
+         end
 
-         -- Gradient descent
-         km.weight:add(-1, km.gradWeight)
-         tempLoss = km.loss
-         km:resetNonWeight()
+         sys.tic()
+         for j=1, attempts do
+            local km = nn.Kmeans(k, dim)
+
+            if initType == 'kmeans++' then
+               km:initKmeansPlus(input)
+            else
+               km:initRandom(input)
+            end
+
+            if useCuda then km:cuda() end
+            for i=1, iter do
+               km:forward(input)
+               km:backward(input, gradOutput)
+
+               -- Gradient descent
+               km.weight:add(-1, km.gradWeight)
+               tempLoss = km.loss
+               km:resetNonWeight()
+            end
+            print("Attempt Loss " .. j ..": " .. tempLoss)
+            if tempLoss < bestLoss then
+               bestLoss = tempLoss
+               bestKm = km:clone()
+            end
+         end
+         print("InitType: " .. initType .. " useCuda: " .. tostring(useCuda))
+         print("Best Loss: " .. bestLoss)
+         print("Total time: " .. sys.toc())
       end
-      print("Attempt time: " .. sys.toc())
-      print("Attempt Loss: " .. tempLoss)
-      if tempLoss < bestLoss then
-         bestLoss = tempLoss
-         bestKm = km:clone()
-      end
    end
-   print("Best Loss: " .. bestKm.loss)
-   print("Best centers")
-   print(bestKm.weight)
-
 end
 
 function dpnn.test(tests)

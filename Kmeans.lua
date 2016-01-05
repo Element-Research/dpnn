@@ -57,24 +57,48 @@ function Kmeans:initRandom(input)
 end
 
 -- Initialize using Kmeans++
-function Kmeans:intiKmeansPlus(input, p)
-   self.p = p or 0.95
+function Kmeans:initKmeansPlus(input, p)
+   self.p = p or self.p or 0.95
+   assert(self.p>=0 and self.p<=1, "P value should be between 0-1.")
 
    local inputDim = input:nDimension()
    assert(inputDim == 2, "Incorrect input dimensionality. Expecting 2D.")
    local noOfSamples = input:size(1)
+   
+   local pcount = math.ceil((1-self.p)*noOfSamples)
+   if pcount <= 0 then pcount = 1 end
 
    local initializedK = 1
    self.weight[initializedK]:copy(input[torch.random(noOfSamples)])
    initializedK = initializedK + 1
 
    local clusters = self.weight.new()
-   local expandedSamples = input.new()
-   local distances = torch.zeros(noOfSamples)
-   for k=initializedK, self.k do
-      
-   end
+   local clusterDistances = self.weight.new()
+   local temp = self.weight.new()
+   local expandedSample = self.weight.new()
+   local distances = self.weight.new()
+   distances:resize(noOfSamples):fill(math.huge)
+   local maxScores = self.weight.new()
+   local maxIndx = self.weight.new()
    
+   for k=initializedK, self.k do
+      clusters = self.weight[{{initializedK-1, initializedK-1}}]
+      for i=1, noOfSamples do
+         temp:expand(input[{{i}}], 1, self.dim)
+         expandedSample:resize(temp:size()):copy(temp)
+      
+         -- Squared Euclidean distance
+         expandedSample:add(-1, clusters)
+         clusterDistances:norm(expandedSample, 2, 2)
+         clusterDistances:pow(2)
+         distances[i] = math.min(clusterDistances:min(), distances[i])
+      end
+      maxScores, maxIndx = distances:sort(true)
+      local tempIndx = torch.random(pcount)
+      local indx = maxIndx[tempIndx]
+      self.weight[initializedK]:copy(input[indx])
+      initializedK = initializedK + 1
+   end
 end
 
 -- Kmeans updateOutput (forward)
