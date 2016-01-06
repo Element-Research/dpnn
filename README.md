@@ -24,6 +24,7 @@ The package provides the following Modules:
  * [SpatialGlimpse](#nn.SpatialGlimpse) : takes a fovead glimpse of an image at a given location;
  * [WhiteNoise](#nn.WhiteNoise) : adds isotropic Gaussian noise to the signal when in training mode;
  * [OneHot](#nn.OneHot) : transforms a tensor of indices into [one-hot](https://en.wikipedia.org/wiki/One-hot) encoding.
+ * [Kmeans](#nn.Kmeans) : [Kmeans](https://en.wikipedia.org/wiki/K-means_clustering) clustering layer. Forward computes distances with respect to centroids and returns index of closest centroid. Centroid are updated during backward. We provide option of both `random` and [`kmeans++`](https://en.wikipedia.org/wiki/K-means%2B%2B) initialization option.;
 
 The following modules and criterions can be used to implement the REINFORCE algorithm :
 
@@ -578,6 +579,13 @@ oh:forward(torch.Tensor{{3,2,1},{1,2,3}})
   0  0  1  0  0
 [torch.DoubleTensor of size 2x3x5]
 ``` 
+
+<a name='nn.Kmeans'></a>
+## Kmeans ##
+
+```lua
+km = nn.Kmeans(k, dim)
+```
 
 <a name='nn.ModuleCriterion'></a>
 ## ModuleCriterion ##
