@@ -1329,6 +1329,8 @@ function dpnntest.Kmeans()
          print("Best Loss: " .. bestLoss)
          print("Total time: " .. sys.toc())
       end
+   end
+end
 
 function dpnntest.OneHot()
    local nClass = 10
