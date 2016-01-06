@@ -24,7 +24,7 @@ The package provides the following Modules:
  * [SpatialGlimpse](#nn.SpatialGlimpse) : takes a fovead glimpse of an image at a given location;
  * [WhiteNoise](#nn.WhiteNoise) : adds isotropic Gaussian noise to the signal when in training mode;
  * [OneHot](#nn.OneHot) : transforms a tensor of indices into [one-hot](https://en.wikipedia.org/wiki/One-hot) encoding.
- * [Kmeans](#nn.Kmeans) : [Kmeans](https://en.wikipedia.org/wiki/K-means_clustering) clustering layer. Forward computes distances with respect to centroids and returns index of closest centroid. Centroids are updated during backward. We provide option of both `random` and [`kmeans++`](https://en.wikipedia.org/wiki/K-means%2B%2B) centroids initialization.;
+ * [Kmeans](#nn.Kmeans) : [Kmeans](https://en.wikipedia.org/wiki/K-means_clustering) clustering layer. Forward computes distances with respect to centroids and returns index of closest centroid. Centroids are updated during backward. Centroids could be initialized randomly or by using [`kmeans++`](https://en.wikipedia.org/wiki/K-means%2B%2B) algoirthm;
 
 The following modules and criterions can be used to implement the REINFORCE algorithm :
 
