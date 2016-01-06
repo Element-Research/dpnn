@@ -586,7 +586,12 @@ oh:forward(torch.Tensor{{3,2,1},{1,2,3}})
 ```lua
 km = nn.Kmeans(k, dim)
 ```
-
+`k` is the number of centroids and `dim` is the dimensionality of samples.
+You can either initialize centroids randomly from input or by using *kmeans++* algorithm.
+```lua
+   km:initRandom(samples) -- Randomly initialize centroids from input samples.
+   km:initKmeansPlus(samples) -- Use Kmeans++ to initialize centroids.
+```
 <a name='nn.ModuleCriterion'></a>
 ## ModuleCriterion ##
 
