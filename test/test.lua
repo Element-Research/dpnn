@@ -1409,6 +1409,26 @@ function dpnntest.OneHot()
       
       local gradInput2 = oh:backward(input, gradOutput)
       mytester:assertTensorEq(gradInput, gradInput2:double(), 0.000001, "OneHot 2d backward batch err")
+      
+      -- benchmark
+      local input = torch.CudaTensor(50, 50)
+      local oh = nn.OneHot(65):cuda()
+      oh:forward(input)
+      local a = torch.Timer()
+      for i=1,10 do
+         oh:forward(input)
+      end
+      local gputime = a:time().real
+      
+      oh:float()
+      input = input:float()
+      oh:forward(input)
+      a = torch.Timer()
+      for i=1,10 do
+         oh:forward(input)
+      end
+      local cputime = a:time().real
+      --print("Onehot GPU vs CPU time", gputime, cputime)
    end
 end
 
