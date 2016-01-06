@@ -592,6 +592,36 @@ You can either initialize centroids randomly from input or by using *kmeans++* a
    km:initRandom(samples) -- Randomly initialize centroids from input samples.
    km:initKmeansPlus(samples) -- Use Kmeans++ to initialize centroids.
 ```
+
+Example
+```lua
+   attempts = 10
+   iter = 100 -- Number of iterations
+   bestKm = nil
+   tempLoss = 0
+   bestLoss = math.huge
+   learningRate = 1
+   for j=1, attempts do
+      local km = nn.Kmeans(k, dim)
+      km:initKmeansPlus(samples)
+      for i=1, iter do
+         km:forward(samples)
+         km:backward(samples, gradOutput) -- gradOutput is ignored
+
+         -- Gradient Descent weight/centroids update
+         km.weight:add(-learningRate, km.gradWeight)
+         tempLoss = km.loss
+         km:resetNonWeight() -- reset gradWeight and loss.
+         -- samples is only a batch then do forward/backward on all samples
+         -- and then update centroids.
+      end
+      if tempLoss < bestLoss then
+         bestLoss = tempLoss
+         bestKm = km:clone()
+      end
+   end
+```
+
 <a name='nn.ModuleCriterion'></a>
 ## ModuleCriterion ##
 

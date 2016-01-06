@@ -1288,6 +1288,7 @@ function dpnntest.Kmeans()
    local bestKm = nil
    local deviceId = 2
    local tempLoss = 0
+   local learningRate = 1
 
    local initTypes = {'random', 'kmeans++'}
    local useCudas = {false, true}
@@ -1315,7 +1316,7 @@ function dpnntest.Kmeans()
                km:backward(input, gradOutput)
 
                -- Gradient descent
-               km.weight:add(-1, km.gradWeight)
+               km.weight:add(-learningRate, km.gradWeight)
                tempLoss = km.loss
                km:resetNonWeight()
             end
