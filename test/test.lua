@@ -1291,7 +1291,7 @@ function dpnntest.OneHot()
 
    local gradInput = oh:backward(input, gradOutput)
    mytester:assertTensorEq(gradInput, input:double():zero(), 0.000001, "OneHot backward batch err")
-   
+
    if pcall(function() require 'cunn' end) then
       oh:cuda()
       
@@ -1310,6 +1310,7 @@ function dpnntest.OneHot()
       
       local gradInput2 = oh:backward(input, gradOutput)
       mytester:assertTensorEq(gradInput, gradInput2:double(), 0.000001, "OneHot backward batch err")
+      cutorch.synchronize()
    end
    
    -- multi-dimensional input
@@ -1341,7 +1342,7 @@ function dpnntest.OneHot()
       -- test with cuda input
       local input = input:cuda()
       gradOutput = gradOutput:cuda()
-      
+     
       local output = oh:forward(input)
       mytester:assert(torch.type(output) == 'torch.CudaTensor')
       mytester:assertTensorEq(output:double(), output2, 0.000001, "OneHot 2d forward batch cuda err")
@@ -1349,25 +1350,31 @@ function dpnntest.OneHot()
       local gradInput2 = oh:backward(input, gradOutput)
       mytester:assertTensorEq(gradInput, gradInput2:double(), 0.000001, "OneHot 2d backward batch err")
       
-      -- benchmark
-      local input = torch.CudaTensor(50, 50)
-      local oh = nn.OneHot(65):cuda()
-      oh:forward(input)
-      local a = torch.Timer()
-      for i=1,10 do
+      local benchmark = false
+      if benchmark then
+         local input = torch.FloatTensor(50, 50):random(1,65):cuda()
+         
+         local oh = nn.OneHot(65):cuda()
+         
          oh:forward(input)
-      end
-      local gputime = a:time().real
-      
-      oh:float()
-      input = input:float()
-      oh:forward(input)
-      a = torch.Timer()
-      for i=1,10 do
+         cutorch.synchronize()
+         local a = torch.Timer()
+         for i=1,10 do
+            oh:forward(input)
+         end
+         cutorch.synchronize()
+         local gputime = a:time().real
+        
+         oh:float()
+         input = input:float()
          oh:forward(input)
+         a = torch.Timer()
+         for i=1,10 do
+            oh:forward(input)
+         end
+         local cputime = a:time().real
+         print("Onehot GPU vs CPU time", gputime, cputime)
       end
-      local cputime = a:time().real
-      --print("Onehot GPU vs CPU time", gputime, cputime)
    end
 end
 
