@@ -131,6 +131,38 @@ function dpnntest.Module_sharedClone()
       test2(seq, 'rnn2')
       test2(seq, 'rnn3')
    end
+   
+   if pcall(function() require 'nngraph' end) then
+      local lin1 = nn.Linear(10, 10)
+      local p1, gp1 = lin1:getParameters() 
+      
+      local lin2_ = lin1:clone()
+      
+      local x = nn.Identity()()
+      local y = lin2_(x)
+      
+      local lin2 = nn.gModule({x}, {y})
+      
+      local lin3 = lin2:sharedClone()
+      
+      local input = torch.randn(4, 10)
+      local gradOutput = torch.randn(4, 10)
+      
+      lin2:zeroGradParameters()
+      
+      local params2, gradParams2 = lin2:parameters()
+      local params3, gradParams3 = lin3:parameters()
+      
+      local output2 = lin2:forward(input)
+      local gradInput2 = lin2:backward(input, gradOutput)
+      lin2:updateParameters(0.1)
+      
+      for i=1,#params2 do
+         mytester:assertTensorEq(params2[i], params3[i], 0.000001, "sharedClone nngraph param err "..i)
+         mytester:assertTensorEq(gradParams2[i], gradParams3[i], 0.000001, "sharedClone nngraph gradParam err "..i)
+      end
+      
+   end
 end
 
 function dpnntest.Module_type()
