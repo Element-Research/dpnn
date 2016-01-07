@@ -222,6 +222,24 @@ function dpnntest.Module_gradParamClip()
    mytester:assertTensorEq(gradParam, gradParam2, 0.000001, "Module:gradParamClip clip 2 err")
 end
 
+function dpnntest.Module_getParameters()
+   -- test that getParameters will preserve parameters sharing for hidden modules
+   local lin = nn.Linear(3,4)
+   local lin2 = lin:sharedClone()
+   lin.sharedClone = lin2
+   local params, gradParams = lin:getParameters()
+   params:add(-1)
+   gradParams:fill(-1)
+   
+   local params1, gradParams1 = lin:parameters()
+   local params2, gradParams2 = lin2:parameters()
+   
+   for i=1,#params1 do
+      mytester:assertTensorEq(params1[i], params2[i], 0.000001, "getParameters param err "..i)
+      mytester:assertTensorEq(gradParams1[i], gradParams2[i], 0.000001, "getParameters gradParam err "..i)
+   end
+end
+
 function dpnntest.Serial()
    function test(mlp, name)
       local input = torch.randn(4,3)

@@ -238,6 +238,44 @@ function Module:type(type)
    return self
 end
 
+-- we override this method such that hidden modules
+-- will be included in the getParameters call.
+-- Hidden modules are common for recurrent modules that
+-- have internal references to modules that share parameters 
+-- with the main modules.
+-- These must also be included in the getParameters() call in order 
+-- to maintain shared storage for tensors.
+function Module:getParameters()
+
+   local con = nn.Container()
+   con:add(self)
+   
+   -- recursive get all modules (modules, sharedclones, etc.)
+   local function recursiveGetModules(tbl)
+      for k,m in pairs(tbl) do
+         if torch.isTypeOf(m, 'nn.Module') then
+            if not m.dpnn_getParameters_found then
+               con:add(m)
+               m.dpnn_getParameters_found = true
+               recursiveGetModules(m)
+            end
+         elseif torch.type(m) == 'table' then
+            recursiveGetModules(m)
+         end
+      end
+   end
+   
+   recursiveGetModules(self)
+   
+   for i,m in ipairs(con.modules) do
+      m.dpnn_getParameters_found = nil
+   end
+
+   -- get ALL parameters
+   local parameters,gradParameters = con:parameters()
+   return Module.flatten(parameters), Module.flatten(gradParameters)
+end
+
 ----------------- serialization (see nn.Serial) -------------------
 
 Module.dpnn_mediumEmpty = {'output', 'gradInput', 'momGradParams', 'dpnn_input'}
