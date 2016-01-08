@@ -40,60 +40,31 @@ function Module:sharedClone(shareParams, shareGradParams, clones, pointers, step
    clones = clones or {} -- module clones (clone once)
    pointers = pointers or {} -- parameters (dont clone params/gradParams)
    
-   -- 1. remove all the component modules
-   -- containers keep modules in self.modules table
-   local moduleClones, modules
-   if self.modules then
-      moduleClones = {}
-      for i,module in ipairs(self.modules) do
-         local clone
-         if not clones[torch.pointer(module)] then
-            clone = module:sharedClone(shareParams, shareGradParams, clones, pointers, stepClone)
-            clones[torch.pointer(module)] = clone
-         else
-            clone = clones[torch.pointer(module)]
+   local function recursiveCloneRemove(original, cloneTree, originalTree)
+      cloneTree = cloneTree or {}
+      originalTree = originalTree or {}
+      
+      for k,module in pairs(original) do
+         if torch.isTypeOf(module,'nn.Module') then
+            local clone
+            if not clones[torch.pointer(module)] then
+               clone = module:sharedClone(shareParams, shareGradParams, clones, pointers, stepClone)
+               clones[torch.pointer(module)] = clone
+            else
+               clone = clones[torch.pointer(module)]
+            end
+            cloneTree[k] = clone
+            originalTree[k] = module
+            original[k] = nil
+         elseif type(module) == 'table' then
+            cloneTree[k], originalTree[k] = recursiveCloneRemove(module, cloneTree[k], originalTree[k])
          end
-         moduleClones[i] = clone
       end
-      modules = self.modules
-      self.modules = nil -- to prevent recloning
+      
+      return cloneTree, originalTree
    end
    
-   -- rnns keep modules in self.sharedClones table
-   local sharedCloneClones, sharedClones
-   if self.sharedClones then
-      sharedCloneClones = {}
-      for i,sharedClone in pairs(self.sharedClones) do
-         local clone
-         if not clones[torch.pointer(sharedClone)] then
-            clone = sharedClone:sharedClone(shareParams, shareGradParams, clones, pointers, stepClone)
-            clones[torch.pointer(sharedClone)] = clone
-         else
-            clone = clones[torch.pointer(sharedClone)]
-         end
-         sharedCloneClones[i] = clone
-      end
-      sharedClones = self.sharedClones
-      self.sharedClones = nil -- to prevent recloning
-   end
-   
-   -- some modules will keep modules as attributes (self.[key])
-   local attributeClones, attributes = {}, {}
-   for k,module in pairs(self) do
-      if torch.isTypeOf(module,'nn.Module') then
-         
-         local clone
-         if not clones[torch.pointer(module)] then
-            clone = module:sharedClone(shareParams, shareGradParams, clones, pointers, stepClone)
-            clones[torch.pointer(module)] = clone
-         else
-            clone = clones[torch.pointer(module)]
-         end
-         attributeClones[k] = clone
-         attributes[k] = module
-         self[k] = nil
-      end
-   end
+   local cloneTree, originalTree = recursiveCloneRemove(self)
    
    -- 2. remove the params, gradParams. Save for later.
    local params = {}
@@ -144,22 +115,24 @@ function Module:sharedClone(shareParams, shareGradParams, clones, pointers, step
       clone[paramName] = param.new():set(param)
    end
    
-   if moduleClones then
-      assert(self.modules == nil)
-      self.modules = modules
-      clone.modules = moduleClones
+   -- put back all removed modules in both original (self) and clone
+   local function recursiveSet(clone, original, cloneTree, originalTree)
+      assert(clone)
+      assert(original)
+      for k,moduleClone in pairs(cloneTree) do
+         local moduleOriginal = originalTree[k]
+         assert(moduleOriginal)
+         if torch.isTypeOf(moduleClone,'nn.Module') then
+            clone[k] = moduleClone
+            original[k] = moduleOriginal
+         elseif type(moduleClone) == 'table' then
+            clone[k], original[k] = recursiveSet(clone[k], original[k], moduleClone, moduleOriginal)
+         end
+      end 
+      return clone, original
    end
    
-   if sharedCloneClones then
-      assert(self.sharedClones == nil)
-      self.sharedClones = sharedClones
-      clone.sharedClones = sharedCloneClones
-   end
-   
-   for k,v in pairs(attributes) do
-      self[k] = v
-      clone[k] = attributeClones[k]
-   end
+   recursiveSet(clone, self, cloneTree, originalTree)
    
    return clone
 end      

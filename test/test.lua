@@ -148,18 +148,51 @@ function dpnntest.Module_sharedClone()
       local input = torch.randn(4, 10)
       local gradOutput = torch.randn(4, 10)
       
+      lin1:zeroGradParameters()
       lin2:zeroGradParameters()
       
+      local params1, gradParams1 = lin1:parameters()
       local params2, gradParams2 = lin2:parameters()
       local params3, gradParams3 = lin3:parameters()
+      
+      local output1 = lin1:forward(input)
+      local gradInput1 = lin1:backward(input, gradOutput)
+      lin1:updateParameters(0.1)
       
       local output2 = lin2:forward(input)
       local gradInput2 = lin2:backward(input, gradOutput)
       lin2:updateParameters(0.1)
       
+      mytester:assertTensorEq(output1, output2, 0.000001)
+      mytester:assertTensorEq(gradInput1, gradInput2, 0.000001)
+      
       for i=1,#params2 do
          mytester:assertTensorEq(params2[i], params3[i], 0.000001, "sharedClone nngraph param err "..i)
          mytester:assertTensorEq(gradParams2[i], gradParams3[i], 0.000001, "sharedClone nngraph gradParam err "..i)
+         mytester:assertTensorEq(params1[i], params3[i], 0.000001, "sharedClone nngraph param err "..i)
+         mytester:assertTensorEq(gradParams1[i], gradParams3[i], 0.000001, "sharedClone nngraph gradParam err "..i)
+      end
+      
+      -- ok now lets forward/backward/update lin1 and lin3 to test sharedClone
+      
+      local output1 = lin1:forward(input)
+      local gradInput1 = lin1:backward(input, gradOutput)
+      
+      local output3 = lin3:forward(input)
+      local gradInput3 = lin3:backward(input, gradOutput)
+      
+      for i=1,#params2 do
+         mytester:assertTensorEq(params2[i], params3[i], 0.000001, "sharedClone nngraph param err "..i)
+         mytester:assertTensorEq(gradParams2[i], gradParams3[i], 0.000001, "sharedClone nngraph gradParam err "..i)
+         mytester:assertTensorEq(params1[i], params3[i], 0.000001, "sharedClone nngraph param err "..i)
+         mytester:assertTensorEq(gradParams1[i], gradParams3[i], 0.000001, "sharedClone nngraph gradParam err "..i)
+      end
+      
+      mytester:assertTensorEq(output1, output3, 0.000001)
+      mytester:assertTensorEq(gradInput1, gradInput3, 0.000001)
+      
+      for i=1,#params2 do
+         mytester:assertTensorEq(gradParams1[i], gradParams3[i], 0.000001, "sharedClone nngraph gradParam err "..i)
       end
       
    end
