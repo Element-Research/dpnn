@@ -5,40 +5,50 @@ local precision = 1e-5
 local mytester
 
 function dpnntest.Module_sharedClone()
+   
+   local function testrnn(mlp, name)
+      mlp:zeroGradParameters()
+      local mlp = mlp:clone()
+      local clone = mlp:clone():sharedClone(true, true)
+      
+      for i=1,2 do
+         local input = torch.randn(2,3)
+         local gradOutput = torch.randn(2,4)
+         
+         local output = mlp:forward(input)
+         local gradInput = mlp:backward(input, gradOutput)
+         local output4 = clone:forward(input)
+         local gradInput4 = clone:backward(input, gradOutput)
+         
+         mytester:assertTensorEq(output, output4, 0.00001, name.." updateOutput")
+         mytester:assertTensorEq(gradInput, gradInput4, 0.00001, name.." updateGradInput")
+         
+         mlp:updateParameters(0.1)
+         clone:updateParameters(0.1)
+         
+         local params, gradParams = mlp:parameters()
+         local params2, gradParams2 = clone:parameters()
+         
+         mytester:assert(#params == #params2, name.." num params err")
+         mytester:assert(#gradParams == #gradParams2, name.." num gradParams err")
+         
+         for i,param in ipairs(params) do
+            mytester:assertTensorEq(param, params2[i], 0.00001, name.." params2 err "..i)
+            mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.00001, name.." gradParams2 err "..i)
+         end
+      end
+   end
 
    local function test(mlp, name)
       mlp:zeroGradParameters()
       local clone = mlp:clone()
-      clone:share(mlp,"weight","bias","gradWeight","gradBias")
+      clone:share(mlp,"weight","bias","gradWeight","gradBias") -- this actually won't work for nn.Recurrent
       
       local mlp2 = mlp:clone() -- not shared with mlp
       local clone2 = mlp2:sharedClone(true, true)
-      
-      local input = torch.randn(2,3)
-      local gradOutput = torch.randn(2,4)
-      
-      local output = mlp:forward(input)
-      local gradInput = mlp:backward(input, gradOutput)
-      local output4 = clone:forward(input)
-      local gradInput4 = clone:backward(input, gradOutput)
-      
-      mytester:assertTensorEq(output, output4, 0.00001, name.." updateOutput")
-      mytester:assertTensorEq(gradInput, gradInput4, 0.00001, name.." updateGradInput")
-      
-      local output2 = clone2:forward(input)
-      local gradInput2 = clone2:backward(input, gradOutput)
-      
-      mytester:assertTensorEq(output, output2, 0.00001, name.." updateOutput")
-      mytester:assertTensorEq(gradInput, gradInput2, 0.00001, name.." updateGradInput")
-      
-      local output3 = mlp2:forward(input)
-      local gradInput3 = mlp2:backward(input, gradOutput)
-      
-      mlp:updateParameters(0.1)
-      mlp2:updateParameters(0.1)
-      
-      mytester:assertTensorEq(output3, output2, 0.00001, name.." updateOutput")
-      mytester:assertTensorEq(gradInput3, gradInput2, 0.00001, name.." updateGradInput")
+      mlp2.__test = 1
+      clone2.__test = 2
+      mytester:assert(mlp2.__test ~= clone2.__test)
       
       local params, gradParams = mlp:parameters()
       local params4, gradParams4 = clone:parameters()
@@ -50,13 +60,46 @@ function dpnntest.Module_sharedClone()
       mytester:assert(#gradParams == #gradParams2, name.." num gradParams err")
       mytester:assert(#gradParams == #gradParams3, name.." num gradParams err")
       
+      local input = torch.randn(2,3)
+      local gradOutput = torch.randn(2,4)
+      
+      local output = mlp:forward(input)
+      local gradInput = mlp:backward(input, gradOutput)
+      
+      local output4 = clone:forward(input)
+      local gradInput4 = clone:backward(input, gradOutput)
+      
+      mytester:assertTensorEq(output, output4, 0.00001, name.." updateOutput")
+      mytester:assertTensorEq(gradInput, gradInput4, 0.00001, name.." updateGradInput")
+      
       for i,param in ipairs(params) do
-         mytester:assertTensorEq(param, params2[i], 0.00001, name.." params2 (mlp vs mlp:clone():sharedClone()) err "..i)
-         mytester:assertTensorEq(param, params4[i], 0.00001, name.." params4 (mlp vs mlp:clone():share()) err "..i)
-         mytester:assertTensorEq(param, params3[i], 0.00001, name.." params3 (mlp vs mlp:clone()) err "..i)
-         mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.00001, name.." gradParams2 err "..i)
+         mytester:assertTensorEq(param, params4[i], 0.00001, name.." params4  err "..i) 
          mytester:assertTensorEq(gradParams[i], gradParams4[i], 0.00001, name.." gradParams4 err "..i)
-         mytester:assertTensorEq(gradParams[i], gradParams3[i], 0.00001, name.." gradParams3 err "..i)
+      end
+      
+      local output2 = clone2:forward(input)
+      local gradInput2 = clone2:backward(input, gradOutput)
+      
+      mytester:assertTensorEq(output, output2, 0.00001, name.." updateOutput")
+      mytester:assertTensorEq(gradInput, gradInput2, 0.00001, name.." updateGradInput")
+      
+      local output3 = mlp2:forward(input)
+      local gradInput3 = mlp2:backward(input, gradOutput)
+      
+      mytester:assertTensorEq(output3, output2, 0.00001, name.." updateOutput")
+      mytester:assertTensorEq(gradInput3, gradInput2, 0.00001, name.." updateGradInput")
+      
+      for i,param in ipairs(params) do
+         mytester:assertTensorEq(params2[i], params3[i], 0.00001, name.." params 2 3  err "..i) 
+         mytester:assertTensorEq(gradParams2[i], gradParams3[i], 0.00001, name.." gradParams 2 3 err "..i)
+      end
+      
+      mlp:updateParameters(0.1)
+      mlp2:updateParameters(0.1)  
+      
+      for i,param in ipairs(params) do
+         mytester:assertTensorEq(param, params3[i], 0.00001, name.." params3 (mlp vs mlp:clone()) err "..i) -- fail
+         mytester:assertTensorEq(gradParams[i], gradParams3[i], 0.00001, name.." gradParams3 err "..i) -- fail
       end
    end
    
@@ -123,7 +166,7 @@ function dpnntest.Module_sharedClone()
    
    if pcall(function() require 'rnn' end) then
       local rnn = nn.Recurrent(4,nn.Linear(3,4),nn.Linear(4,4), nn.Sigmoid(), 999)
-      test(rnn, 'rnn1')
+      testrnn(rnn, 'rnn1')
       local seq = nn.Sequential()
       seq:add(nn.Repeater(nn.Recurrent(2,nn.Linear(3,2),nn.Linear(2,2), nn.Sigmoid(), 999), 3))
       seq:add(nn.Sequencer(nn.Linear(2,4)))

@@ -33,7 +33,7 @@ Module.dpnn_gradParameters = {'gradWeight', 'gradBias'}
 -- self.modules, self.sharedClones or as an attribute to self.
 -- So if you store a module in self.mytbl = {mymodule}, it will be cloned
 -- independently of sharedClone (i.e. deep copy).
-function Module:sharedClone(shareParams, shareGradParams, clones, pointers, stepClone)   
+function Module:sharedClone(shareParams, shareGradParams, clones, pointers, stepClone)  
    shareParams = (shareParams == nil) and true or shareParams
    shareGradParams = (shareGradParams == nil) and true or shareGradParams
    
