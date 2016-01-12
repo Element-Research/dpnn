@@ -2,14 +2,14 @@ package = "dpnn"
 version = "scm-1"
 
 source = {
-   url = "git://github.com/nicholas-leonard/dpnn",
+   url = "git://github.com/Element-Research/dpnn",
    tag = "master"
 }
 
 description = {
    summary = "deep extensions to nn Modules and Criterions",
    detailed = [[sharedClone, type, outside, updateGradParameters, Serial, Inception, etc.]],
-   homepage = "https://github.com/nicholas-leonard/dpnn",
+   homepage = "https://github.com/Element-Research/dpnn",
    license = "BSD"
 }
 
