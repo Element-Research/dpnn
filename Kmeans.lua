@@ -15,8 +15,8 @@ function Kmeans:__init(k, dim, scale)
    -- Kmeans centers -> self.weight
    self.weight = torch.Tensor(self.k, self.dim)
 
-   self.gradWeight = torch.Tensor(self.weight)
-   self.loss = 0 -- sum of within cluster error
+   self.gradWeight = torch.Tensor(self.weight:size())
+   self.loss = 0 -- within cluster error of the last forward
 
    self.clusterSampleCount = torch.Tensor(self.k)
 
@@ -27,12 +27,6 @@ end
 function Kmeans:reset(stdev)
    local stdev = stdev or 1
    self.weight:uniform(-stdev, stdev)
-   self:resetNonWeight()
-end
-
-function Kmeans:resetNonWeight()
-   self.loss = 0
-   self.clusterSampleCount:zero() 
 end
 
 -- Initialize Kmeans weight with random samples from input.
@@ -146,9 +140,8 @@ function Kmeans:updateOutput(input)
    self._minIndx:resize(batchSize)
    
    self.output:resize(batchSize):copy(self._minIndx)
-   
-   self.loss = self.loss + self._minScore:sum()
-   
+   self.loss = self._minScore:sum()
+  
    return self.output 
 end
 
@@ -170,26 +163,28 @@ function Kmeans:accGradParameters(input, gradOutput, scale)
    local batchSize = input:size(1)
    self._cscAdder = self._cscAdder or self.weight.new()
    self._cscAdder:resize(batchSize):fill(1)
+   self.clusterSampleCount:zero()
    self.clusterSampleCount:indexAdd(1, self._minIndx, self._cscAdder)
-
-   -- x[k]-c[k] where k is nearest cluster to x
+   
+   -- scale * (x[k]-c[k]) where k is nearest cluster to x
    self._gradWeight = self._gradWeight or self.gradWeight.new()
    self._gradWeight:index(self.weight, 1, self._minIndx)
    self._gradWeight:mul(-1) 
    self._gradWeight:add(input)
    self._gradWeight:mul(-scale)
    
-   self.gradWeight:indexAdd(1, self._minIndx, self._gradWeight)
-
-   -- 1/n * sum_i (x-c)
-   for i=1, self.k do
-      if self.clusterSampleCount[i] > 0 then
-         self.gradWeight[i]:div(self.clusterSampleCount[i])
-      end
-   end
-
-   -- scale * 1/n * sum_i (x-c)
-   if scale ~= 1 then self.gradWeight:mul(scale) end
+   self._gradWeight2 = self._gradWeight2 or self.gradWeight.new()
+   self._gradWeight2:resizeAs(self.gradWeight):zero()
+   self._gradWeight2:indexAdd(1, self._minIndx, self._gradWeight)
+   
+   -- scale/n * sum_i (x-c)
+   self._ccounts = self._ccounts or self.clusterSampleCount.new()
+   self._ccounts:resize(self.k):copy(self.clusterSampleCount)
+   self._ccounts:add(0.0000001) -- prevent division by zero errors
+   
+   self._gradWeight2:cdiv(self._ccounts:view(self.k,1):expandAs(self.gradWeight))
+   
+   self.gradWeight:add(self._gradWeight2)
 end
 
 function Kmeans:type(type, tensorCache)

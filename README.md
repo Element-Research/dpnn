@@ -601,23 +601,22 @@ Example
 attempts = 10
 iter = 100 -- Number of iterations
 bestKm = nil
-tempLoss = 0
 bestLoss = math.huge
 learningRate = 1
 for j=1, attempts do
    local km = nn.Kmeans(k, dim)
    km:initKmeansPlus(samples)
    for i=1, iter do
-      km:forward(samples)
+      km:zeroGradParameters()
+      km:forward(samples) -- sets km.loss
       km:backward(samples, gradOutput) -- gradOutput is ignored
 
       -- Gradient Descent weight/centroids update
-      km.weight:add(-learningRate, km.gradWeight)
-      tempLoss = km.loss
-      km:resetNonWeight() -- reset gradWeight and loss.
+      km:updateParameters(learningRate)
    end
-   if tempLoss < bestLoss then
-      bestLoss = tempLoss
+   
+   if km.loss < bestLoss then
+      bestLoss = km.loss
       bestKm = km:clone()
    end
 end
