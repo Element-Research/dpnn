@@ -1417,7 +1417,8 @@ function dpnntest.Kmeans()
    local learningRate = 1
 
    local initTypes = {'random', 'kmeans++'}
-   local useCudas = {false, true}
+   local hasCuda = pcall(function() require 'cunn' end)
+   local useCudas = {false, hasCuda}
    for _, initType in pairs(initTypes) do
       for _, useCuda in pairs(useCudas) do 
          if useCuda then

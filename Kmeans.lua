@@ -2,6 +2,7 @@
 local Kmeans, parent = torch.class('nn.Kmeans', 'nn.Module')
 
 function Kmeans:__init(k, dim, scale)
+   parent.__init(self)
    self.k = k
    self.dim = dim
 
@@ -12,15 +13,12 @@ function Kmeans:__init(k, dim, scale)
    assert(dim > 0, "Dimensionality cannot be 0 or negative.")
 
    -- Kmeans centers -> self.weight
-   self.weight = torch.Tensor()
-   self.weight:resize(self.k, self.dim)
+   self.weight = torch.Tensor(self.k, self.dim)
 
-   self.gradWeight = self.weight.new()
-   self.gradWeight:resizeAs(self.weight)
+   self.gradWeight = torch.Tensor(self.weight)
    self.loss = 0 -- sum of within cluster error
 
-   self.clusterSampleCount = self.weight.new()
-   self.clusterSampleCount:resize(self.k)
+   self.clusterSampleCount = torch.Tensor(self.k)
 
    self:reset()
 end
@@ -33,7 +31,6 @@ function Kmeans:reset(stdev)
 end
 
 function Kmeans:resetNonWeight()
-   self.gradWeight:zero()
    self.loss = 0
    self.clusterSampleCount:zero() 
 end
@@ -112,9 +109,6 @@ function Kmeans:updateOutput(input)
 
    assert(input:isContiguous(), "Input is not contiguous.")
 
-   self.output = self.output or self.weight.new()
-   self.output:resize(batchSize)
-
    -- a sample copied k times to compute distance between sample and weight
    self._expandedSamples = self._expandedSamples or self.weight.new()
 
@@ -147,10 +141,12 @@ function Kmeans:updateOutput(input)
    self._clusterDistances:resize(self.k, batchSize)
 
    self._minScore = self._minScore or self.weight.new()
-   self._minIndx = self._minIndx or self.weight.new()
-   self._minScore, self._minIndx = self._clusterDistances:min(1)
-   self._minIndx = self._minIndx:view(-1)
-   self.output:copy(self._minIndx)
+   self._minIndx = self._minIndx or torch.LongTensor()
+   self._minScore:min(self._minIndx, self._clusterDistances, 1)
+   self._minIndx:resize(batchSize)
+   
+   self.output:resize(batchSize):copy(self._minIndx)
+   
    self.loss = self.loss + self._minScore:sum()
    
    return self.output 
@@ -158,8 +154,8 @@ end
 
 -- Kmeans has its own criterion hence gradInput are zeros
 function Kmeans:updateGradInput(input, gradOuput)
-   self.gradInput = self.gradInput or self.weight.new()
-   self.gradInput:resize(input:size(1), input:size(2)):zero()
+   self.gradInput:resize(input:size()):zero()
+   
    return self.gradInput
 end
 
@@ -176,11 +172,14 @@ function Kmeans:accGradParameters(input, gradOutput, scale)
    self._cscAdder:resize(batchSize):fill(1)
    self.clusterSampleCount:indexAdd(1, self._minIndx, self._cscAdder)
 
-   -- added corresponding x-c to gradWeight
-   for i=1, batchSize do
-      self.gradWeight[self._minIndx[i]]
-                :add(self._expandedSamples[self._minIndx[i]][i])
-   end 
+   -- x[k]-c[k] where k is nearest cluster to x
+   self._gradWeight = self._gradWeight or self.gradWeight.new()
+   self._gradWeight:index(self.weight, 1, self._minIndx)
+   self._gradWeight:mul(-1) 
+   self._gradWeight:add(input)
+   self._gradWeight:mul(-scale)
+   
+   self.gradWeight:indexAdd(1, self._minIndx, self._gradWeight)
 
    -- 1/n * sum_i (x-c)
    for i=1, self.k do
@@ -191,9 +190,6 @@ function Kmeans:accGradParameters(input, gradOutput, scale)
 
    -- scale * 1/n * sum_i (x-c)
    if scale ~= 1 then self.gradWeight:mul(scale) end
-
-   -- Negate gradWeight such gradient descent updates centers correctly
-   self.gradWeight:mul(-1)
 end
 
 function Kmeans:type(type, tensorCache)
