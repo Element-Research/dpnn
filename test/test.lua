@@ -1398,6 +1398,67 @@ function dpnntest.BinaryLogisticRegression()
    end
 end
 
+-- Unit Test Kmeans layer
+function dpnntest.Kmeans()
+   local k = 10
+   local dim = 5
+   local batchSize = 1000
+   local input = torch.rand(batchSize, dim)
+   for i=1, batchSize do
+      input[i]:fill(torch.random(1, k))
+   end
+
+   local attempts = 10
+   local iter = 100
+   local bestLoss = 100000000
+   local bestKm = nil
+   local deviceId = 2
+   local tempLoss = 0
+   local learningRate = 1
+
+   local initTypes = {'random', 'kmeans++'}
+   local useCudas = {false, true}
+   for _, initType in pairs(initTypes) do
+      for _, useCuda in pairs(useCudas) do 
+         if useCuda then
+            require 'cutorch'
+            require 'cunn'
+            cutorch.setDevice(deviceId)
+         end
+
+         sys.tic()
+         for j=1, attempts do
+            local km = nn.Kmeans(k, dim)
+
+            if initType == 'kmeans++' then
+               km:initKmeansPlus(input)
+            else
+               km:initRandom(input)
+            end
+
+            if useCuda then km:cuda() end
+            for i=1, iter do
+               km:forward(input)
+               km:backward(input, gradOutput)
+
+               -- Gradient descent
+               km.weight:add(-learningRate, km.gradWeight)
+               tempLoss = km.loss
+               km:resetNonWeight()
+            end
+            print("Attempt Loss " .. j ..": " .. tempLoss)
+            if tempLoss < bestLoss then
+               bestLoss = tempLoss
+               bestKm = km:clone()
+            end
+         end
+         print("InitType: " .. initType .. " useCuda: " .. tostring(useCuda))
+         print("Best Loss: " .. bestLoss)
+         print("Total time: " .. sys.toc())
+      end
+   end
+end
+
 function dpnntest.OneHot()
    local nClass = 10
    
