@@ -5,40 +5,50 @@ local precision = 1e-5
 local mytester
 
 function dpnntest.Module_sharedClone()
+   
+   local function testrnn(mlp, name)
+      mlp:zeroGradParameters()
+      local mlp = mlp:clone()
+      local clone = mlp:clone():sharedClone(true, true)
+      
+      for i=1,2 do
+         local input = torch.randn(2,3)
+         local gradOutput = torch.randn(2,4)
+         
+         local output = mlp:forward(input)
+         local gradInput = mlp:backward(input, gradOutput)
+         local output4 = clone:forward(input)
+         local gradInput4 = clone:backward(input, gradOutput)
+         
+         mytester:assertTensorEq(output, output4, 0.00001, name.." updateOutput")
+         mytester:assertTensorEq(gradInput, gradInput4, 0.00001, name.." updateGradInput")
+         
+         mlp:updateParameters(0.1)
+         clone:updateParameters(0.1)
+         
+         local params, gradParams = mlp:parameters()
+         local params2, gradParams2 = clone:parameters()
+         
+         mytester:assert(#params == #params2, name.." num params err")
+         mytester:assert(#gradParams == #gradParams2, name.." num gradParams err")
+         
+         for i,param in ipairs(params) do
+            mytester:assertTensorEq(param, params2[i], 0.00001, name.." params2 err "..i)
+            mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.00001, name.." gradParams2 err "..i)
+         end
+      end
+   end
 
    local function test(mlp, name)
       mlp:zeroGradParameters()
       local clone = mlp:clone()
-      clone:share(mlp,"weight","bias","gradWeight","gradBias")
+      clone:share(mlp,"weight","bias","gradWeight","gradBias") -- this actually won't work for nn.Recurrent
       
       local mlp2 = mlp:clone() -- not shared with mlp
       local clone2 = mlp2:sharedClone(true, true)
-      
-      local input = torch.randn(2,3)
-      local gradOutput = torch.randn(2,4)
-      
-      local output = mlp:forward(input)
-      local gradInput = mlp:backward(input, gradOutput)
-      local output4 = clone:forward(input)
-      local gradInput4 = clone:backward(input, gradOutput)
-      
-      mytester:assertTensorEq(output, output4, 0.00001, name.." updateOutput")
-      mytester:assertTensorEq(gradInput, gradInput4, 0.00001, name.." updateGradInput")
-      
-      local output2 = clone2:forward(input)
-      local gradInput2 = clone2:backward(input, gradOutput)
-      
-      mytester:assertTensorEq(output, output2, 0.00001, name.." updateOutput")
-      mytester:assertTensorEq(gradInput, gradInput2, 0.00001, name.." updateGradInput")
-      
-      local output3 = mlp2:forward(input)
-      local gradInput3 = mlp2:backward(input, gradOutput)
-      
-      mlp:updateParameters(0.1)
-      mlp2:updateParameters(0.1)
-      
-      mytester:assertTensorEq(output3, output2, 0.00001, name.." updateOutput")
-      mytester:assertTensorEq(gradInput3, gradInput2, 0.00001, name.." updateGradInput")
+      mlp2.__test = 1
+      clone2.__test = 2
+      mytester:assert(mlp2.__test ~= clone2.__test)
       
       local params, gradParams = mlp:parameters()
       local params4, gradParams4 = clone:parameters()
@@ -50,13 +60,46 @@ function dpnntest.Module_sharedClone()
       mytester:assert(#gradParams == #gradParams2, name.." num gradParams err")
       mytester:assert(#gradParams == #gradParams3, name.." num gradParams err")
       
+      local input = torch.randn(2,3)
+      local gradOutput = torch.randn(2,4)
+      
+      local output = mlp:forward(input)
+      local gradInput = mlp:backward(input, gradOutput)
+      
+      local output4 = clone:forward(input)
+      local gradInput4 = clone:backward(input, gradOutput)
+      
+      mytester:assertTensorEq(output, output4, 0.00001, name.." updateOutput")
+      mytester:assertTensorEq(gradInput, gradInput4, 0.00001, name.." updateGradInput")
+      
       for i,param in ipairs(params) do
-         mytester:assertTensorEq(param, params2[i], 0.00001, name.." params2 (mlp vs mlp:clone():sharedClone()) err "..i)
-         mytester:assertTensorEq(param, params4[i], 0.00001, name.." params4 (mlp vs mlp:clone():share()) err "..i)
-         mytester:assertTensorEq(param, params3[i], 0.00001, name.." params3 (mlp vs mlp:clone()) err "..i)
-         mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.00001, name.." gradParams2 err "..i)
+         mytester:assertTensorEq(param, params4[i], 0.00001, name.." params4  err "..i) 
          mytester:assertTensorEq(gradParams[i], gradParams4[i], 0.00001, name.." gradParams4 err "..i)
-         mytester:assertTensorEq(gradParams[i], gradParams3[i], 0.00001, name.." gradParams3 err "..i)
+      end
+      
+      local output2 = clone2:forward(input)
+      local gradInput2 = clone2:backward(input, gradOutput)
+      
+      mytester:assertTensorEq(output, output2, 0.00001, name.." updateOutput")
+      mytester:assertTensorEq(gradInput, gradInput2, 0.00001, name.." updateGradInput")
+      
+      local output3 = mlp2:forward(input)
+      local gradInput3 = mlp2:backward(input, gradOutput)
+      
+      mytester:assertTensorEq(output3, output2, 0.00001, name.." updateOutput")
+      mytester:assertTensorEq(gradInput3, gradInput2, 0.00001, name.." updateGradInput")
+      
+      for i,param in ipairs(params) do
+         mytester:assertTensorEq(params2[i], params3[i], 0.00001, name.." params 2 3  err "..i) 
+         mytester:assertTensorEq(gradParams2[i], gradParams3[i], 0.00001, name.." gradParams 2 3 err "..i)
+      end
+      
+      mlp:updateParameters(0.1)
+      mlp2:updateParameters(0.1)  
+      
+      for i,param in ipairs(params) do
+         mytester:assertTensorEq(param, params3[i], 0.00001, name.." params3 (mlp vs mlp:clone()) err "..i) -- fail
+         mytester:assertTensorEq(gradParams[i], gradParams3[i], 0.00001, name.." gradParams3 err "..i) -- fail
       end
    end
    
@@ -123,13 +166,78 @@ function dpnntest.Module_sharedClone()
    
    if pcall(function() require 'rnn' end) then
       local rnn = nn.Recurrent(4,nn.Linear(3,4),nn.Linear(4,4), nn.Sigmoid(), 999)
-      test(rnn, 'rnn1')
+      testrnn(rnn, 'rnn1')
       local seq = nn.Sequential()
       seq:add(nn.Repeater(nn.Recurrent(2,nn.Linear(3,2),nn.Linear(2,2), nn.Sigmoid(), 999), 3))
       seq:add(nn.Sequencer(nn.Linear(2,4)))
       seq:add(nn.SelectTable(-1))
       test2(seq, 'rnn2')
       test2(seq, 'rnn3')
+   end
+   
+   if pcall(function() require 'nngraph' end) then
+      local lin1 = nn.Linear(10, 10)
+      local p1, gp1 = lin1:getParameters() 
+      
+      local lin2_ = lin1:clone()
+      
+      local x = nn.Identity()()
+      local y = lin2_(x)
+      
+      local lin2 = nn.gModule({x}, {y})
+      
+      local lin3 = lin2:sharedClone()
+      
+      local input = torch.randn(4, 10)
+      local gradOutput = torch.randn(4, 10)
+      
+      lin1:zeroGradParameters()
+      lin2:zeroGradParameters()
+      
+      local params1, gradParams1 = lin1:parameters()
+      local params2, gradParams2 = lin2:parameters()
+      local params3, gradParams3 = lin3:parameters()
+      
+      local output1 = lin1:forward(input)
+      local gradInput1 = lin1:backward(input, gradOutput)
+      lin1:updateParameters(0.1)
+      
+      local output2 = lin2:forward(input)
+      local gradInput2 = lin2:backward(input, gradOutput)
+      lin2:updateParameters(0.1)
+      
+      mytester:assertTensorEq(output1, output2, 0.000001)
+      mytester:assertTensorEq(gradInput1, gradInput2, 0.000001)
+      
+      for i=1,#params2 do
+         mytester:assertTensorEq(params2[i], params3[i], 0.000001, "sharedClone nngraph param err "..i)
+         mytester:assertTensorEq(gradParams2[i], gradParams3[i], 0.000001, "sharedClone nngraph gradParam err "..i)
+         mytester:assertTensorEq(params1[i], params3[i], 0.000001, "sharedClone nngraph param err "..i)
+         mytester:assertTensorEq(gradParams1[i], gradParams3[i], 0.000001, "sharedClone nngraph gradParam err "..i)
+      end
+      
+      -- ok now lets forward/backward/update lin1 and lin3 to test sharedClone
+      
+      local output1 = lin1:forward(input)
+      local gradInput1 = lin1:backward(input, gradOutput)
+      
+      local output3 = lin3:forward(input)
+      local gradInput3 = lin3:backward(input, gradOutput)
+      
+      for i=1,#params2 do
+         mytester:assertTensorEq(params2[i], params3[i], 0.000001, "sharedClone nngraph param err "..i)
+         mytester:assertTensorEq(gradParams2[i], gradParams3[i], 0.000001, "sharedClone nngraph gradParam err "..i)
+         mytester:assertTensorEq(params1[i], params3[i], 0.000001, "sharedClone nngraph param err "..i)
+         mytester:assertTensorEq(gradParams1[i], gradParams3[i], 0.000001, "sharedClone nngraph gradParam err "..i)
+      end
+      
+      mytester:assertTensorEq(output1, output3, 0.000001)
+      mytester:assertTensorEq(gradInput1, gradInput3, 0.000001)
+      
+      for i=1,#params2 do
+         mytester:assertTensorEq(gradParams1[i], gradParams3[i], 0.000001, "sharedClone nngraph gradParam err "..i)
+      end
+      
    end
 end
 
@@ -220,6 +328,24 @@ function dpnntest.Module_gradParamClip()
    local norm2 = mlp2:gradParamClip(cutoff)
    mytester:assert(math.abs(norm2-norm) < 0.000001, "Module:gradParamClip norm 2 err "..norm2.." ~= "..norm)
    mytester:assertTensorEq(gradParam, gradParam2, 0.000001, "Module:gradParamClip clip 2 err")
+end
+
+function dpnntest.Module_getParameters()
+   -- test that getParameters will preserve parameters sharing for hidden modules
+   local lin = nn.Linear(3,4)
+   local lin2 = lin:sharedClone()
+   lin.sharedClone = lin2
+   local params, gradParams = lin:getParameters()
+   params:add(-1)
+   gradParams:fill(-1)
+   
+   local params1, gradParams1 = lin:parameters()
+   local params2, gradParams2 = lin2:parameters()
+   
+   for i=1,#params1 do
+      mytester:assertTensorEq(params1[i], params2[i], 0.000001, "getParameters param err "..i)
+      mytester:assertTensorEq(gradParams1[i], gradParams2[i], 0.000001, "getParameters gradParam err "..i)
+   end
 end
 
 function dpnntest.Serial()
@@ -1352,7 +1478,7 @@ function dpnntest.OneHot()
 
    local gradInput = oh:backward(input, gradOutput)
    mytester:assertTensorEq(gradInput, input:double():zero(), 0.000001, "OneHot backward batch err")
-   
+
    if pcall(function() require 'cunn' end) then
       oh:cuda()
       
@@ -1371,6 +1497,7 @@ function dpnntest.OneHot()
       
       local gradInput2 = oh:backward(input, gradOutput)
       mytester:assertTensorEq(gradInput, gradInput2:double(), 0.000001, "OneHot backward batch err")
+      cutorch.synchronize()
    end
    
    -- multi-dimensional input
@@ -1402,7 +1529,7 @@ function dpnntest.OneHot()
       -- test with cuda input
       local input = input:cuda()
       gradOutput = gradOutput:cuda()
-      
+     
       local output = oh:forward(input)
       mytester:assert(torch.type(output) == 'torch.CudaTensor')
       mytester:assertTensorEq(output:double(), output2, 0.000001, "OneHot 2d forward batch cuda err")
@@ -1410,25 +1537,31 @@ function dpnntest.OneHot()
       local gradInput2 = oh:backward(input, gradOutput)
       mytester:assertTensorEq(gradInput, gradInput2:double(), 0.000001, "OneHot 2d backward batch err")
       
-      -- benchmark
-      local input = torch.CudaTensor(50, 50)
-      local oh = nn.OneHot(65):cuda()
-      oh:forward(input)
-      local a = torch.Timer()
-      for i=1,10 do
+      local benchmark = false
+      if benchmark then
+         local input = torch.FloatTensor(50, 50):random(1,65):cuda()
+         
+         local oh = nn.OneHot(65):cuda()
+         
          oh:forward(input)
-      end
-      local gputime = a:time().real
-      
-      oh:float()
-      input = input:float()
-      oh:forward(input)
-      a = torch.Timer()
-      for i=1,10 do
+         cutorch.synchronize()
+         local a = torch.Timer()
+         for i=1,10 do
+            oh:forward(input)
+         end
+         cutorch.synchronize()
+         local gputime = a:time().real
+        
+         oh:float()
+         input = input:float()
          oh:forward(input)
+         a = torch.Timer()
+         for i=1,10 do
+            oh:forward(input)
+         end
+         local cputime = a:time().real
+         print("Onehot GPU vs CPU time", gputime, cputime)
       end
-      local cputime = a:time().real
-      --print("Onehot GPU vs CPU time", gputime, cputime)
    end
 end
 
