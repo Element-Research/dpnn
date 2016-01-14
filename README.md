@@ -11,7 +11,6 @@ The package provides the following Modules:
  * [DontCast](#nn.DontCast) : prevent encapsulated module from being casted by `Module:type()` ;
  * [Serial](#nn.Serial) : decorate a module makes its serialized output more compact ; 
  * [Inception](#nn.Inception) : implements the Inception module of the GoogleLeNet article ;
- * [Dictionary](#nn.Dictionary) : a LookupTable with sparse updates;
  * [Collapse](#nn.Collapse) : just like `nn.View(-1)`;
  * [Convert](#nn.Convert) : convert between different tensor types or shapes;
  * [ZipTable](#nn.ZipTable) : zip a table of tables into a table of tables;
@@ -290,18 +289,6 @@ The sole argument `config` is a table taking the following key-values :
 For a complete example using this module, refer to the following :
  * [deep inception training script](https://github.com/nicholas-leonard/dp/blob/master/examples/deepinception.lua) ;
  * [openface facial recognition](https://github.com/cmusatyalab/openface) (the model definition is [here](https://github.com/cmusatyalab/openface/blob/master/models/openface/nn4.def.lua)).
-
-<a name='nn.Dictionary'></a>
-## Dictionary ##
-DEPRECATED August 28, 2015
-
-```lua
-module = nn.Dictionary(dictSize, embeddingSize, accUpdate)
-```
-
-This module is a subclass of `LookupTable`. 
-The only difference is that it only updates embeddings (rows) that 
-have been used during a `forward`/`backward`. 
 
 <a name='nn.Collapse'></a>
 ## Collapse ##

@@ -66,6 +66,11 @@ function dpnntest.Module_sharedClone()
       local output = mlp:forward(input)
       local gradInput = mlp:backward(input, gradOutput)
       
+      for i,param in ipairs(params) do
+         mytester:assertTensorEq(param, params4[i], 0.00001, name.." params4  err "..i) 
+         mytester:assertTensorEq(gradParams[i], gradParams4[i], 0.00001, name.." gradParams4 err "..i)
+      end
+      
       local output4 = clone:forward(input)
       local gradInput4 = clone:backward(input, gradOutput)
       
@@ -82,6 +87,11 @@ function dpnntest.Module_sharedClone()
       
       mytester:assertTensorEq(output, output2, 0.00001, name.." updateOutput")
       mytester:assertTensorEq(gradInput, gradInput2, 0.00001, name.." updateGradInput")
+      
+      for i,param in ipairs(params) do
+         mytester:assertTensorEq(params2[i], params3[i], 0.00001, name.." params 2 3  err "..i) 
+         mytester:assertTensorEq(gradParams2[i], gradParams3[i], 0.00001, name.." gradParams 2 3 err "..i)
+      end
       
       local output3 = mlp2:forward(input)
       local gradInput3 = mlp2:backward(input, gradOutput)
@@ -104,6 +114,7 @@ function dpnntest.Module_sharedClone()
    end
    
    test(nn.Linear(3,4), 'linear')
+   
    local mlp = nn.Sequential()
    mlp:add(nn.Linear(3,7))
    mlp:add(nn.Tanh())
@@ -557,26 +568,6 @@ function dpnntest.Inception()
    for i, param in ipairs(incep:parameters()) do
       mytester:assert(_.isFinite(param:sum()), 'inception maxNorm error')
    end
-end
-
-function dpnntest.Dictionary()
-   local input = torch.randperm(80):resize(8,10)
-   local gradOutput = torch.randn(8,10,50)
-   local d = nn.Dictionary(100, 50)
-   local output = d:forward(input)
-   mytester:assertTableEq(output:size():totable(), {8,10,50}, 0.00001)
-   d:zeroGradParameters()
-   d:backward(input, gradOutput)
-   local d2 = nn.LookupTable(100,50)
-   d2 = d2:share(d, 'weight'):clone()
-   local output2 = d2:forward(input)
-   mytester:assertTensorEq(output, output2, 0.00001)
-   d2:zeroGradParameters()
-   d2:backward(input, gradOutput)
-   mytester:assertTensorEq(d.gradWeight, d2.gradWeight, 0.000001)
-   d:updateParameters(0.1)
-   d2:updateParameters(0.1)
-   mytester:assertTensorEq(d.weight, d2.weight, 0.00001)
 end
 
 function dpnntest.SpatialUniformCrop()

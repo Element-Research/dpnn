@@ -29,110 +29,114 @@ end
 Module.dpnn_parameters = {'weight', 'bias'}
 Module.dpnn_gradParameters = {'gradWeight', 'gradBias'}
 
--- Note : this method expects component modules to be stored in either
--- self.modules, self.sharedClones or as an attribute to self.
--- So if you store a module in self.mytbl = {mymodule}, it will be cloned
--- independently of sharedClone (i.e. deep copy).
-function Module:sharedClone(shareParams, shareGradParams, clones, pointers, stepClone)  
+-- efficient version of :
+-- clone = self:clone()
+-- clone:share(self, paramNames, gradParamNames)
+function Module:sharedClone(shareParams, shareGradParams, stepClone)  
    shareParams = (shareParams == nil) and true or shareParams
    shareGradParams = (shareGradParams == nil) and true or shareGradParams
    
-   clones = clones or {} -- module clones (clone once)
-   pointers = pointers or {} -- parameters (dont clone params/gradParams)
+   if stepClone and self.dpnn_stepclone then
+      -- this is for AbstractRecurrent modules (in rnn)
+      return self
+   end
    
-   local function recursiveCloneRemove(original, cloneTree, originalTree)
-      cloneTree = cloneTree or {}
-      originalTree = originalTree or {}
+   local pointers = {} -- to params/gradParams (dont clone params/gradParams)
+   
+   -- 1. remove all params/gradParams 
+   local function recursiveRemove(obj) -- remove modules
+      local moduleTree
+      local isTable = type(obj) == 'table' 
+      if torch.isTypeOf(obj, 'nn.Module') then
+         assert(isTable)
+         if stepClone and obj.dpnn_stepclone then
+            -- this is for AbstractRecurrent modules (in rnn)
+            moduleTree = obj
+            obj = nil
+            isTable = false
+         else
+            -- remove the params, gradParams. Save for later.
+            local params = {}
+            
+            if shareParams then
+               for i,paramName in ipairs(obj.dpnn_parameters) do
+                  local param = obj[paramName]
+                  if param then
+                     params[paramName] = param
+                     obj[paramName] = nil
+                     if param:storage() then
+                        pointers[torch.pointer(param:storage():data())] = true
+                     end
+                  end
+               end
+            end
+            
+            if shareGradParams then
+               for i,paramName in ipairs(obj.dpnn_gradParameters) do
+                  local gradParam = obj[paramName]
+                  if gradParam then
+                     params[paramName] = gradParam
+                     obj[paramName] = nil
+                     if gradParam:storage() then
+                        pointers[torch.pointer(gradParam:storage():data())] = true
+                     end
+                  end
+               end
+            end
+            
+            -- find all obj.attribute tensors that share storage with the shared params
+            for paramName, param in pairs(obj) do
+               if torch.isTensor(param) and param:storage() then
+                  if pointers[torch.pointer(param:storage():data())] then
+                     params[paramName] = param
+                     obj[paramName] = nil
+                  end
+               end
+            end
+            
+            moduleTree = params
+         end
+      end
       
-      for k,module in pairs(original) do
-         if torch.isTypeOf(module,'nn.Module') then
-            local clone
-            if not clones[torch.pointer(module)] then
-               clone = module:sharedClone(shareParams, shareGradParams, clones, pointers, stepClone)
-               clones[torch.pointer(module)] = clone
-            else
-               clone = clones[torch.pointer(module)]
-            end
-            cloneTree[k] = clone
-            originalTree[k] = module
-            original[k] = nil
-         elseif type(module) == 'table' then
-            cloneTree[k], originalTree[k] = recursiveCloneRemove(module, cloneTree[k], originalTree[k])
-         end
+      if isTable then
+         moduleTree = moduleTree or {}
+         for k,v in pairs(obj) do
+            moduleTree[k], obj[k] = recursiveRemove(v)
+         end 
       end
       
-      return cloneTree, originalTree
+      return moduleTree, obj
    end
    
-   local cloneTree, originalTree = recursiveCloneRemove(self)
+   local moduleTree, original = recursiveRemove(self)
+   assert(original)
    
-   -- 2. remove the params, gradParams. Save for later.
-   local params = {}
-   if shareParams then
-      for i,paramName in ipairs(self.dpnn_parameters) do
-         local param = self[paramName]
-         if param then
-            params[paramName] = param
-            self[paramName] = nil
-            if param:storage() then
-               pointers[torch.pointer(param:storage():data())] = true
-            end
-         end
-      end
-   end
+   -- 2. clone everything but parameters, gradients and modules (removed above)
    
-   if shareGradParams then
-      for i,paramName in ipairs(self.dpnn_gradParameters) do
-         local gradParam = self[paramName]
-         if gradParam then
-            params[paramName] = gradParam
-            self[paramName] = nil
-            if gradParam:storage() then
-               pointers[torch.pointer(gradParam:storage():data())] = true
-            end
-         end
-      end
-   end
-   
-   -- find all the tensors that share storage with the shared params
-   for paramName, param in pairs(self) do
-      if torch.isTensor(param) and param:storage() then
-         if pointers[torch.pointer(param:storage():data())] then
-            params[paramName] = param
-            self[paramName] = nil
-         end
-      end
-   end
-   
-   -- 3. clone everything but parameters, gradients and modules (removed above)
    local clone = self:clone()
    
-   
-   -- 4. add back to self/clone everything that was removed in steps 1 and 2
-   for paramName, param in pairs(params) do
-      assert(self[paramName] == nil)
-      self[paramName] = param
-      clone[paramName] = param.new():set(param)
-   end
-   
-   -- put back all removed modules in both original (self) and clone
-   local function recursiveSet(clone, original, cloneTree, originalTree)
-      assert(clone)
-      assert(original)
-      for k,moduleClone in pairs(cloneTree) do
-         local moduleOriginal = originalTree[k]
-         assert(moduleOriginal)
-         if torch.isTypeOf(moduleClone,'nn.Module') then
-            clone[k] = moduleClone
-            original[k] = moduleOriginal
-         elseif type(moduleClone) == 'table' then
-            clone[k], original[k] = recursiveSet(clone[k], original[k], moduleClone, moduleOriginal)
+   -- 3. add back to self/clone everything that was removed in step 1
+   local function recursiveSet(clone, original, moduleTree)
+      assert(moduleTree)
+      
+      if torch.isTypeOf(moduleTree, 'nn.Module') then
+         return moduleTree, moduleTree
+      elseif torch.type(moduleTree) == 'table' then
+         for k,param in pairs(moduleTree) do
+            clone[k], original[k] = recursiveSet(clone[k], original[k], param)
          end
-      end 
-      return clone, original
+         return clone, original
+      elseif torch.isTensor(moduleTree) then
+         return moduleTree.new():set(moduleTree), moduleTree
+      else
+         error"unrecognized type"
+      end
+      
    end
    
-   recursiveSet(clone, self, cloneTree, originalTree)
+   local clone, original = recursiveSet(clone, self, moduleTree)
+   assert(clone)
+   assert(torch.pointer(original) == torch.pointer(self))
    
    return clone
 end      
