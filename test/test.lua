@@ -1399,7 +1399,7 @@ function dpnntest.BinaryLogisticRegression()
 end
 
 -- Unit Test Kmeans layer
-function dpnntest.Kmeans()
+function dpnnbigtest.Kmeans()
    local k = 10
    local dim = 5
    local batchSize = 1000
@@ -1407,24 +1407,21 @@ function dpnntest.Kmeans()
    for i=1, batchSize do
       input[i]:fill(torch.random(1, k))
    end
+   
+   local verbose = false
 
    local attempts = 10
    local iter = 100
    local bestLoss = 100000000
    local bestKm = nil
-   local deviceId = 2
    local tempLoss = 0
    local learningRate = 1
 
    local initTypes = {'random', 'kmeans++'}
-   local useCudas = {false, true}
+   local hasCuda = pcall(function() require 'cunn' end)
+   local useCudas = {false, hasCuda}
    for _, initType in pairs(initTypes) do
       for _, useCuda in pairs(useCudas) do 
-         if useCuda then
-            require 'cutorch'
-            require 'cunn'
-            cutorch.setDevice(deviceId)
-         end
 
          sys.tic()
          for j=1, attempts do
@@ -1435,26 +1432,33 @@ function dpnntest.Kmeans()
             else
                km:initRandom(input)
             end
-
+            
             if useCuda then km:cuda() end
             for i=1, iter do
+               km:zeroGradParameters()
+               
                km:forward(input)
                km:backward(input, gradOutput)
 
                -- Gradient descent
                km.weight:add(-learningRate, km.gradWeight)
                tempLoss = km.loss
-               km:resetNonWeight()
             end
-            print("Attempt Loss " .. j ..": " .. tempLoss)
+            if verbose then print("Attempt Loss " .. j ..": " .. tempLoss) end
             if tempLoss < bestLoss then
                bestLoss = tempLoss
-               bestKm = km:clone()
             end
          end
-         print("InitType: " .. initType .. " useCuda: " .. tostring(useCuda))
-         print("Best Loss: " .. bestLoss)
-         print("Total time: " .. sys.toc())
+         if verbose then
+            print("InitType: " .. initType .. " useCuda: " .. tostring(useCuda))
+            print("Best Loss: " .. bestLoss)
+            print("Total time: " .. sys.toc())
+         end
+         if initType == 'kmeans++' then
+            mytester:assert(bestLoss < 0.00001)
+         else
+            mytester:assert(bestLoss < 500)
+         end
       end
    end
 end
