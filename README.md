@@ -621,7 +621,7 @@ for j=1, attempts do
    end
 end
 ``` 
-`nn.Kmeans()` module maintains loss only for the latest forward. If you want to maintain total loss over the whole dataset who would need do it my adding the module loss for every forward.
+`nn.Kmeans()` module maintains loss only for the latest forward. If you want to maintain loss over the whole dataset then you who would need do it my adding the module loss for every forward.
 
 You can also use `nn.Kmeans()` as an auxillary layer in your network. 
 A call to `forward` will generate an `output` containing the index of the nearest cluster for each sample in the batch.
