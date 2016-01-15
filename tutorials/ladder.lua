@@ -20,6 +20,12 @@ require 'ladder_help_funcs'
 torch.setdefaulttensortype("torch.FloatTensor")
 op = xlua.OptionParser('%prog [options]')
 
+-- Data
+op:option{'-d', '--datadir', action='store', dest='datadir',
+          help='path to datadir', default=""}
+op:option{'--noValidation', action='store_true', dest='noValidation',
+          help='Use validation data for training as well.', default=false}
+
 -- Model parameters
 op:option{'--noOfClasses', action='store', dest='noOfClasses',
           help='Number of classes.', default=10} -- MNIST data
@@ -33,10 +39,6 @@ op:option{'--useBatchNorm', action='store_true', dest='useBatchNorm',
 op:option{'--weightTied', action='store_true', dest='weightTied',
           help='Tie weights of decoder with encoder.', default=false}
 
--- Data
-op:option{'-d', '--datadir', action='store', dest='datadir',
-          help='path to datadir', default=""}
-
 -- Criterion and learning
 op:option{'--eta', action='store', dest='eta',
           help='If zero then only classifier cost is considered.', default=0}
@@ -47,7 +49,7 @@ op:option{'--epochs', action='store', dest='epochs',
 op:option{'--maxTries', action='store', dest='maxTries',
           help='Number of tries for stopping.',default=100}
 op:option{'--learningRate', action='store', dest='learningRate',
-          help='Learning rate',default=0.001}
+          help='Learning rate',default=0.002}
 op:option{'--learningRateDecay', action='store', dest='learningRateDecay',
           help='Learning rate decay',default=1e-7}
 op:option{'--momentum', action='store', dest='momentum',
@@ -55,12 +57,18 @@ op:option{'--momentum', action='store', dest='momentum',
 op:option{'--loss', action='store_true', dest='loss',
           help='If true use loss for early stopping else confusion matrix.',
           default=false}
+op:option{'--adam', action='store_true', dest='adam',
+          help='Use adaptive moment estimation optimizer.', default=false}
 
 -- Use Cuda
 op:option{'--useCuda', action='store_true',
           dest='useCuda', help='Use GPU', default=false}
 op:option{'--deviceId', action='store', dest='deviceId',
           help='GPU device Id',default=2}
+
+-- Print debug messages
+op:option{'--verbose', action='store_true', dest='verbose',
+          help='Print apppropriate debug messages.', default=false}
 
 -- Command line arguments
 opt = op:parse()
@@ -97,6 +105,8 @@ inputHiddens = dp.returnString(opt.hiddens)
 useBatchNorm = opt.useBatchNorm
 weightTied = opt.weightTied
 
+verbose = opt.verbose
+
 hiddens = {linFeats}
 for i=1,#inputHiddens do
    hiddens[#hiddens+1] = inputHiddens[i]
@@ -105,7 +115,7 @@ hiddens[#hiddens+1] = noOfClasses
 
 -- encoder input
 if noiseSigma ~= 0 then
-   print("Add noise to the samples.")
+   if verbose then print("Add noise to the samples.") end
    input = nn.WhiteNoise(0, noiseSigma)()
 else
    input = nn.Identity()()
@@ -119,14 +129,12 @@ for i=1,#hiddens-1 do
    encoderLayers[i] = nn.Linear(hiddens[i], hiddens[i+1])
    if i==1 then
       if useBatchNorm then
-         print("Encoder: batchNorm")
          Zs[i] = nn.BatchNormalization(hiddens[i+1])(encoderLayers[i](input))
       else
          Zs[i] = encoderLayers[i](input)
       end
    else
       if useBatchNorm then
-         print("Encoder: batchNorm")
          Zs[i] = nn.BatchNormalization(hiddens[i+1])
                                       (encoderLayers[i](nn.ReLU()(Zs[i-1])))
       else
@@ -145,12 +153,11 @@ Z_hats[#hiddens+1] = Zs[#Zs]
 for i=#hiddens,2,-1 do
    decoderLayers[i] = nn.Linear(hiddens[i], hiddens[i-1])
    if weightTied then
-      print("Tying encoder-decoder weights.")
+      if verbose then print("Tying encoder-decoder weights.") end
       decoderLayers[i].weight:set(encoderLayers[i-1].weight:t())
       decoderLayers[i].gradWeight:set(encoderLayers[i-1].gradWeight:t())
    end
    if useBatchNorm then
-      print("Decoder: batchNorm")
       u = nn.ReLU()(nn.BatchNormalization(hiddens[i-1])
                                          (decoderLayers[i](Z_hats[i+1])))
    else
@@ -199,9 +206,9 @@ learningRate = tonumber(opt.learningRate)
 learningRateDecay = tonumber(opt.learningRateDecay)
 momentum = tonumber(opt.momentum)
 loss = opt.loss
+adam = opt.adam
 
--- Optimizers: Using SGD [Stocastic Gradient Descent]
-print("Using Stocastic gradient descent")
+-- Optimizer
 optimState = {
                coefL1 = 0,
                coefL2 = 0,
@@ -210,7 +217,15 @@ optimState = {
                momentum = momentum,
                learningRateDecay = learningRateDecay
              }
-optimMethod = optim.sgd
+
+-- If true use Adaptive moment estimation else SGD.
+if adam then
+   if verbose then print("Using Adaptive moment estimation optimizer.") end
+   optimMethod = optim.adam
+else
+   if verbose then print("Using Stocastic gradient descent optimizer.") end
+   optimMethod = optim.sgd
+end
 print(optimState)
 
 -- Cuda
@@ -218,15 +233,15 @@ useCuda = opt.useCuda
 deviceId = tonumber(opt.deviceId)
 
 if useCuda then
-   print("Using GPU: "..deviceId)
+   if verbose then print("Using GPU: "..deviceId) end
    cutorch.setDevice(deviceId)
-   print("GPU set")
+   if verbose then print("GPU set") end
    model:cuda()
-   print("Model copied to GPU.")
+   if verbose then print("Model copied to GPU.") end
    criterions:cuda()
-   print("Criterion copied to GPU.")
+   if verbose then print("Criterion copied to GPU.") end
 else
-   print("Not using GPU.")
+   if verbose then print("Not using GPU.") end
 end
 
 -- Retrieve parameters and gradients
@@ -238,12 +253,14 @@ tvData.data = tvData.data:reshape(tvData.size(1), linFeats)
 tsData.data = tsData.data:reshape(tsData.size(1), linFeats)
 collectgarbage()
 
-print(trData)
-print(tvData)
-print(tsData)
+if verbose then
+   print(trData)
+   print(tvData)
+   print(tsData)
+end
 
 -- Training
-displayProgress = true
+displayProgress = verbose
 classifierIndx = 1
 trainAccu = 0
 validAccu = 0
@@ -251,8 +268,8 @@ bestTrainAccu = 0
 bestValidAccu = 0
 trainLoss = 0
 validLoss = 0
-bestTrainLoss = 10e6
-bestValidLoss = 10e6
+bestTrainLoss = math.huge
+bestValidLoss = math.huge
 bestTrainModel = nn.Sequential()
 bestValidModel = nn.Sequential()
 earlyStopCount = 0
@@ -266,8 +283,10 @@ for i=1, epochs do
                                            classiferIndx)
    confusion:updateValids()
    if loss then
-      print("Current train loss: ".. trainLoss
-               ..", best train loss: " .. bestTrainLoss)
+      if verbose then
+         print("Current train loss: ".. trainLoss
+                  ..", best train loss: " .. bestTrainLoss)
+      end
       if trainLoss < bestTrainLoss then
          bestTrainLoss = trainLoss
          bestTrainModel = model:clone()
@@ -280,9 +299,11 @@ for i=1, epochs do
          bestTrainModel = model:clone()
          bestTrainLoss = trainLoss
       end
-      print("Current train accu: ".. trainAccu
-               ..", best train accu: " .. bestTrainAccu
-               ..", best train loss: " .. bestTrainLoss)
+      if verbose then
+         print("Current train accu: ".. trainAccu
+                  ..", best train accu: " .. bestTrainAccu
+                  ..", best train loss: " .. bestTrainLoss)
+      end
    end
 
    -- Validating
@@ -291,8 +312,10 @@ for i=1, epochs do
                                           useCuda, classifierIndx)
    confusion:updateValids()
    if loss then
-      print("Current valid loss: ".. validLoss
-               ..", best valid loss: " .. bestValidLoss)
+      if verbose then
+         print("Current valid loss: ".. validLoss
+                  ..", best valid loss: " .. bestValidLoss)
+      end
       if validLoss < bestValidLoss then
          earlyStopCount = 0
          bestValidLoss = validLoss
@@ -311,14 +334,16 @@ for i=1, epochs do
       else
          earlyStopCount = earlyStopCount + 1
       end
-      print("Current valid accu: ".. validAccu
-            ..", best valid accu: " .. bestValidAccu
-            ..", best valid loss: " .. bestValidLoss)
+      if verbose then
+         print("Current valid accu: ".. validAccu
+               ..", best valid accu: " .. bestValidAccu
+               ..", best valid loss: " .. bestValidLoss)
+      end
    end
    print(noiseSigma, weightTied, useBatchNorm, eta, earlyStopCount)
 
    if earlyStopCount >= maxTries then
-      print("Early stopping at epoch: " .. i)
+      if verbose then print("Early stopping at epoch: " .. i) end
       break
    end
 end
