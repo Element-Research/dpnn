@@ -32,6 +32,8 @@ Module.dpnn_gradParameters = {'gradWeight', 'gradBias'}
 -- efficient version of :
 -- clone = self:clone()
 -- clone:share(self, paramNames, gradParamNames)
+-- Note that this method is the very bane of my existence. 
+-- I have worked on it too many times...
 function Module:sharedClone(shareParams, shareGradParams, stepClone)  
    shareParams = (shareParams == nil) and true or shareParams
    shareGradParams = (shareGradParams == nil) and true or shareGradParams
@@ -42,6 +44,7 @@ function Module:sharedClone(shareParams, shareGradParams, stepClone)
    end
    
    local pointers = {} -- to params/gradParams (dont clone params/gradParams)
+   local scdone = {}
    
    -- 1. remove all params/gradParams 
    local function recursiveRemove(obj) -- remove modules
@@ -54,6 +57,8 @@ function Module:sharedClone(shareParams, shareGradParams, stepClone)
             moduleTree = obj
             obj = nil
             isTable = false
+         elseif scdone[torch.pointer(obj)] then
+            moduleTree = scdone[torch.pointer(obj)]
          else
             -- remove the params, gradParams. Save for later.
             local params = {}
@@ -95,14 +100,26 @@ function Module:sharedClone(shareParams, shareGradParams, stepClone)
             end
             
             moduleTree = params
+            
+            scdone[torch.pointer(obj)] = moduleTree
+            
+            for k,v in pairs(obj) do
+               moduleTree[k], obj[k] = recursiveRemove(v)
+            end
+            
          end
-      end
-      
-      if isTable then
-         moduleTree = moduleTree or {}
-         for k,v in pairs(obj) do
-            moduleTree[k], obj[k] = recursiveRemove(v)
-         end 
+      elseif isTable then
+         if scdone[torch.pointer(obj)] then
+            moduleTree = scdone[torch.pointer(obj)]
+         else
+            assert(not moduleTree)
+            moduleTree = {}
+            for k,v in pairs(obj) do
+               moduleTree[k], obj[k] = recursiveRemove(v)
+            end 
+            scdone[torch.pointer(obj)] = moduleTree
+         end
+            
       end
       
       return moduleTree, obj
@@ -114,29 +131,31 @@ function Module:sharedClone(shareParams, shareGradParams, stepClone)
    -- 2. clone everything but parameters, gradients and modules (removed above)
    
    local clone = self:clone()
-   
+ 
    -- 3. add back to self/clone everything that was removed in step 1
+   
    local function recursiveSet(clone, original, moduleTree)
-      assert(moduleTree)
-      
-      if torch.isTypeOf(moduleTree, 'nn.Module') then
-         return moduleTree, moduleTree
-      elseif torch.type(moduleTree) == 'table' then
+      assert(clone)
+      assert(original)
+      if scdone[torch.pointer(original)] then
          for k,param in pairs(moduleTree) do
-            clone[k], original[k] = recursiveSet(clone[k], original[k], param)
-         end
-         return clone, original
-      elseif torch.isTensor(moduleTree) then
-         return moduleTree.new():set(moduleTree), moduleTree
-      else
-         error"unrecognized type"
+            if torch.isTypeOf(param,'nn.Module') then
+               -- AbstractRecurrent instances branch here with stepClone = true
+               clone[k] = param
+               original[k] = param
+            elseif torch.isTensor(param) then
+               clone[k] = param.new():set(param)
+               original[k] = param
+            elseif type(param) == 'table' then
+               recursiveSet(clone[k], original[k], param)
+            end
+         end 
+         scdone[torch.pointer(original)] = nil
       end
-      
+         
    end
    
-   local clone, original = recursiveSet(clone, self, moduleTree)
-   assert(clone)
-   assert(torch.pointer(original) == torch.pointer(self))
+   recursiveSet(clone, self, moduleTree)
    
    return clone
 end      
