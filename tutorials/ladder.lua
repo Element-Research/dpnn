@@ -45,13 +45,19 @@ op:option{'--eta', action='store', dest='eta',
 op:option{'--batchSize', action='store', dest='batchSize',
           help='Batch Size.',default=32}
 op:option{'--epochs', action='store', dest='epochs',
-          help='Number of epochs.',default=10000}
+          help='Number of epochs.',default=100}
 op:option{'--maxTries', action='store', dest='maxTries',
-          help='Number of tries for stopping.',default=100}
+          help='Number of tries for stopping.',default=0}
 op:option{'--learningRate', action='store', dest='learningRate',
           help='Learning rate',default=0.002}
 op:option{'--learningRateDecay', action='store', dest='learningRateDecay',
           help='Learning rate decay',default=1e-7}
+op:option{'--linearDecay', action='store_true', dest='linearDecay',
+          help='Linearly reduce learning rate', default=false}
+op:option{'--startEpoch', action='store', dest='startEpoch',
+          help='Epoch number when to start linear decay.',default=1}
+op:option{'--endLearningRate', action='store', dest='endLearningRate',
+          help='Learning rate at last epoch',default=0.0}
 op:option{'--momentum', action='store', dest='momentum',
           help='Learning Momemtum',default=0}
 op:option{'--loss', action='store_true', dest='loss',
@@ -61,10 +67,10 @@ op:option{'--adam', action='store_true', dest='adam',
           help='Use adaptive moment estimation optimizer.', default=false}
 
 -- Use Cuda
-op:option{'--useCuda', action='store_true',
-          dest='useCuda', help='Use GPU', default=false}
-op:option{'--deviceId', action='store', dest='deviceId',
-          help='GPU device Id',default=2}
+op:option{'--useCuda', action='store_true', dest='useCuda', help='Use GPU',
+          default=false}
+op:option{'--deviceId', action='store', dest='deviceId', help='GPU device Id',
+          default=2}
 
 -- Print debug messages
 op:option{'--verbose', action='store_true', dest='verbose',
@@ -204,6 +210,18 @@ epochs = tonumber(opt.epochs)
 maxTries = tonumber(opt.maxTries)
 learningRate = tonumber(opt.learningRate)
 learningRateDecay = tonumber(opt.learningRateDecay)
+linearDecay = opt.linearDecay
+startEpoch = tonumber(opt.startEpoch)
+endLearningRate = tonumber(opt.endLearningRate)
+
+if linearDecay then
+   if verbose then print("Using linear decay.") end
+   learningRates = torch.zeros(startEpoch):fill(learningRate)
+   local temp = torch.range(learningRate, endLearningRate,
+                            -learningRate/(epochs-startEpoch))
+   learningRates = torch.cat(learningRates, temp)
+end
+
 momentum = tonumber(opt.momentum)
 loss = opt.loss
 adam = opt.adam
@@ -226,7 +244,10 @@ else
    if verbose then print("Using Stocastic gradient descent optimizer.") end
    optimMethod = optim.sgd
 end
-print(optimState)
+if verbose then
+   print(optimMethod)
+   print(optimState)
+end
 
 -- Cuda
 useCuda = opt.useCuda
@@ -274,6 +295,9 @@ bestTrainModel = nn.Sequential()
 bestValidModel = nn.Sequential()
 earlyStopCount = 0
 for i=1, epochs do
+   if linearDecay then
+      optimState.learningRate = learningRates[i]
+   end
    -- Training
    trainLoss = model_train_multi_criterion(model, criterions,
                                            parameters, gradParameters, trData,
@@ -342,9 +366,11 @@ for i=1, epochs do
    end
    print(noiseSigma, weightTied, useBatchNorm, eta, earlyStopCount)
 
-   if earlyStopCount >= maxTries then
-      if verbose then print("Early stopping at epoch: " .. i) end
-      break
+   if maxTries ~= 0 then
+      if earlyStopCount >= maxTries then
+         if verbose then print("Early stopping at epoch: " .. i) end
+         break
+      end
    end
 end
 

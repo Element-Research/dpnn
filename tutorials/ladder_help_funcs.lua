@@ -140,7 +140,7 @@ function model_train_multi_criterion(model, criterions, parameters,
          return f, gradParameters
       end
 
-      -- optimize on current mini batch # Using SGD
+      -- optimize on current mini batch # Using SGD/adam
       optimMethod(feval, parameters, optimState)
    end
 
