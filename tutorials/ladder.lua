@@ -25,6 +25,8 @@ op:option{'-d', '--datadir', action='store', dest='datadir',
           help='path to datadir', default=""}
 op:option{'--noValidation', action='store_true', dest='noValidation',
           help='Use validation data for training as well.', default=false}
+op:option{'--best', action='store_true', dest='best',
+          help='Use best training or validation model.', default=false}
 
 -- Model parameters
 op:option{'--noOfClasses', action='store', dest='noOfClasses',
@@ -85,6 +87,7 @@ op:summarize()
 -- Data
 datadir = opt.datadir
 noValidation = opt.noValidation
+best = opt.best
 trDataFile = paths.concat(datadir, "trainDict.t7")
 tvDataFile = paths.concat(datadir, "validDict.t7")
 tsDataFile = paths.concat(datadir, "testDict.t7")
@@ -392,9 +395,21 @@ for attempt=1,attempts do
    end
 
    -- Testing
-   testLoss = model_test_multi_criterion(bestValidModel, criterions,
-                                         tsData, confusion,
-                                         useCuda, classifierIndx)
+   if best then
+      if noValidation then
+         testLoss = model_test_multi_criterion(bestTrainModel, criterions,
+                                               tsData, confusion,
+                                               useCuda, classifierIndx)
+      else
+         testLoss = model_test_multi_criterion(bestValidModel, criterions,
+                                               tsData, confusion,
+                                               useCuda, classifierIndx)
+      end
+   else
+      testLoss = model_test_multi_criterion(model, criterions,
+                                            tsData, confusion,
+                                            useCuda, classifierIndx)
+   end
    confusion:updateValids()
    testAccu = confusion.totalValid * 100
    testAccus[attempt] = testAccu
