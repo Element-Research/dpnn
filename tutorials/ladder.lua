@@ -92,41 +92,41 @@ trDataFile = paths.concat(datadir, "trainDict.t7")
 tvDataFile = paths.concat(datadir, "validDict.t7")
 tsDataFile = paths.concat(datadir, "testDict.t7")
 
-trData = torch.load(trDataFile)
-trData.size = function() return trData.data:size()[1] end
-tvData = torch.load(tvDataFile)
-tvData.size = function() return tvData.data:size()[1] end
-tsData = torch.load(tsDataFile)
-tsData.size = function() return tsData.data:size()[1] end
-
-tempSample = trData.data[1]
-channels = tempSample:size(1)
-width = tempSample:size(2)
-height = tempSample:size(3)
-linFeats = channels * height * width
-
--- MNIST
-classes = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '10'}
-confusion = optim.ConfusionMatrix(classes)
-
--- Model
-noOfClasses = tonumber(opt.noOfClasses)
-noiseSigma = tonumber(opt.noiseSigma)
-inputHiddens = dp.returnString(opt.hiddens)
-useBatchNorm = opt.useBatchNorm
-weightTied = opt.weightTied
-
-verbose = opt.verbose
-
-hiddens = {linFeats}
-for i=1,#inputHiddens do
-   hiddens[#hiddens+1] = inputHiddens[i]
-end
-hiddens[#hiddens+1] = noOfClasses
-
 attempts = tonumber(opt.attempts)
 testAccus = torch.zeros(attempts)
 for attempt=1,attempts do
+
+   trData = torch.load(trDataFile)
+   trData.size = function() return trData.data:size()[1] end
+   tvData = torch.load(tvDataFile)
+   tvData.size = function() return tvData.data:size()[1] end
+   tsData = torch.load(tsDataFile)
+   tsData.size = function() return tsData.data:size()[1] end
+
+   tempSample = trData.data[1]
+   channels = tempSample:size(1)
+   width = tempSample:size(2)
+   height = tempSample:size(3)
+   linFeats = channels * height * width
+
+   -- MNIST
+   classes = {'1', '2', '3', '4', '5', '6', '7', '8', '9', '10'}
+   confusion = optim.ConfusionMatrix(classes)
+
+   -- Model
+   noOfClasses = tonumber(opt.noOfClasses)
+   noiseSigma = tonumber(opt.noiseSigma)
+   inputHiddens = dp.returnString(opt.hiddens)
+   useBatchNorm = opt.useBatchNorm
+   weightTied = opt.weightTied
+
+   verbose = opt.verbose
+
+   hiddens = {linFeats}
+   for i=1,#inputHiddens do
+      hiddens[#hiddens+1] = inputHiddens[i]
+   end
+   hiddens[#hiddens+1] = noOfClasses
 
    -- encoder input
    if noiseSigma ~= 0 then
