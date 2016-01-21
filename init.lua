@@ -31,7 +31,7 @@ _ = require 'moses'
 
 -- create global dpnn table
 dpnn = {}
-dpnn.version = 1
+dpnn.version = 2
 
 unpack = unpack or table.unpack -- lua 5.2 compat
 

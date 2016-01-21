@@ -375,6 +375,7 @@ function dpnntest.Serial()
       mytester:assertTensorEq(gradInput, gradInput2, 0.00001, name.." serial backward error")
       
       mlp2:mediumSerial()
+      mlp2.tensortype = 'torch.FloatTensor'
       local mlp3 = mlp2:clone()
       
       mytester:assert(mlp3.module.output:nElement() == 0, name.." serial medium empty err")
@@ -395,8 +396,8 @@ function dpnntest.Serial()
       local params2, gradParams2 = mlp3:parameters()
       mytester:assert(#params == #params2)
       for i,param in ipairs(params) do
-         mytester:assertTensorEq(param:float(), params2[i], 0.00001, "params err "..i)
-         mytester:assertTensorEq(gradParams[i]:float(), gradParams2[i], 0.00001, "gradParams err "..i)
+         mytester:assertTensorEq(param:float(), params2[i], 0.00001, name.." params err "..i)
+         mytester:assertTensorEq(gradParams[i]:float(), gradParams2[i], 0.00001, name.." gradParams err "..i)
       end
    end
    
