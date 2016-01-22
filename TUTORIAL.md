@@ -2,7 +2,20 @@
 
 ## Lateral Connections in Denoising Autoencoders Support Supervised Learning
 
-In this tutorial we will understand how to implement ladder network as explained in [[1](http://arxiv.org/pdf/1504.08215.pdf)]. In this paper the authors have shown how unsupervised learning using a denoising autoencoder with lateral connections help improve the classification accuracy in supervised learning. 
+In this tutorial we will understand how to implement ladder network as explained in [[1](http://arxiv.org/pdf/1504.08215.pdf)]. In this paper the authors have shown how unsupervised learning using a denoising autoencoder with lateral connections help improve the classification accuracy in supervised learning.
+
+To produce results as mentioned in the paper please run following command
+```
+   th tutorials/ladder.lua --verbose -d MNIST_directory_path --eta 500 --epochs 100 --learningRate 0.002 --linearDecay --endLearningRate 0 --startEpoch 50 --useCuda --deviceId 1 --noiseSigma 0.3 --useBatchNorm --batchSize 100 --adam --weightTied --noValidation --attempts 10
+```
+`MNIST_directory_path` contains `trainDict.t7`, `validDict.t7` and `testDict.t7`. Each of these files contains MNIST train, validation and test data respectively in a dictionary in following format.
+```lua
+train/valid/testDict
+{
+   data: FloatTensor - size: Nx1x28x28
+   labels : FloatTensor - size: N
+}
+```
 
 The unsupervised learning (denoising) task supplements the supervised learning task (classification in this case). As in autoencoders this network has an encoder and a decoder. The output of encoder is also used for classification. The output of encoder is **`N`** dimensional where **`N`** is number of classes. This **`N`** dimensional vector is used for computing classification cost as well as feeds into the decoder.
 
@@ -42,7 +55,7 @@ where
       z_hat4 = nn.CMulTable()({a2, z_hat3})
       Z_hat = nn.CAddTable()({z_hat1, z_hat4, a5})
 ```
-`Z_hat` is `z^`.
+`Z_hat` is `z^`. Please check code in *tutorials/ladder.lua*.
 
 
 
