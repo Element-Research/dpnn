@@ -10,7 +10,15 @@ The unsupervised learning (denoising) task supplements the supervised learning t
 Typically in denoising autoencoder the input samples are corrupted using Dropout ```nn.Dropout``` but in this paper the authors use isotropic Gaussian noise ```nn.WhiteNoise```.
 
 ### Lateral Connections in Autoencoder
-
+Corresponding units in encoder are laterally connected to corresponding unit in the decoder. The vertical connection of the decoder is standard fully connected layer. Lateral connected for neuron `i` is defined by
+```
+   z^_i = a_i1 * z_i + a_i2 * sigmoid(a_i3 + a_i4) + a_i5
+```
+where 
+```
+   a_ij = c_ij * u_i + d_ij
+```
+**`u`** is output of decoder unit. **`z`** is output of corresponding encoder unit (this is lateral connection, decoder takes output from its previous unit as well as corresponding encoder unit). **`c_j`** and **`d_j`** are trainable weight vectors.
 
 
 
