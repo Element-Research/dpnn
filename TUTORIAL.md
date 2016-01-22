@@ -7,7 +7,9 @@ In this tutorial we will understand how to implement ladder network as explained
 The unsupervised learning (denoising) task supplements the supervised learning task (classification in this case). As in autoencoders this network has an encoder and a decoder. The output of encoder is also used for classification. The output of encoder is **`N`** dimensional where **`N`** is number of classes. This **`N`** dimensional vector is used for computing classification cost as well as feeds into the decoder.
 
 ### Denoising
-Typically 
+Typically in denoising autoencoder the input samples are corrupted using Dropout ```nn.Dropout``` but in this paper the authors use isotropic Gaussian noise ```nn.WhiteNoise```.
+
+### Lateral Connections in Autoencoder
 
 
 
