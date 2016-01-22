@@ -416,3 +416,4 @@ for attempt=1,attempts do
 end
 print("Test accuracies.")
 print(testAccus)
+print("Max Test Error is: " .. tostring(100 - testAccus:max()) .. "%")
