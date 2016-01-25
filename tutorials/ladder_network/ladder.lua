@@ -21,8 +21,6 @@ torch.setdefaulttensortype("torch.FloatTensor")
 op = xlua.OptionParser('%prog [options]')
 
 -- Data
-op:option{'-d', '--datadir', action='store', dest='datadir',
-          help='path to datadir', default=""}
 op:option{'--noValidation', action='store_true', dest='noValidation',
           help='Use validation data for training as well.', default=false}
 op:option{'--best', action='store_true', dest='best',
@@ -85,23 +83,32 @@ opt = op:parse()
 op:summarize()
 
 -- Data
-datadir = opt.datadir
 noValidation = opt.noValidation
 best = opt.best
-trDataFile = paths.concat(datadir, "trainDict.t7")
-tvDataFile = paths.concat(datadir, "validDict.t7")
-tsDataFile = paths.concat(datadir, "testDict.t7")
+
+ds = dp.Mnist{}
 
 attempts = tonumber(opt.attempts)
 testAccus = torch.zeros(attempts)
+trData = {}
+tvData = {}
+tsData = {}
 for attempt=1,attempts do
 
-   trData = torch.load(trDataFile)
+   local t1, t2
+
+   trData.data, t1, t2 = ds:get('train', 'input', 'bchw', 'float')
+   trData.labels, t1, t2 = ds:get('train', 'target')
    trData.size = function() return trData.data:size()[1] end
-   tvData = torch.load(tvDataFile)
+
+   tvData.data, t1, t2 = ds:get('valid', 'input', 'bchw', 'float')
+   tvData.labels, t1, t2 = ds:get('valid', 'target')
    tvData.size = function() return tvData.data:size()[1] end
-   tsData = torch.load(tsDataFile)
+
+   tsData.data, t1, t2 = ds:get('test', 'input', 'bchw', 'float')
+   tsData.labels, t1, t2 = ds:get('test', 'target')
    tsData.size = function() return tsData.data:size()[1] end
+   collectgarbage()
 
    tempSample = trData.data[1]
    channels = tempSample:size(1)
