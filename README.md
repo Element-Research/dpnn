@@ -15,6 +15,7 @@ The package provides the following Modules:
  * [Convert](#nn.Convert) : convert between different tensor types or shapes;
  * [ZipTable](#nn.ZipTable) : zip a table of tables into a table of tables;
  * [ZipTableOneToMany](#nn.ZipTableOneToMany) : zip a table of element `el` and table of elements into a table of pairs of element `el` and table elements;
+ * [CAddTensorTable](#nn.CAddTensorTable) : adds a tensor to a table of tensors of the same size;
  * [ReverseTable](#nn.ReverseTable) : reverse the order of elements in a table;
  * [PrintSize](#nn.PrintSize) : prints the size of inputs and gradOutputs (useful for debugging);
  * [Clip](#nn.Clip) : clips the inputs to a min and max value;
@@ -407,6 +408,22 @@ Example:
 print(module:forward{ 'el', {'a','b','c'} })
 { {'el','a'}, {'el','b'}, {'el','c'} }
 ```
+
+<a name='nn.CAddTensorTable'></a>
+## CAddTensorTable ##
+
+```lua
+module = nn.CAddTensortable()
+```
+
+Adds the first element `el` of the input table `tab` to each tensor contained in the second element of `tab`, which is itself a table
+
+Example:
+```lua
+print(module:forward{ (0,1,1), {(0,0,0),(1,1,1)} })
+{ (0,1,1), (1,2,2) }
+```
+
 
 <a name='nn.ReverseTable'></a>
 ## ReverseTable ##
