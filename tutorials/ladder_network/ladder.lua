@@ -293,7 +293,8 @@ for attempt=1,attempts do
    if noValidation then
       trData.data = torch.cat(trData.data, tvData.data, 1)
       trData.labels = torch.cat(trData.labels, tvData.labels, 1)
-      tvData = nil
+      tvData.data = nil
+      tvData.labels = nil
       collectgarbage()
    end
 
