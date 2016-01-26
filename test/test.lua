@@ -1580,14 +1580,14 @@ function dpnntest.OneHot()
    end
 end
 
-function test(tests)
+function dpnn.test(tests)
    mytester = torch.Tester()
    mytester:add(dpnntest)
    math.randomseed(os.time())
    mytester:run(tests)
 end
 
-function bigtest(tests)
+function dpnn.bigtest(tests)
    mytester = torch.Tester()
    mytester:add(dpnnbigtest)
    math.randomseed(os.time())
