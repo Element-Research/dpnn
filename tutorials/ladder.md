@@ -6,15 +6,7 @@ In this tutorial we will understand how to implement ladder network as explained
 
 To produce results as mentioned in the paper please run following command
 ```
-   th tutorials/ladder.lua --verbose --eta 500 --epochs 100 --learningRate 0.002 --linearDecay --endLearningRate 0 --startEpoch 50 --useCuda --deviceId 1 --noiseSigma 0.3 --useBatchNorm --batchSize 100 --adam --weightTied --noValidation --attempts 10
-```
-`MNIST_directory_path` contains `trainDict.t7`, `validDict.t7` and `testDict.t7`. Each of these files contains MNIST train, validation and test data respectively in a dictionary in following format.
-```lua
-train/valid/testDict
-{
-   data: FloatTensor - size: Nx1x28x28
-   labels : FloatTensor - size: N
-}
+   th tutorials/ladder.lua --verbose --eta 500 --epochs 100 --learningRate 0.002 --linearDecay --endLearningRate 0 --startEpoch 50 --useCuda --deviceId 1 --noiseSigma 0.3 --useBatchNorm --batchSize 100 --adam --noValidation --attempts 10
 ```
 
 The unsupervised learning (denoising) task supplements the supervised learning task (classification in this case). As in autoencoders this network has an encoder and a decoder. The output of encoder is also used for classification. The output of encoder is **`N`** dimensional where **`N`** is number of classes. This **`N`** dimensional vector is used for computing classification cost as well as feeds into the decoder.
@@ -67,6 +59,12 @@ Mean squared error is used for the auxillary task.
    mse = nn.MSECriterion()
 ```
 These two training criterions are combined using `eta` which determines weight for auxillary task. If `eta` is zero then the model is trained for classification only.
+Combined criterion
+```lua
+   criterions = ParallelCriterion()
+   criterions:add(nll)
+   criterions:add(mse, eta)
+```
 
 ### References
 [1] Rasmus, Antti, Harri Valpola, and Tapani Raiko. "Lateral Connections in Denoising Autoencoders Support Supervised Learning." arXiv preprint arXiv:1504.08215 (2015).
