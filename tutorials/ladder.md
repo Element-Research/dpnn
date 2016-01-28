@@ -23,7 +23,7 @@ where
 ```
    a_ij = c_ij * u_i + d_ij
 ```
-**`u`** is output of decoder unit. **`z`** is output of corresponding encoder unit (this is lateral connection, decoder takes output from its previous unit as well as corresponding encoder unit). **`c_j`** and **`d_j`** are trainable weight vectors. This forms the crux of the ladder network. This can be easily implemented using **`nngraph`** as follows
+**`u`** is output of previous decoder unit. For the top most layer  **`u`** is zero. **`z`** is output of corresponding encoder unit (this is lateral connection, decoder takes output from its previous unit as well as corresponding encoder unit). **`c_j`** and **`d_j`** are trainable weight vectors. This forms the crux of the ladder network. This can be easily implemented using **`nngraph`** as follows
 ```lua
       cu1 = nn.CMul(hidden_units)(u)
       du1 = nn.Add(hidden_units])(u)
