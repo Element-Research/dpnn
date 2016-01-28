@@ -25,10 +25,11 @@ For first layer **`previous_H`** is the corrupted input.
    input = nn.WhiteNoise(mean, sigma)
 ```
 
-For the last encoder unit **`H`** is defined as
+**`H`** for last encoder unit is defined as
 ```lua
-   H = nn.SoftMax()(nn.CMul()(nn.Add()(Z)))
+   H = nn.LogSoftMax()(nn.CMul()(nn.Add()(Z)))
 ```
+This **`H`** feed into the negative log likelihood criterion.
 
 ### Denoising
 Typically in denoising autoencoder the input samples are corrupted using Dropout ```nn.Dropout``` but in this paper the authors use isotropic Gaussian noise ```nn.WhiteNoise```.
