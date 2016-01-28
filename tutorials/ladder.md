@@ -20,7 +20,7 @@ Encoder/classifier units are defined as
 where
 ```lua
    H = nn.ReLU()(nn.CMul()(nn.Add()(Z)))
-```.
+```
 For the first layer of encoder `previous_H` is the corrupted input.
 The input is corrupted using
 ```lua
