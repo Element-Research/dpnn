@@ -29,7 +29,7 @@ For first layer **`previous_H`** is the corrupted input.
 ```lua
    H = nn.LogSoftMax()(nn.CMul()(nn.Add()(Z)))
 ```
-This **`H`** feed into the negative log likelihood criterion.
+Last **`H`** feed into the negative log likelihood criterion.
 
 ### Denoising
 Typically in denoising autoencoder the input samples are corrupted using Dropout ```nn.Dropout``` but in this paper the authors use isotropic Gaussian noise ```nn.WhiteNoise``` with zero mean.
