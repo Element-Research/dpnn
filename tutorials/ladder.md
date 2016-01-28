@@ -41,6 +41,9 @@ For the topmost layer **`U`**`= 0` and **`Z`** is the batch normalized output fr
 
 For lower decoder units **`Z^`** is defined as
 ```lua
+   
+      u = nn.Linear()(previous_Z_hat)
+
       cu1 = nn.CMul(hidden_units)(u)
       du1 = nn.Add(hidden_units])(u)
       a1 = nn.CAddTable()({cu1, du1})
@@ -63,7 +66,7 @@ For lower decoder units **`Z^`** is defined as
       z_hat4 = nn.CMulTable()({a2, z_hat3})
       Z_hat = nn.CAddTable()({z_hat1, z_hat4, a5})
 ```
-`Z_hat` is `z^`. Please check code in *tutorials/ladder.lua*.
+`Z_hat` is `z^`.
 
 ### Criterions
 Negative log likelihood criterion is used for classification task.
