@@ -21,6 +21,11 @@ where
 ```lua
    H = nn.ReLU()(nn.CMul()(nn.Add()(Z)))
 ```
+For the last encoder unit **`H`** is defined as
+```lua
+   H = nn.SoftMax()(nn.CMul()(nn.Add()(Z)))
+```
+
 For the first layer of encoder `previous_H` is the corrupted input.
 The input is corrupted using
 ```lua
