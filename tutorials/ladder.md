@@ -86,7 +86,7 @@ For lower decoder units **`Z^`** is defined as
       z_hat4 = nn.CMulTable()({a2, z_hat3})
       Z_hat = nn.CAddTable()({z_hat1, z_hat4, a5})
 ```
-`Z_hat` is `z^`. Final `Z_hat` is the output of decoder.
+`Z_hat` is `z^`. Final `Z_hat` is the output of decoder and feeds into the mean squared error criterion.
 
 ### Criterions
 Negative log likelihood criterion is used for classification task.
