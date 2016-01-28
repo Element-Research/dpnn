@@ -16,6 +16,7 @@ Encoder/classifier units are defined as
 ```lua
    Z = batch_norm(W (x) previous_H)
 ```
+
 where
 ```lua
    H = nn.ReLU()(nn.CMul()(nn.Add()(Z)))
