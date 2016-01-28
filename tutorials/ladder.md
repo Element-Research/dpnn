@@ -25,7 +25,7 @@ where
 ```
 **`U`** is output of previous decoder unit. For the top most layer  **`U`** is zero. **`Z`** is output of corresponding encoder unit (this is lateral connection, decoder takes output from its previous unit as well as corresponding encoder unit). For the lowest layer of decoder **`Z`** is the corrupted input signal. **`c_j`** and **`d_j`** are trainable weight vectors. This forms the crux of the ladder network. This can be easily implemented using **`nngraph`** as follows
 
-For the topmost layer **`U`**`= 0` and **`Z`** is the batch normalized output from the corresponding (in this case last) encoder/classifier unit.
+For the topmost layer **`U`**`= 0` and **`Z`** is the batch normalized output from the corresponding (in this case last) encoder/classifier unit. **`Z^`** is defined as
 ```lua
    z_hat1 = nn.CMul(hiddens[i])(Z)
    z_hat2 = nn.CMul(hiddens[i])(Z)
@@ -39,7 +39,7 @@ For the topmost layer **`U`**`= 0` and **`Z`** is the batch normalized output fr
    Z_hat = nn.CAddTable()({z_hat1, z_hat234, z_hat5})
 ```
 
-
+For lower decoder units **`Z^`** is defined as
 ```lua
       cu1 = nn.CMul(hidden_units)(u)
       du1 = nn.Add(hidden_units])(u)
