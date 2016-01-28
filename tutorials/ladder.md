@@ -16,20 +16,18 @@ Encoder/classifier units are defined as
 ```lua
    Z = nn.BatchNormalization(hidden_units)(nn.Linear()(previous_H))
 ```
-
 where
 ```lua
    H = nn.ReLU()(nn.CMul()(nn.Add()(Z)))
 ```
+For first layer **`previous_H`** is the corrupted input.
+```lua
+   input = nn.WhiteNoise(mean, sigma)
+```
+
 For the last encoder unit **`H`** is defined as
 ```lua
    H = nn.SoftMax()(nn.CMul()(nn.Add()(Z)))
-```
-
-For the first layer of encoder `previous_H` is the corrupted input.
-The input is corrupted using
-```lua
-   input = nn.WhiteNoise(mean, sigma)
 ```
 
 ### Denoising
