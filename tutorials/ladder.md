@@ -13,8 +13,18 @@ The unsupervised learning (denoising) task supplements the supervised learning t
 
 ### Classification
 Encoder/classifier units are defined as
-``` Z = batch_norm(W (x) previous_H) ``` where ```lua H = nn.ReLU()(nn.CMul()(nn.Add()(Z))) ```. For the first layer of encoder `previous_H` is the corrupted input.
-The input is corrupted using ```lua nn.WhiteNoise(mean, sigma) ```.
+```lua
+   Z = batch_norm(W (x) previous_H)
+```
+where
+```lua
+   H = nn.ReLU()(nn.CMul()(nn.Add()(Z)))
+```.
+For the first layer of encoder `previous_H` is the corrupted input.
+The input is corrupted using
+```lua
+   input = nn.WhiteNoise(mean, sigma)
+```
 
 ### Denoising
 Typically in denoising autoencoder the input samples are corrupted using Dropout ```nn.Dropout``` but in this paper the authors use isotropic Gaussian noise ```nn.WhiteNoise```.
