@@ -23,17 +23,17 @@ where
 ```
    a_ij = c_ij * u_i + d_ij
 ```
-**`u`** is output of previous decoder unit. For the top most layer  **`u`** is zero. **`z`** is output of corresponding encoder unit (this is lateral connection, decoder takes output from its previous unit as well as corresponding encoder unit). For the lowest layer of decoder **`z`** is the corrupted input signal. **`c_j`** and **`d_j`** are trainable weight vectors. This forms the crux of the ladder network. This can be easily implemented using **`nngraph`** as follows
+**`U`** is output of previous decoder unit. For the top most layer  **`U`** is zero. **`Z`** is output of corresponding encoder unit (this is lateral connection, decoder takes output from its previous unit as well as corresponding encoder unit). For the lowest layer of decoder **`Z`** is the corrupted input signal. **`c_j`** and **`d_j`** are trainable weight vectors. This forms the crux of the ladder network. This can be easily implemented using **`nngraph`** as follows
 
-For the topmost layer **`u`**`= 0`
+For the topmost layer **`U`**`= 0`
 ```lua
-   z_hat1 = nn.CMul(hiddens[i])(Zs)
-   z_hat2 = nn.CMul(hiddens[i])(Zs)
-   z_hat3 = nn.CMul(hiddens[i])(Zs)
+   z_hat1 = nn.CMul(hiddens[i])(Z)
+   z_hat2 = nn.CMul(hiddens[i])(Z)
+   z_hat3 = nn.CMul(hiddens[i])(Z)
    z_hat34 = nn.Add(hiddens[i])(z_hat3)
    z_hatSigmoid34 = nn.Sigmoid()(z_hat34)
    z_hat234 = nn.CMulTable()({z_hat2, z_hatSigmoid34})
-   z_hat5 = nn.CMul(hiddens_units)(Zs)
+   z_hat5 = nn.CMul(hiddens_units)(Z)
 
    -- Z_hat = z^
    Z_hat = nn.CAddTable()({z_hat1, z_hat234, z_hat5})
