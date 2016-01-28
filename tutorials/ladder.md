@@ -11,6 +11,11 @@ To produce results as mentioned in the paper please run following command
 
 The unsupervised learning (denoising) task supplements the supervised learning task (classification in this case). As in autoencoders this network has an encoder and a decoder. The output of encoder is also used for classification. The output of encoder is **`N`** dimensional where **`N`** is number of classes. This **`N`** dimensional vector is used for computing classification cost as well as feeds into the decoder.
 
+### Classification
+Encoder/classifier units are defined as
+``` Z = batch_norm(W (x) previous_H) ``` where ```lua H = nn.ReLU()(nn.CMul()(nn.Add()(Z))) ```. For the first layer of encoder `previous_H` is the corrupted input.
+The input is corrupted using ```lua nn.WhiteNoise(mean, sigma) ```.
+
 ### Denoising
 Typically in denoising autoencoder the input samples are corrupted using Dropout ```nn.Dropout``` but in this paper the authors use isotropic Gaussian noise ```nn.WhiteNoise```.
 
@@ -66,7 +71,7 @@ For lower decoder units **`Z^`** is defined as
       z_hat4 = nn.CMulTable()({a2, z_hat3})
       Z_hat = nn.CAddTable()({z_hat1, z_hat4, a5})
 ```
-`Z_hat` is `z^`.
+`Z_hat` is `z^`. Final `Z_hat` is the output of decoder.
 
 ### Criterions
 Negative log likelihood criterion is used for classification task.
