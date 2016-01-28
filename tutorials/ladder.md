@@ -32,7 +32,7 @@ For first layer **`previous_H`** is the corrupted input.
 This **`H`** feed into the negative log likelihood criterion.
 
 ### Denoising
-Typically in denoising autoencoder the input samples are corrupted using Dropout ```nn.Dropout``` but in this paper the authors use isotropic Gaussian noise ```nn.WhiteNoise```.
+Typically in denoising autoencoder the input samples are corrupted using Dropout ```nn.Dropout``` but in this paper the authors use isotropic Gaussian noise ```nn.WhiteNoise``` with zero mean.
 
 ### Lateral Connections in Autoencoder
 Units in encoder are laterally connected to corresponding unit in the decoder. The vertical connection of the decoder is standard fully connected layer. Lateral connection for neuron `i` is defined by
