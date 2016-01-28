@@ -14,7 +14,7 @@ The unsupervised learning (denoising) task supplements the supervised learning t
 ### Classification
 Encoder/classifier units are defined as
 ```lua
-   Z = batch_norm(W (x) previous_H)
+   Z = nn.BatchNormalization(hidden_units)(nn.Linear()(previous_H))
 ```
 
 where
