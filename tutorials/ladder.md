@@ -4,7 +4,7 @@
 
 In this tutorial we will understand how to implement ladder network as explained in [[1](http://arxiv.org/pdf/1504.08215.pdf)]. In this paper the authors have shown how unsupervised learning using a denoising autoencoder with lateral connections help improve the classification accuracy in supervised learning.
 
-To produce results as mentioned in the paper please run following command (best test error we got was **`0.6%`**). To run this script you will need following torch packages: [`nn`](https://github.com/torch/nn), [`nngraph`(https://github.com/torch/nngraph)], [`dp`(https://github.com/nicholas-leonard/dp)], [`dpnn`(https://github.com/Element-Research/dpnn)], [`optim`(https://github.com/torch/optim)] and [`cunn`(https://github.com/torch/cunn)] & [`cutorch`(https://github.com/torch/cutorch)] if using cuda (```--useCuda``` flag).
+To produce results as mentioned in the paper please run following command (best test error we got was **`0.6%`**). To run this script you will need following torch packages: [`nn`](https://github.com/torch/nn), [`nngraph`](https://github.com/torch/nngraph), [`dp`](https://github.com/nicholas-leonard/dp), [`dpnn`](https://github.com/Element-Research/dpnn), [`optim`](https://github.com/torch/optim) and [`cunn`](https://github.com/torch/cunn) & [`cutorch`](https://github.com/torch/cutorch) if using cuda (```--useCuda``` flag).
 ```
    th tutorials/ladder.lua --verbose --eta 500 --epochs 100 --learningRate 0.002 --linearDecay --endLearningRate 0 --startEpoch 50 --useCuda --deviceId 1 --noiseSigma 0.3 --useBatchNorm --batchSize 100 --adam --noValidation --attempts 10
 ```
