@@ -32,7 +32,7 @@ For first layer **`previous_H`** is the corrupted input.
 Last **`H`** feeds into the negative log likelihood criterion.
 
 ### Denoising
-Typically in denoising autoencoder the input samples are corrupted using Dropout ```nn.Dropout``` but in this paper the authors use isotropic Gaussian noise ```nn.WhiteNoise``` with zero mean.
+Typically in denoising autoencoder the input samples are corrupted using Dropout [```nn.Dropout```](https://github.com/torch/nn/blob/master/Dropout.lua) but in this paper the authors use isotropic Gaussian noise [```nn.WhiteNoise```](https://github.com/Element-Research/dpnn/blob/master/WhiteNoise.lua) with zero mean.
 
 #### Lateral Connections in Autoencoder
 **`Z`** units in encoder are laterally connected to corresponding unit in the decoder. The output of decoder unit for neuron `i` is defined by
