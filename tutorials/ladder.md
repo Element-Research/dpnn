@@ -35,7 +35,7 @@ Last **`H`** feeds into the negative log likelihood criterion.
 Typically in denoising autoencoder the input samples are corrupted using Dropout ```nn.Dropout``` but in this paper the authors use isotropic Gaussian noise ```nn.WhiteNoise``` with zero mean.
 
 #### Lateral Connections in Autoencoder
-Units in encoder are laterally connected to corresponding unit in the decoder. The vertical connection of the decoder is standard fully connected layer. Lateral connection for neuron `i` is defined by
+**`Z`** units in encoder are laterally connected to corresponding unit in the decoder. The vertical connection of the decoder is standard fully connected layer. Lateral connection for neuron `i` is defined by
 ```
    z^_i = a_i1 * z_i + a_i2 * sigmoid(a_i3 + a_i4) + a_i5
 ```
