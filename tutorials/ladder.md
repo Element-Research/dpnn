@@ -4,7 +4,7 @@
 
 In this tutorial we will understand how to implement ladder network as explained in [[1](http://arxiv.org/pdf/1504.08215.pdf)]. In this paper the authors have shown how unsupervised learning using a denoising autoencoder with lateral connections help improve the classification accuracy in supervised learning.
 
-To produce results as mentioned in the paper please run following command. You will need following torch packages: `nn`, `nngraph`, `dp`, `dpnn`, `optim` and `cunn` & `cutorch` if using cuda (```--useCuda``` flag).
+To produce results as mentioned in the paper please run following command (best test error we got was `0.6%`). You will need following torch packages: `nn`, `nngraph`, `dp`, `dpnn`, `optim` and `cunn` & `cutorch` if using cuda (```--useCuda``` flag).
 ```
    th tutorials/ladder.lua --verbose --eta 500 --epochs 100 --learningRate 0.002 --linearDecay --endLearningRate 0 --startEpoch 50 --useCuda --deviceId 1 --noiseSigma 0.3 --useBatchNorm --batchSize 100 --adam --noValidation --attempts 10
 ```
