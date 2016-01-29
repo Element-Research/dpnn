@@ -4,7 +4,7 @@
 
 In this tutorial we will understand how to implement ladder network as explained in [[1](http://arxiv.org/pdf/1504.08215.pdf)]. In this paper the authors have shown how unsupervised learning using a denoising autoencoder with lateral connections help improve the classification accuracy in supervised learning.
 
-To produce results as mentioned in the paper please run following command (best test error we got was **`0.6%`**). You will need following torch packages: `nn`, `nngraph`, `dp`, `dpnn`, `optim` and `cunn` & `cutorch` if using cuda (```--useCuda``` flag).
+To produce results as mentioned in the paper please run following command (best test error we got was **`0.6%`**). To run this script you will need following torch packages: `nn`, `nngraph`, `dp`, `dpnn`, `optim` and `cunn` & `cutorch` if using cuda (```--useCuda``` flag).
 ```
    th tutorials/ladder.lua --verbose --eta 500 --epochs 100 --learningRate 0.002 --linearDecay --endLearningRate 0 --startEpoch 50 --useCuda --deviceId 1 --noiseSigma 0.3 --useBatchNorm --batchSize 100 --adam --noValidation --attempts 10
 ```
@@ -34,7 +34,7 @@ Last **`H`** feeds into the negative log likelihood criterion.
 ### Denoising
 Typically in denoising autoencoder the input samples are corrupted using Dropout ```nn.Dropout``` but in this paper the authors use isotropic Gaussian noise ```nn.WhiteNoise``` with zero mean.
 
-### Lateral Connections in Autoencoder
+## Lateral Connections in Autoencoder
 Units in encoder are laterally connected to corresponding unit in the decoder. The vertical connection of the decoder is standard fully connected layer. Lateral connection for neuron `i` is defined by
 ```
    z^_i = a_i1 * z_i + a_i2 * sigmoid(a_i3 + a_i4) + a_i5
