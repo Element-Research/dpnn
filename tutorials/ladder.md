@@ -43,7 +43,7 @@ where
 ```
    a_ij = c_ij * u_i + d_ij
 ```
-**`U`** is output of decoder unit's ```nn.Linear()```. For the top most layer  **`U`** is zero. **`Z`** is output of corresponding encoder unit (this is lateral connection, decoder takes output from its previous unit as well as corresponding encoder unit). For the lowest layer of decoder **`Z`** is the corrupted input signal. **`c_j`** and **`d_j`** are trainable weight vectors. This forms the crux of the ladder network. This can be easily implemented using **`nngraph`** as follows
+**`U`** is output of decoder unit's ```nn.Linear()```. For the top most layer  **`U`** is zero. **`Z`** is output of corresponding encoder unit (this is lateral connection, decoder takes output from its previous unit through **`U`** as well as corresponding encoder unit). For the lowest layer of decoder **`Z`** is the corrupted input signal. **`c_j`** and **`d_j`** are trainable weight vectors. This forms the crux of the ladder network. This can be easily implemented using **`nngraph`** as follows
 
 For the topmost layer **`U`**`= 0` and **`Z`** is the batch normalized output from the corresponding (in this case last) encoder/classifier unit. **`Z^`** for topmost layer is defined as
 ```lua
