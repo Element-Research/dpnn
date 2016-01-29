@@ -1,4 +1,4 @@
-## Lateral Connections in Denoising Autoencoders Support Supervised Learning
+# Lateral Connections in Denoising Autoencoders Support Supervised Learning
 
 In this tutorial we will understand how to implement ladder network as explained in [[1](http://arxiv.org/pdf/1504.08215.pdf)]. In this paper the authors have shown how unsupervised learning using a denoising autoencoder with lateral connections help improve the classification accuracy in supervised learning.
 
@@ -9,7 +9,7 @@ To produce results as mentioned in the paper please run following command (best 
 
 The unsupervised learning (denoising) task supplements the supervised learning task (classification in this case). As in autoencoders this network has an encoder and a decoder. The output of encoder is also used for classification. The output of encoder is **`N`** dimensional where **`N`** is number of classes. This **`N`** dimensional vector is used for computing classification cost as well as feeds into the decoder.
 
-### Classification
+## Classification
 Encoder/classifier units are defined as
 ```lua
    Z = nn.BatchNormalization(hidden_units)(nn.Linear(inputDims, hidden_units)(previous_H))
@@ -29,10 +29,10 @@ For first layer **`previous_H`** is the corrupted input.
 ```
 Last **`H`** feeds into the negative log likelihood criterion.
 
-### Denoising
+## Denoising
 Typically in denoising autoencoder the input samples are corrupted using Dropout [```nn.Dropout```](https://github.com/torch/nn/blob/master/Dropout.lua) but in this paper the authors use isotropic Gaussian noise [```nn.WhiteNoise```](https://github.com/Element-Research/dpnn/blob/master/WhiteNoise.lua) with zero mean.
 
-#### Lateral Connections in Autoencoder
+### Lateral Connections in Autoencoder
 **`Z`** units in encoder are laterally connected to corresponding unit in the decoder. The output of decoder unit for neuron `i` is defined by
 ```
    z^_i = a_i1 * z_i + a_i2 * sigmoid(a_i3 + a_i4) + a_i5
@@ -86,7 +86,7 @@ For lower decoder units **`Z^`** is defined as
 ```
 `Z_hat` is `z^`. Final `Z_hat` is the output of decoder and feeds into the mean squared error criterion.
 
-### Criterions
+## Criterions
 Negative log likelihood criterion is used for classification task.
 ```lua
    nll = nn.ClassNLLCriterion()
@@ -103,5 +103,5 @@ Combined criterion
    criterions:add(mse, eta)
 ```
 
-### References
+## References
 [1] Rasmus, Antti, Harri Valpola, and Tapani Raiko. "Lateral Connections in Denoising Autoencoders Support Supervised Learning." arXiv preprint arXiv:1504.08215 (2015).
