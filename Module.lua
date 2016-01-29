@@ -160,76 +160,14 @@ function Module:sharedClone(shareParams, shareGradParams, stepClone)
    return clone
 end      
 
--- by default, Module:type() will preserve shared Tensors.
--- Its more sensible this way, necessary for RNNs and fits 
--- in with existing overriden methods.
--- for preserving shared params created with sharedClones
-function Module:type(type)
-   assert(type, 'Module:type() must provide a type to convert to')
-   -- key: pointer to old storage ; value : new storage
-   local castmap = dpnn.castmap
-   local root
-   if not castmap then
-      -- Contains torch.Storage instances used in Modules.
-      -- The use of a global variable is ugly. But It is the only way 
-      -- to fit in with existing overriden Module:type() methods.
-      root = true
-      dpnn.castmap = {}
-      castmap = dpnn.castmap
-   end
-   
-   local function recursiveType(param, type_str)
-      if torch.type(param) == 'table' then
-         for k,v in pairs(param) do
-            param[k] = recursiveType(v, type_str)
-         end
-      elseif torch.isTypeOf(param, 'nn.Module') or torch.isTypeOf(param, 'nn.Criterion') then
-         param:type(type_str)
-      else
-         if torch.isTensor(param) then
-            if param:storage() then
-               local pointer = torch.pointer(param:storage():data())
-               local storage = castmap[pointer]
-               -- empty storages (cuda) have zero pointers.
-               -- we assume that these aren't shared.
-               -- https://github.com/torch/cutorch/issues/147
-               if pointer > 0 then 
-                  if not storage then
-                     local _param = param
-                     -- cast entire storage
-                     param = param.new(param:storage()):type(type_str)
-                     if param:storage() then -- to handle cuda tensors ...
-                        param:set(param:storage(), _param:storageOffset(), _param:size(), _param:stride())
-                        castmap[pointer] = param:storage()
-                        -- in case the module gets cast more than once:
-                        castmap[torch.pointer(param:storage():data())] = param:storage()
-                     end
-                  else
-                     -- set to point to existing storage
-                     local _param = param
-                     param = torch.getmetatable(type_str).new()
-                     param:set(storage, _param:storageOffset(), _param:size(), _param:stride())
-                  end
-               else
-                  assert(not storage)
-                  param = param:type(type_str)
-               end
-            else
-               param = param:type(type_str)
-            end
-         end
-      end
-      return param
-   end
-   
-   -- find all tensors and convert them
-   for key,param in pairs(self) do
-      self[key] = recursiveType(param, type)
-   end
-   
-   if root then
-      -- reset the cast map
-      dpnn.castmap = nil
+-- We don't want to call type multiple times on the same module
+local Module_type = nn.Module.type
+function Module:type(type, tensorcache)
+   tensorcache = tensorcache or {}
+   tensorcache.rnn_modules = tensorcache.rnn_modules or {}
+   if not tensorcache.rnn_modules[torch.pointer(self)] then 
+      Module_type(self, type, tensorcache)
+      tensorcache.rnn_modules[torch.pointer(self)] = true
    end
    return self
 end
@@ -278,18 +216,16 @@ Module.dpnn_mediumEmpty = {'output', 'gradInput', 'momGradParams', 'dpnn_input'}
 Module.dpnn_lightEmpty = Module.dpnn_gradParameters
 -- defaults to heavy serialization
 Module.dpnn_serialEmpty = {}
-Module.dpnn_serialType = false 
 
 -- sets the serialization behavior of the entire module structure
-function Module:serialMode(empty, type)
+function Module:serialMode(empty)
    assert(torch.type(empty) == 'table', "Expecting table at arg 1")
    self.dpnn_serialEmpty = empty
-   self.dpnn_serialType = type
    -- set the serial of all encapsulated modules
    local function recursiveSerial(tbl)
       for k,v in pairs(tbl) do
          if torch.isTypeOf(v, 'nn.Module') then
-            v:serialMode(empty, type)
+            v:serialMode(empty)
          elseif torch.type(v) == 'table' then
             recursiveSerial(v)
          end
@@ -300,21 +236,20 @@ function Module:serialMode(empty, type)
 end
 
 -- serialMode : serialize everything
-function Module:heavySerial(type)
-   return self:serialMode({}, type)
+function Module:heavySerial()
+   return self:serialMode({})
 end
 
 -- serialMode : serialize everything except dpnn_mediumEmpty attributes
-function Module:mediumSerial(type)
+function Module:mediumSerial()
    
    self.dpnn_serialEmpty = self.dpnn_mediumEmpty
-   self.dpnn_serialType = (type == nil) and 'float' or type
    
    -- set the serial of all encapsulated modules
    local function recursiveSerial(tbl)
       for k,v in pairs(tbl) do
          if torch.isTypeOf(v, 'nn.Module') then
-            v:mediumSerial(type)
+            v:mediumSerial()
          elseif torch.type(v) == 'table' then
             recursiveSerial(v)
          end
@@ -325,20 +260,18 @@ function Module:mediumSerial(type)
 end
 
 -- serialMode : serialize everything except dpnn_mediumEmpty and dpnn_lightEmpty attributes
-function Module:lightSerial(type)
+function Module:lightSerial()
    
    self.dpnn_serialEmpty = _.clone(self.dpnn_mediumEmpty)
    for k,v in ipairs(self.dpnn_lightEmpty) do
       table.insert(self.dpnn_serialEmpty, v)
    end
    
-   self.dpnn_serialType = (type == nil) and 'float' or type
-   
    -- set the serial of all encapsulated modules
    local function recursiveSerial(tbl)
       for k,v in pairs(tbl) do
          if torch.isTypeOf(v, 'nn.Module') then
-            v:lightSerial(type)
+            v:lightSerial()
          elseif torch.type(v) == 'table' then
             recursiveSerial(v)
          end
@@ -400,8 +333,8 @@ function Module:getSerialState(states)
 end
 
 -- decorates self with nn.Serial
-function Module:Serial()
-   return nn.Serial(self)
+function Module:Serial(tensortype)
+   return nn.Serial(self, tensortype)
 end
 
 ----------------------- for training -----------------------------

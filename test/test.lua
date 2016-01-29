@@ -375,6 +375,7 @@ function dpnntest.Serial()
       mytester:assertTensorEq(gradInput, gradInput2, 0.00001, name.." serial backward error")
       
       mlp2:mediumSerial()
+      mlp2.tensortype = 'torch.FloatTensor'
       local mlp3 = mlp2:clone()
       
       mytester:assert(mlp3.module.output:nElement() == 0, name.." serial medium empty err")
@@ -395,8 +396,8 @@ function dpnntest.Serial()
       local params2, gradParams2 = mlp3:parameters()
       mytester:assert(#params == #params2)
       for i,param in ipairs(params) do
-         mytester:assertTensorEq(param:float(), params2[i], 0.00001, "params err "..i)
-         mytester:assertTensorEq(gradParams[i]:float(), gradParams2[i], 0.00001, "gradParams err "..i)
+         mytester:assertTensorEq(param:float(), params2[i], 0.00001, name.." params err "..i)
+         mytester:assertTensorEq(gradParams[i]:float(), gradParams2[i], 0.00001, name.." gradParams err "..i)
       end
    end
    
@@ -521,6 +522,25 @@ function dpnntest.ZipTableOneToMany()
    mytester:assertTensorEq(input[2][2], gradInput[2][2], 0.000001, "ZipTableOneToMany gradInput22")
    mytester:assertTensorEq(input[2][3], gradInput[2][3], 0.000001, "ZipTableOneToMany gradInput32")
    mytester:assertTensorEq(torch.mul(input[1], 3), gradInput[1], 0.000001, "ZipTableOneToMany gradInput21")
+end
+
+function dpnntest.CAddTensorTable()
+   -- input : { v, {a,b,c} }
+   -- output : { v+a, v+b, v+c }
+   local z = nn.CAddTensorTable()
+   local input = { torch.randn(3), { torch.randn(3), torch.rand(3), torch.rand(3) } }
+   local output = z:forward(input)
+   mytester:assert(#output == 3, "CAddTensorTable #output")
+   mytester:assertTensorEq(input[1]+input[2][1], output[1], 0.00001, "CAddTensorTable input21 output1")
+   mytester:assertTensorEq(input[1]+input[2][2], output[2], 0.00001, "CAddTensorTable input22 output2")
+   mytester:assertTensorEq(input[1]+input[2][3], output[3], 0.00001, "CAddTensorTable input23 output3")
+   local gradInput = z:backward(input, output)
+   mytester:assert(#gradInput == 2, "CAddTensorTable #gradInput")
+   mytester:assert(#(gradInput[2]) == 3, "CAddTensorTable #gradInput[2]")
+   mytester:assertTensorEq(output[1], gradInput[2][1], 0.000001, "CAddTensorTable gradInput21")
+   mytester:assertTensorEq(output[2], gradInput[2][2], 0.000001, "CAddTensorTable gradInput22")
+   mytester:assertTensorEq(output[3], gradInput[2][3], 0.000001, "CAddTensorTable gradInput23")
+   mytester:assertTensorEq(output[1]+output[2]+output[3], gradInput[1], 0.000001, "CAddTensorTable gradInput1")
 end
 
 function dpnntest.ReverseTable()

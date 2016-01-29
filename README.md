@@ -15,6 +15,7 @@ The package provides the following Modules:
  * [Convert](#nn.Convert) : convert between different tensor types or shapes;
  * [ZipTable](#nn.ZipTable) : zip a table of tables into a table of tables;
  * [ZipTableOneToMany](#nn.ZipTableOneToMany) : zip a table of element `el` and table of elements into a table of pairs of element `el` and table elements;
+ * [CAddTensorTable](#nn.CAddTensorTable) : adds a tensor to a table of tensors of the same size;
  * [ReverseTable](#nn.ReverseTable) : reverse the order of elements in a table;
  * [PrintSize](#nn.PrintSize) : prints the size of inputs and gradOutputs (useful for debugging);
  * [Clip](#nn.Clip) : clips the inputs to a min and max value;
@@ -211,27 +212,28 @@ th> print(module:forward(torch.FloatTensor{1,2,3}))
 <a name='nn.Serial'></a>
 ## Serial ##
 ```lua
-dmodule = nn.Serial(module)
-dmodule:[light,medium,heavy]Serial([type])
+dmodule = nn.Serial(module, [tensortype])
+dmodule:[light,medium,heavy]Serial()
 ```
 This module is a decorator that can be used to control the serialization/deserialization 
 behavior of the encapsulated module. Basically, making the resulting string or 
-file heavy (the default), medium or light in terms of size. Furthermore, when 
-specified, the `type` attribute (e.g *float*, *double*, *cuda*, *torch.FloatTensor*, *torch.DoubleTensor* and so on.),
+file heavy (the default), medium or light in terms of size. 
+
+Furthermore, when specified, the `tensortype` attribute (e.g *torch.FloatTensor*, *torch.DoubleTensor* and so on.),
 determines what type the module will be cast to during serialization. 
 Note that this will also be the type of the deserialized object.
+The default serialization `tensortype` is `nil`, i.e. the module is serialized as is. 
 
-The `heavySerial([type])` has the serialization process serialize every attribute in the module graph, 
+The `heavySerial()` has the serialization process serialize every attribute in the module graph, 
 which is the default behavior of nn. 
 
-The `mediumSerial([type])` has the serialization process serialize 
+The `mediumSerial()` has the serialization process serialize 
 everything except the attributes specified in each module's `dpnn_mediumEmpty`
 table, which has a default value of `{'output', 'gradInput', 'momGradParams', 'dpnn_input'}`.
 During serialization, whether they be tables or Tensors, these attributes are emptied (no storage).
 Some modules overwrite the default `Module.dpnn_mediumEmpty` static attribute with their own.
-The default serialization `type` of the `mediumSerial()` is *float*.
 
-The `lightSerial([type])` has the serialization process empty  
+The `lightSerial()` has the serialization process empty  
 everything a call to `mediumSerial(type)` would (so it uses `dpnn_mediumEmpty`).
 But also empties all the parameter gradients specified by the 
 attribute `dpnn_gradParameters`, which defaults to `{gradWeight, gradBias}`.
@@ -406,6 +408,22 @@ Example:
 print(module:forward{ 'el', {'a','b','c'} })
 { {'el','a'}, {'el','b'}, {'el','c'} }
 ```
+
+<a name='nn.CAddTensorTable'></a>
+## CAddTensorTable ##
+
+```lua
+module = nn.CAddTensortable()
+```
+
+Adds the first element `el` of the input table `tab` to each tensor contained in the second element of `tab`, which is itself a table
+
+Example:
+```lua
+print(module:forward{ (0,1,1), {(0,0,0),(1,1,1)} })
+{ (0,1,1), (1,2,2) }
+```
+
 
 <a name='nn.ReverseTable'></a>
 ## ReverseTable ##

@@ -31,7 +31,7 @@ _ = require 'moses'
 
 -- create global dpnn table
 dpnn = {}
-dpnn.version = 1
+dpnn.version = 2
 
 unpack = unpack or table.unpack -- lua 5.2 compat
 
@@ -67,6 +67,7 @@ torch.include('dpnn', 'Constant.lua')
 torch.include('dpnn', 'Collapse.lua')
 torch.include('dpnn', 'ZipTable.lua')
 torch.include('dpnn', 'ZipTableOneToMany.lua')
+torch.include('dpnn', 'CAddTensorTable.lua')
 torch.include('dpnn', 'ReverseTable.lua')
 torch.include('dpnn', 'Dictionary.lua')
 torch.include('dpnn', 'Inception.lua')

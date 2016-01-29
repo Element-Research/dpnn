@@ -32,13 +32,13 @@ function ModuleCriterion:updateGradInput(input, target)
    return self.gradInput
 end
 
-function ModuleCriterion:type(type)
+function ModuleCriterion:type(type, typecache)
    if self.inputModule then
-      self.inputModule:type(type)
+      self.inputModule:type(type, typecache)
    end
    if self.castTarget and self.targetModule then
-      self.targetModule:type(type)
+      self.targetModule:type(type, typecache)
    end
-   self.criterion:type(type)
-   return parent.type(self, type)
+   self.criterion:type(type, typecache)
+   return parent.type(self, type, typecache)
 end
