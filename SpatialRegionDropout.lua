@@ -31,25 +31,25 @@ function SpatialRegionDropout:updateOutput(input)
       if input:dim() == 4 then
          local height = input:size(3)
          local width = input:size(4)
-         if regionType == 1 then
+         if self.regionType == 1 then
             self.noise[{{}, {}, {1, math.floor(height*self.p)}}]:fill(0)
-         elseif regionType == 2 then
+         elseif self.regionType == 2 then
             self.noise[{{}, {}, {height-math.floor(height*self.p)+1, height}}]:fill(0)
-         elseif regionType == 3 then
+         elseif self.regionType == 3 then
             self.noise[{{}, {}, {}, {1, math.floor(width*self.p)}}]:fill(0)
-         elseif regionType == 4 then
+         elseif self.regionType == 4 then
             self.noise[{{}, {}, {}, {width-math.floor(width*self.p)+1, width}}]:fill(0)
          end
       elseif input:dim() == 3 then
          local height = input:size(2)
          local width = input:size(3)
-         if regionType == 1 then
+         if self.regionType == 1 then
             self.noise[{{}, {1, math.floor(height*self.p)}}]:fill(0)
-         elseif regionType == 2 then
+         elseif self.regionType == 2 then
             self.noise[{{}, {height-math.floor(height*self.p)+1, height}}]:fill(0)
-         elseif regionType == 3 then
+         elseif self.regionType == 3 then
             self.noise[{{}, {}, {1, math.floor(width*self.p)}}]:fill(0)
-         elseif regionType == 4 then
+         elseif self.regionType == 4 then
             self.noise[{{}, {}, {width-math.floor(width*self.p)+1, width}}]:fill(0)
          end
       else

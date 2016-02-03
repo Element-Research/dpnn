@@ -1409,6 +1409,12 @@ function dpnntest.BinaryLogisticRegression()
    end
 end
 
+-- Unit Test SpatialRegionDropout
+function dpnntest.SpatialRegionDropout()
+   local hasCuda = pcall(function() require 'cunn' end)
+   local useCudas = {false, hasCuda}
+end
+
 -- Unit Test Kmeans layer
 function dpnnbigtest.Kmeans()
    local k = 10
