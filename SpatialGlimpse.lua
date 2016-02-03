@@ -49,11 +49,11 @@ function SpatialGlimpse:updateOutput(inputTable)
    for sampleIdx=1,self.output:size(1) do
       local outputSample = self.output[sampleIdx]
       local inputSample = input[sampleIdx]
-      local xy = location[sampleIdx]
+      local yx = location[sampleIdx]
       -- (-1,-1) top left corner, (1,1) bottom right corner of image
-      local x, y = xy:select(1,1), xy:select(1,2)
+      local y, x = yx:select(1,1), yx:select(1,2)
       -- (0,0), (1,1)
-      x, y = (x+1)/2, (y+1)/2
+      y, x = (y+1)/2, (x+1)/2
       
       -- for each depth of glimpse : pad, crop, downscale
       local glimpseSize = self.size
@@ -71,13 +71,13 @@ function SpatialGlimpse:updateOutput(inputTable)
          
          -- crop it
          local h, w = self._pad:size(2)-glimpseSize, self._pad:size(3)-glimpseSize
-         local x, y = math.min(h,math.max(0,x*h)),  math.min(w,math.max(0,y*w))
+         local y, x = math.min(h,math.max(0,y*h)),  math.min(w,math.max(0,x*w))
          
          if depth == 1 then
-            dst:copy(self._pad:narrow(2,x+1,glimpseSize):narrow(3,y+1,glimpseSize))
+            dst:copy(self._pad:narrow(2,y+1,glimpseSize):narrow(3,x+1,glimpseSize))
          else
             self._crop:resize(input:size(2), glimpseSize, glimpseSize)
-            self._crop:copy(self._pad:narrow(2,x+1,glimpseSize):narrow(3,y+1,glimpseSize))
+            self._crop:copy(self._pad:narrow(2,y+1,glimpseSize):narrow(3,x+1,glimpseSize))
          
             if torch.type(self.module) == 'nn.SpatialAveragePooling' then
                local poolSize = glimpseSize/self.size
@@ -111,11 +111,11 @@ function SpatialGlimpse:updateGradInput(inputTable, gradOutput)
    for sampleIdx=1,gradOutput:size(1) do
       local gradOutputSample = gradOutput[sampleIdx]
       local gradInputSample = gradInput[sampleIdx]
-      local xy = location[sampleIdx] -- height, width
+      local yx = location[sampleIdx] -- height, width
       -- (-1,-1) top left corner, (1,1) bottom right corner of image
-      local x, y = xy:select(1,1), xy:select(1,2)
+      local y, x = yx:select(1,1), yx:select(1,2)
       -- (0,0), (1,1)
-      x, y = (x+1)/2, (y+1)/2
+      y, x = (y+1)/2, (x+1)/2
       
       -- for each depth of glimpse : pad, crop, downscale
       local glimpseSize = self.size
@@ -130,8 +130,8 @@ function SpatialGlimpse:updateGradInput(inputTable, gradOutput)
          self._pad:resize(input:size(2), input:size(3)+padSize*2, input:size(4)+padSize*2):zero()
          
          local h, w = self._pad:size(2)-glimpseSize, self._pad:size(3)-glimpseSize
-         local x, y = math.min(h,math.max(0,x*h)),  math.min(w,math.max(0,y*w))
-         local pad = self._pad:narrow(2, x+1, glimpseSize):narrow(3, y+1, glimpseSize)
+         local y, x = math.min(h,math.max(0,y*h)),  math.min(w,math.max(0,x*w))
+         local pad = self._pad:narrow(2, y+1, glimpseSize):narrow(3, x+1, glimpseSize)
          
          -- upscale glimpse for different depths
          if depth == 1 then
