@@ -7,7 +7,7 @@
 -- locations are x,y coordinates of the center of cropped patches. 
 -- Coordinates are between -1,-1 (top-left) and 1,1 (bottom right)
 -- output is a batch of glimpses taken in image at location (x,y)
--- glimpse size is {width, height}, or width only if square-shaped
+-- glimpse size is {height, width}, or width only if square-shaped
 -- depth is number of patches to crop per glimpse (one patch per scale)
 -- Each successive patch is scale x size of the previous patch
 ------------------------------------------------------------------------
@@ -16,8 +16,8 @@ local SpatialGlimpse, parent = torch.class("nn.SpatialGlimpse", "nn.Module")
 function SpatialGlimpse:__init(size, depth, scale)
    require 'nnx'
    if torch.type(width)=='table' then
-      self.width = size[1]
-      self.height = size[2]
+      self.height = size[1]
+      self.width = size[2]
    else
       self.width = size
       self.height = size
