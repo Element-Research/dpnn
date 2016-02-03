@@ -82,6 +82,7 @@ torch.include('dpnn', 'CategoricalEntropy.lua')
 torch.include('dpnn', 'TotalDropout.lua')
 torch.include('dpnn', 'Kmeans.lua')
 torch.include('dpnn', 'OneHot.lua')
+torch.include('dpnn', 'SpatialRegionDropout.lua')
 
 -- REINFORCE
 torch.include('dpnn', 'Reinforce.lua')
