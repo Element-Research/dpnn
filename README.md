@@ -524,10 +524,10 @@ The input is a pair of Tensors: `{image, location}`
 `location` are `y,x` coordinates of the center of the different scales 
 of patches to be cropped from image `image`. 
 Coordinates are between `(-1,-1)` (top-left) and `(1,1)` (bottom right).
-The `output` is a batch of glimpses taken in image at location `(y,x).
+The `output` is a batch of glimpses taken in image at location `(y,x)`.
 
-`size` can be either a scalar which specifies the `width = height` of glimpses 
-or a table of {height, width} to support a rectangular shape of glimpses.
+`size` can be either a scalar which specifies the `width = height` of glimpses, 
+or a table of `{height, width}` to support a rectangular shape of glimpses.
 `depth` is number of patches to crop per glimpse (one patch per depth).
 `scale` determines the `size(t) = scale * size(t-1)` of successive cropped patches.
 
