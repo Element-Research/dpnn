@@ -1657,6 +1657,32 @@ function dpnntest.BinaryLogisticRegression()
    end
 end
 
+-- Unit Test SpatialRegionDropout
+function dpnntest.SpatialRegionDropout()
+   local hasCuda = pcall(function() require 'cunn' end)
+   local useCudas = {false, hasCuda}
+   local p = 0.2
+   local value = 2
+   local model = nn.SpatialRegionDropout(p)
+   local input = torch.zeros(3, 100, 100):fill(value)
+
+   for _, useCuda in pairs(useCudas) do
+      if useCuda then
+         model:cuda()
+         input = input:cuda()
+      end
+      local output = model:forward(input)
+      mytester:assert( output:mean() >= value-precision and
+                       output:mean() <= value+precision,
+                       "SpatialRegionDropout forward mean value incorrect.")
+
+      local gradInput = model:backward(input, input)
+      mytester:assert( gradInput:mean() >= value-precision and
+                       gradInput:mean() <= value+precision,
+                       "SpatialRegionDropout backward mean value incorrect.")
+   end
+end
+
 -- Unit Test Kmeans layer
 function dpnnbigtest.Kmeans()
    local k = 10
