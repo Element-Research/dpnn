@@ -15,7 +15,7 @@ local SpatialGlimpse, parent = torch.class("nn.SpatialGlimpse", "nn.Module")
 
 function SpatialGlimpse:__init(size, depth, scale)
    require 'nnx'
-   if torch.type(width)=='table' then
+   if torch.type(size)=='table' then
       self.height = size[1]
       self.width = size[2]
    else
