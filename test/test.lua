@@ -933,6 +933,7 @@ function dpnntest.SpatialGlimpse()
    local pad = torch.Tensor(batchSize, inputSize[1], inputSize[2]+glimpseSize, inputSize[3]+glimpseSize):zero()
    pad:narrow(3, (glimpseSize-1)/2 + 1, inputSize[2]):narrow(4, (glimpseSize-1)/2 + 1, inputSize[3]):copy(input)
    local output2 = pad:narrow(3,inputSize[2]-1,glimpseSize):narrow(4,inputSize[3]-1,glimpseSize)
+   --print('bottom-right', output2, output_:select(2, 1))
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse bottom-right 4 output depth=1 err")
    
    local glimpseSize = 5
@@ -943,6 +944,7 @@ function dpnntest.SpatialGlimpse()
    local pad = torch.Tensor(batchSize, inputSize[1], inputSize[2]+glimpseSize, inputSize[3]+glimpseSize):zero()
    pad:narrow(3, (glimpseSize-1)/2, inputSize[2]):narrow(4, (glimpseSize-1)/2, inputSize[3]):copy(input)
    local output2 = pad:narrow(3,inputSize[2]-1,glimpseSize):narrow(4,inputSize[3]-1,glimpseSize)
+   --print('bottom-right', output2, output_:select(2, 1))
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse bottom-right 5 output depth=1 err")
    
    local glimpseSize = 4
@@ -1137,7 +1139,8 @@ function dpnntest.SpatialGlimpseRect()
    local padSize = {math.floor((glimpseSize[1]-1)/2), math.floor((glimpseSize[2]-1)/2)}
    local pad = torch.Tensor(batchSize, inputSize[1], inputSize[2]+padSize[1]*2, inputSize[3]+padSize[2]*2):zero()
    pad:narrow(3, padSize[1] + 1, inputSize[2]):narrow(4, padSize[2] + 1, inputSize[3]):copy(input)
-   local output2 = pad:narrow(3,1,glimpseSize[1]):narrow(4,1,glimpseSize[1])
+   local output2 = pad:narrow(3,1,glimpseSize[1]):narrow(4,1,glimpseSize[2])
+   --print('top-left', output2, output_:select(2, 1))
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse top-left 4 output depth=1 err")
    
    local glimpseSize = {5,4}
@@ -1161,7 +1164,9 @@ function dpnntest.SpatialGlimpseRect()
    local y0 = math.floor((glimpseSize[1]-1)/2) + 1
    local x0 = math.floor((glimpseSize[2]-1)/2) + 1
    pad:narrow(3, y0, inputSize[2]):narrow(4, x0, inputSize[3]):copy(input)
-   local output2 = pad:narrow(3,inputSize[2]-1,glimpseSize[1]):narrow(4,inputSize[3]-1,glimpseSize[2])
+   local dy = math.floor((glimpseSize[1])/2)
+   local dx = math.floor((glimpseSize[2])/2)
+   local output2 = pad:narrow(3,inputSize[2]-dy+1,glimpseSize[1]):narrow(4,inputSize[3]-dx+1,glimpseSize[2])
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse bottom-right 4 output depth=1 err")
    
    local glimpseSize = {4,5}
@@ -1170,10 +1175,13 @@ function dpnntest.SpatialGlimpseRect()
    local output = sg:forward{input,location}
    local output_ = output:view(batchSize, 3, inputSize[1], glimpseSize[1], glimpseSize[2])
    local pad = torch.Tensor(batchSize, inputSize[1], inputSize[2]+glimpseSize[1], inputSize[3]+glimpseSize[2]):zero()
-   local y0 = math.floor((glimpseSize[1]-1)/2)
-   local x0 = math.floor((glimpseSize[2]-1)/2)
+   local y0 = math.floor((glimpseSize[1])/2)
+   local x0 = math.floor((glimpseSize[2])/2)
    pad:narrow(3, y0, inputSize[2]):narrow(4, x0, inputSize[3]):copy(input)
-   local output2 = pad:narrow(3,inputSize[2]-1,glimpseSize):narrow(4,inputSize[3]-1,glimpseSize)
+   local dy = math.floor((glimpseSize[1])/2)
+   local dx = math.floor((glimpseSize[2])/2)
+   local output2 = pad:narrow(3,inputSize[2]-dy+1,glimpseSize[1]):narrow(4,inputSize[3]-dx+1,glimpseSize[2])
+   --print('bottom-right', output2, output_:select(2, 1))
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse bottom-right 5 output depth=1 err")
 
    -- test gradients
@@ -1197,7 +1205,7 @@ function dpnntest.SpatialGlimpseRect()
    local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
    local output = sg:forward{input,location}
    local output_ = output:view(batchSize, 2, inputSize[1], glimpseSize[1], glimpseSize[2])
-   local output2 = input:narrow(3,y0,glimpseSize):narrow(4,x0,glimpseSize)
+   local output2 = input:narrow(3,y0,glimpseSize[1]):narrow(4,x0,glimpseSize[2])
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse center 4 output depth=1 err")
    local gradOutput = output:clone()
    gradOutput:view(batchSize, 2, 2, glimpseSize[1], glimpseSize[2]):select(2,1):fill(0) -- ignore first scale of glimpse
