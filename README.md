@@ -559,7 +559,7 @@ module = nn.SpatialRegionDropout(p)
 Following are output examples of `SpatialRegionDropout` on the famous lena image.
 
 **Input**
-![Lena](tutorialis/lena.jpg)
+![Lena](tutorials/lena.jpg)
 
 
 
