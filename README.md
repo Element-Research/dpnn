@@ -556,7 +556,9 @@ With `module:evaluate()` the mean is added to the input.
 ```lua
 module = nn.SpatialRegionDropout(p)
 ```
-
+Following are output examples of `SpatialRegionDropout` on the famous lena image.
+Input
+![Lena](tutorial/lena.jpg)
 
 <a name = 'nn.OneHot'></a>
 ## OneHot ##
