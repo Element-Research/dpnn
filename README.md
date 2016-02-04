@@ -523,7 +523,7 @@ increasing scale around a given location in a given image.
 The input is a pair of Tensors: `{image, location}`
 `location` are `y,x` coordinates of the center of the different scales 
 of patches to be cropped from image `image`. 
-Coordinates are between `(-1,-1)` (top-left) and `(1,1)` (bottom right).
+Coordinates are between `(-1,-1)` (top-left) and `(1,1)` (bottom-right).
 The `output` is a batch of glimpses taken in image at location `(y,x)`.
 
 `size` can be either a scalar which specifies the `width = height` of glimpses, 
