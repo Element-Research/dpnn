@@ -1185,7 +1185,7 @@ function dpnntest.SpatialGlimpseRect()
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpseRect bottom-right 5 output depth=1 err")
 
    -- test gradients
-   local glimpseSize = {4,3}
+   local glimpseSize = {4,4} -- {height, width}
    local sg = nn.SpatialGlimpse(glimpseSize, 1)
    local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
    local output = sg:forward{input,location}
@@ -1205,13 +1205,16 @@ function dpnntest.SpatialGlimpseRect()
    local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
    local output = sg:forward{input,location}
    local output_ = output:view(batchSize, 2, inputSize[1], glimpseSize[1], glimpseSize[2])
+   local y0 = math.floor((input:size(3)-glimpseSize[1])/2) + 1
+   local x0 = math.floor((input:size(4)-glimpseSize[2])/2) + 1
    local output2 = input:narrow(3,y0,glimpseSize[1]):narrow(4,x0,glimpseSize[2])
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpseRect center 4 output depth=1 err")
    local gradOutput = output:clone()
    gradOutput:view(batchSize, 2, 2, glimpseSize[1], glimpseSize[2]):select(2,1):fill(0) -- ignore first scale of glimpse
    local gradInput = sg:backward({input,location}, gradOutput)
-   local srs = nn.SpatialReSampling{oheight=glimpseSize[1]*2,owidth=glimpseSize[2]*2}
+   local srs = nn.SpatialReSampling{oheight=glimpseSize[2]*2,owidth=glimpseSize[1]*2}
    local gradInput2 = srs:updateGradInput(gradInput[1], output_:select(2,2))
+   --print('SpatialReSampling', gradInput2, gradInput[1])
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpseRect backward 4 depth 2 error")
    
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
@@ -1226,6 +1229,7 @@ function dpnntest.SpatialGlimpseRect()
    local gradInput2 = input:clone():zero()
    gradInput2:narrow(3,y0,glimpseSize[1]):narrow(4,x0,glimpseSize[2]):copy(output_:select(2,1))
    gradInput2:add(srs:updateGradInput(gradInput[1], output_:select(2,2)))
+   --print('SpatialReSampling', gradInput2, gradInput[1])
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpseRect backward 4 depth 2 full error")
    
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
