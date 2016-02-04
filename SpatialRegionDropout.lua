@@ -34,11 +34,13 @@ function SpatialRegionDropout:updateOutput(input)
          if self.regionType == 1 then
             self.noise[{{}, {}, {1, math.floor(height*self.p)}}]:fill(0)
          elseif self.regionType == 2 then
-            self.noise[{{}, {}, {height-math.floor(height*self.p)+1, height}}]:fill(0)
+            self.noise[{{}, {}, 
+                      {height-math.floor(height*self.p)+1, height}}]:fill(0)
          elseif self.regionType == 3 then
             self.noise[{{}, {}, {}, {1, math.floor(width*self.p)}}]:fill(0)
          elseif self.regionType == 4 then
-            self.noise[{{}, {}, {}, {width-math.floor(width*self.p)+1, width}}]:fill(0)
+            self.noise[{{}, {}, {},
+                       {width-math.floor(width*self.p)+1, width}}]:fill(0)
          end
       elseif input:dim() == 3 then
          local height = input:size(2)
@@ -46,11 +48,13 @@ function SpatialRegionDropout:updateOutput(input)
          if self.regionType == 1 then
             self.noise[{{}, {1, math.floor(height*self.p)}}]:fill(0)
          elseif self.regionType == 2 then
-            self.noise[{{}, {height-math.floor(height*self.p)+1, height}}]:fill(0)
+            self.noise[{{}, 
+                       {height-math.floor(height*self.p)+1, height}}]:fill(0)
          elseif self.regionType == 3 then
             self.noise[{{}, {}, {1, math.floor(width*self.p)}}]:fill(0)
          elseif self.regionType == 4 then
-            self.noise[{{}, {}, {width-math.floor(width*self.p)+1, width}}]:fill(0)
+            self.noise[{{}, {}, 
+                       {width-math.floor(width*self.p)+1, width}}]:fill(0)
          end
       else
          error('Input must be 4D (nbatch, nfeat, h, w) or 3D (nfeat, h, w)')
