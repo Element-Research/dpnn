@@ -564,7 +564,8 @@ Following is an example of `SpatialRegionDropout`'s output on the famous lena im
 
 **Output**
 
-![Lena](tutorials/srd1.jpg)
+![Lena](tutorials/srd1.jpg) ![Lena](tutorials/srd2.jpg)
+
 
 
 <a name = 'nn.OneHot'></a>
