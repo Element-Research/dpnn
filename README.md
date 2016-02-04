@@ -556,7 +556,7 @@ With `module:evaluate()` the mean is added to the input.
 ```lua
 module = nn.SpatialRegionDropout(p)
 ```
-Following is an example of `SpatialRegionDropout`'s output on the famous lena image.
+Following is an example of `SpatialRegionDropout` outputs on the famous lena image.
 
 **Input**
 
@@ -564,7 +564,7 @@ Following is an example of `SpatialRegionDropout`'s output on the famous lena im
 
 **Output**
 
-![Lena](tutorials/srd1.jpg) ![Lena](tutorials/srd2.jpg)
+![Lena](tutorials/srd1.jpg)           ![Lena](tutorials/srd2.jpg)
 
 
 
