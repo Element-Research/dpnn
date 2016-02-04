@@ -25,6 +25,7 @@ The package provides the following Modules:
  * [WhiteNoise](#nn.WhiteNoise) : adds isotropic Gaussian noise to the signal when in training mode;
  * [OneHot](#nn.OneHot) : transforms a tensor of indices into [one-hot](https://en.wikipedia.org/wiki/One-hot) encoding.
  * [Kmeans](#nn.Kmeans) : [Kmeans](https://en.wikipedia.org/wiki/K-means_clustering) clustering layer. Forward computes distances with respect to centroids and returns index of closest centroid. Centroids can be updated using gradient descent. Centroids could be initialized randomly or by using [kmeans++](https://en.wikipedia.org/wiki/K-means%2B%2B) algoirthm;
+ * [SpatialRegionDropout](#nn.SpatialRegionDropout) : Randomly dropouts a region (top, bottom, leftmost, rightmost) of the input image. Works with batch and any number of channels.;
 
 The following modules and criterions can be used to implement the REINFORCE algorithm :
 
@@ -548,6 +549,14 @@ Default values for mean and standard deviation are 0 and 0.1 respectively.
 With `module:training()`, noise is added during forward. 
 During `backward` gradients are passed as it is. 
 With `module:evaluate()` the mean is added to the input.
+
+<a name='nn.SpatialRegionDropout'></a>
+## SpatialRegionDropout ##
+
+```lua
+module = nn.SpatialRegionDropout(p)
+```
+
 
 <a name = 'nn.OneHot'></a>
 ## OneHot ##
