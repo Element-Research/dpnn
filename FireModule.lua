@@ -44,6 +44,18 @@ function FireModule:accGradParameters(input, gradOutput)
    self.module:accGradParameters(input, gradOutput)
 end
 
+function FireModule:float()
+   self.module:type('torch.FloatTensor')
+end
+
+function FireModule:double()
+   self.module:type('torch.DoubleTensor')
+end
+
+function FireModule:cuda()
+   self.module:type('torch.CudaTensor')
+end
+
 function FireModule:__tostring__()
    return string.format('%s inputPlanes: %f -> Squeeze Planes: %f -> '..
                         'Expand: %f(1x1) + %f(3x3), activation: %s',
