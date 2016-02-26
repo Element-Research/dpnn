@@ -570,7 +570,7 @@ Following is an example of `SpatialRegionDropout` outputs on the famous lena ima
 
 <a name='nn.FireModule'></a>
 ## FireModule ##
-
+Ref: http://arxiv.org/pdf/1602.07360v1.pdf
 ```lua
 module = nn.FireModule(nInputPlane, s1x1, e1x1, e3x3, activation)
 ```
