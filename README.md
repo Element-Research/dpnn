@@ -26,6 +26,7 @@ The package provides the following Modules:
  * [OneHot](#nn.OneHot) : transforms a tensor of indices into [one-hot](https://en.wikipedia.org/wiki/One-hot) encoding.
  * [Kmeans](#nn.Kmeans) : [Kmeans](https://en.wikipedia.org/wiki/K-means_clustering) clustering layer. Forward computes distances with respect to centroids and returns index of closest centroid. Centroids can be updated using gradient descent. Centroids could be initialized randomly or by using [kmeans++](https://en.wikipedia.org/wiki/K-means%2B%2B) algoirthm;
  * [SpatialRegionDropout](#nn.SpatialRegionDropout) : Randomly dropouts a region (top, bottom, leftmost, rightmost) of the input image. Works with batch and any number of channels.;
+ * [FireModule](#nn.FireModule) : FireModule as mentioned in the [SqueezeNet] (http://arxiv.org/pdf/1602.07360v1.pdf).;
 
 The following modules and criterions can be used to implement the REINFORCE algorithm :
 
@@ -566,6 +567,13 @@ Following is an example of `SpatialRegionDropout` outputs on the famous lena ima
 **Outputs**
 
 ![Lena](tutorials/srd1.jpg)           ![Lena](tutorials/srd2.jpg)
+
+<a name='nn.FireModule'></a>
+## FireModule ##
+
+```lua
+module = nn.FireModule(nInputPlane, s1x1, e1x1, e1x3, activation)
+```
 
 <a name = 'nn.OneHot'></a>
 ## OneHot ##
