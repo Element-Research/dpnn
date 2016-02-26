@@ -5,23 +5,23 @@
 
 local FireModule, Parent = torch.class('nn.FireModule', 'nn.Module')
 
-function FireModule:__init(nInputPlane, s1x1, e1x1, e1x3, activation)
+function FireModule:__init(nInputPlane, s1x1, e1x1, e3x3, activation)
    self.nInputPlane = nInputPlane
    self.s1x1 = s1x1
    self.e1x1 = e1x1
-   self.e1x3 = e1x3
+   self.e3x3 = e3x3
    self.activation = activation or 'ReLU'
 
-   if self.s1x1 > (self.e1x1 + self.e1x3) then
+   if self.s1x1 > (self.e1x1 + self.e3x3) then
       print('Warning: <FireModule> s1x1 is recommended to be smaller'..
-            ' then e1x1+e1x3')
+            ' then e1x1+e3x3')
    end
    
    self.module = nn.Sequential()
    self.squeeze = nn.SpatialConvolution(nInputPlane, s1x1, 1, 1)
    self.expand = nn.Concat(2)
    self.expand:add(nn.SpatialConvolution(s1x1, e1x1, 1, 1))
-   self.expand:add(nn.SpatialConvolution(s1x1, e1x3, 3, 3, 1, 1, 1, 1))
+   self.expand:add(nn.SpatialConvolution(s1x1, e3x3, 3, 3, 1, 1, 1, 1))
 
    -- Fire Module
    self.module:add(self.squeeze)
