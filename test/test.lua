@@ -1748,6 +1748,28 @@ function dpnnbigtest.Kmeans()
    end
 end
 
+-- Unit Test FireModule
+function dpnntest.FireModule()
+   local hasCuda = pcall(function() require 'cunn' end)
+   local useCudas = {false, hasCuda}
+   local nInputPlane = 3
+   local width = 32
+   local height = 32
+   local s1x1 = 16
+   local e1x1 = 16
+   local e1x3 = 16
+   for _, useCuda in pairs(useCudas) do
+      local model = nn.FireModule(nInputPlane, s1x1, e1x1, e1x3)
+      local input = torch.rand(1, nInputPlane, height, width)
+      if useCuda then
+         model:cuda()
+         input = input:cuda()
+      end
+      local output = model:forward(input)
+      local gradInput = model:forward(input, output)
+   end
+end
+
 function dpnntest.OneHot()
    local nClass = 10
    
