@@ -10,6 +10,10 @@ function FireModule:__init(nInputPlane, s1x1, e1x1, e1x3, activation)
    self.e1x1 = e1x1
    self.e1x3 = e1x3
    self.activation = activation or 'ReLU'
+
+   if self.s1x1 > (self.e1x1 + self.e1x3) then
+      print('Warning: <FireModule> s1x1 is recommended to be smaller then e1x1+e1x3')
+   end
    
    self.module = nn.Sequential()
    self.squeeze = nn.SpatialConvolution(nInputPlane, s1x1, 1, 1)
@@ -34,4 +38,10 @@ end
 
 function FireModule:accGradParameters(input, gradOutput)
    self.module:accGradParameters(input, gradOutput)
+end
+
+function FireModule:__tostring__()
+   return string.format('%s Squeeze: %f, Expand: %f %f, activation: %s',
+                        torch.type(self), self.s1x1, self.e1x1, self.e1x3,
+                        self.activation)
 end
