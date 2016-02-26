@@ -1752,21 +1752,24 @@ end
 function dpnntest.FireModule()
    local hasCuda = pcall(function() require 'cunn' end)
    local useCudas = {false, hasCuda}
+   local activations = {'ReLU', 'Tanh', 'Sigmoid'}
    local nInputPlane = 3
    local width = 32
    local height = 32
    local s1x1 = 16
    local e1x1 = 16
-   local e1x3 = 16
-   for _, useCuda in pairs(useCudas) do
-      local model = nn.FireModule(nInputPlane, s1x1, e1x1, e1x3)
-      local input = torch.rand(1, nInputPlane, height, width)
-      if useCuda then
-         model:cuda()
-         input = input:cuda()
+   local e3x3 = 16
+   for _, activation in pairs(activations) do
+      for _, useCuda in pairs(useCudas) do
+         local model = nn.FireModule(nInputPlane, s1x1, e1x1, e3x3)
+         local input = torch.rand(1, nInputPlane, height, width)
+         if useCuda then
+            model:cuda()
+            input = input:cuda()
+         end
+         local output = model:forward(input)
+         local gradInput = model:forward(input, output)
       end
-      local output = model:forward(input)
-      local gradInput = model:forward(input, output)
    end
 end
 
