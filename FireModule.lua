@@ -44,21 +44,14 @@ function FireModule:accGradParameters(input, gradOutput)
    self.module:accGradParameters(input, gradOutput)
 end
 
-function FireModule:float()
-   self.module:type('torch.FloatTensor')
-end
-
-function FireModule:double()
-   self.module:type('torch.DoubleTensor')
-end
-
-function FireModule:cuda()
-   self.module:type('torch.CudaTensor')
+function FireModule:type(type, tensorCache)
+   assert(type, 'Module: must provide a type to convert to')
+   self.module = nn.utils.recursiveType(self.module, type, tensorCache)
 end
 
 function FireModule:__tostring__()
-   return string.format('%s inputPlanes: %f -> Squeeze Planes: %f -> '..
-                        'Expand: %f(1x1) + %f(3x3), activation: %s',
+   return string.format('%s inputPlanes: %d -> Squeeze Planes: %d -> '..
+                        'Expand: %d(1x1) + %d(3x3), activation: %s',
                         torch.type(self), self.nInputPlane, self.s1x1,
-                        self.e1x1, self.e1x3, self.activation)
+                        self.e1x1, self.e3x3, self.activation)
 end

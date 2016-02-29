@@ -576,6 +576,7 @@ module = nn.FireModule(nInputPlane, s1x1, e1x1, e3x3, activation)
 ```
 FireModule is comprised of two submodules 1) A *squeeze* convolution module comprised of `1x1` filters followed by 2) an *expand* module that is comprised of a mix of `1x1` and `3x3` convolution filters.
 Arguments: `s1x1`: number of `1x1` filters in the squeeze submodule, `e1x1`: number of `1x1` filters in the expand submodule, `e3x3`: number of `3x3` filters in the expand submodule. It is recommended that `s1x1` be less than `(e1x1+e3x3)` if you want to limit the number of input channels to the `3x3` filters in the expand submodule.
+FireModule works only with batches, for single sample convert the sample to a batch of size 1.
 
 <a name = 'nn.OneHot'></a>
 ## OneHot ##
