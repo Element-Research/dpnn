@@ -2073,7 +2073,7 @@ function dpnntest.NCE()
    }
    
    local ncem = nn.NCEModule(inputsize, outputsize, k, noise)
-   local ncec = nn.NCECriterion(ncem)
+   local ncec = nn.NCECriterion()
    
    local input = torch.randn(batchsize, inputsize)
    local target = torch.LongTensor(batchsize):random(1,outputsize)
@@ -2118,13 +2118,13 @@ function dpnntest.NCE()
    
    -- eq 5.1 : P(origin=model) = Pmt / (Pmt + k*Pnt) 
    local Pom = Pmt:clone()
-   local div = Pmt:clone():add(k, Pnt)
-   Pom:cdiv(div)
+   local mdiv = Pmt:clone():add(k, Pnt):add(0.0000001)
+   Pom:cdiv(mdiv)
    
    -- eq 5.2 : P(origin=noise) = k*Pns / (Pms + k*Pns)
    local Pon = Pns:clone():mul(k)
-   local div = Pms:clone():add(k, Pns)
-   Pon:cdiv(div)
+   local ndiv = Pms:clone():add(k, Pns):add(0.0000001)
+   Pon:cdiv(ndiv)
    
    -- equation 6 in ref. A
    
@@ -2134,6 +2134,26 @@ function dpnntest.NCE()
    local loss2 = - (lossm + lossn)/batchsize
    
    mytester:assert(math.abs(loss - loss2) < 0.000001)
+   
+   -- NCECriterion.backward
+   local gradOutput = ncec:backward(output, target)
+   
+   mytester:assert(#gradOutput == 4)
+   mytester:assert(math.abs(gradOutput[3]:sum()) < 0.0000001)
+   mytester:assert(math.abs(gradOutput[4]:sum()) < 0.0000001)
+   
+   local dPmt, dPms = gradOutput[1], gradOutput[2]
+   
+   -- d Pmt / d input = -k*Pnt / ( Pmt * (Pmt + k*Pnt) )
+   local dPmt2 = torch.mul(Pnt, -k):cdiv(mdiv):cdiv(torch.add(Pmt, 0.0000001)):div(batchsize)
+   -- d Pms / d input = Pms / ( Pms * (Pms + k*Pns) )
+   local dPms2 = Pms:clone():cdiv(ndiv):cdiv(torch.add(Pms, 0.0000001)):div(batchsize)
+   
+   mytester:assertTensorEq(dPmt, dPmt2, 0.0000001)
+   mytester:assertTensorEq(dPms, dPms2, 0.0000001)
+   
+   mytester:assert(dPmt:sum() == dPmt:sum())
+   mytester:assert(dPms:sum() == dPms:sum())
 end
 
 function dpnn.test(tests)
