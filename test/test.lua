@@ -2154,6 +2154,31 @@ function dpnntest.NCE()
    
    mytester:assert(dPmt:sum() == dPmt:sum())
    mytester:assert(dPms:sum() == dPms:sum())
+   
+   -- NCEModule.backward
+   ncem:zeroGradParameters()
+   local gradInput = ncem:backward(inputTable, gradOutput)
+   
+   -- updateGradInput
+   local gradOutput2_ = torch.zeros(batchsize, k+1)
+   gradOutput2_:select(2,1):copy(gradOutput[1])
+   gradOutput2_:narrow(2,2,k):copy(gradOutput[2])
+   local gradOutput2 = torch.zeros(batchsize, outputsize)
+   for i=1,batchsize do
+      gradOutput2[i]:indexAdd(1, ncem.sampleidx[i], gradOutput2_[i])
+   end
+   mlp:zeroGradParameters()
+   local gradInput2 = mlp:backward(input, gradOutput2)
+   mytester:assertTensorEq(gradInput[1], gradInput2, 0.0000001)
+   
+   -- accGradParameters
+   
+   local params, gradParams = ncem:parameters()
+   local params2, gradParams2 = mlp:parameters()
+   
+   for i=1,#params do
+      mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.0000001)
+   end
 end
 
 function dpnn.test(tests)

@@ -20,6 +20,7 @@ function NCEModule:__init(inputSize, outputSize, k, noise)
    
    -- output is {P_linear(target|input), P_linear(samples|input), P_noise(target), P_noise(samples)}
    self.output = {torch.Tensor(), torch.Tensor(), torch.Tensor(), torch.Tensor()}
+   self.gradInput = {torch.Tensor(), torch.Tensor()}
 end
 
 function NCEModule:updateOutput(inputTable)
@@ -69,13 +70,14 @@ function NCEModule:updateOutput(inputTable)
       local _input = input:view(batchsize, 1, inputsize)
       self._score:baddbmm(1, self._score, 1, _input, self._weight:transpose(2,3))
       self._score:resize(batchsize, self.k+1)
+      self._score:exp()
       
       -- separate target from noise scores
       local tscore = self._score:select(2,1)
       local nscore = self._score:narrow(2,2,self.k)
       
-      self.output[1]:resizeAs(tscore):copy(tscore):exp()
-      self.output[2]:resizeAs(nscore):copy(nscore):exp()
+      self.output[1]:set(tscore)
+      self.output[2]:set(nscore)
       
       -- get noise probability for all samples
       
@@ -112,11 +114,52 @@ function NCEModule:updateOutput(inputTable)
 end
 
 function NCEModule:updateGradInput(inputTable, gradOutput)
+   local input, target = unpack(inputTable)
+   assert(input:dim() == 2)
+   assert(target:dim() == 1)
+   local dPmt, dPms = gradOutput[1], gradOutput[2]
+   local batchsize = input:size(1)
+   local inputsize = self.weight:size(2)
+   
+   self._gradOutput = self._gradOutput or dPmt.new()
+   self._gradOutput:resize(batchsize, self.k+1)
+   self._gradOutput:select(2,1):copy(dPmt)
+   self._gradOutput:narrow(2,2,self.k):copy(dPms)
+   self._gradOutput:resize(batchsize, 1, self.k+1)
+   self._gradOutput:cmul(self._score) -- gradient of exp
+   
+   -- gradient of linear
+   self.gradInput[1]:resize(batchsize, 1, inputsize):zero()
+   self.gradInput[1]:baddbmm(0, 1, self._gradOutput, self._weight)
+   self.gradInput[1]:resizeAs(input)
 
+   if self.gradInput[2]:nElement() ~= target:nElement() then
+      self.gradInput[2]:resize(target:size()):zero()
+   end
+   
+   return self.gradInput
 end
 
 function NCEModule:accGradParameters(inputTable, gradOutput, scale)
-
+   local input, target = unpack(inputTable)
+   assert(input:dim() == 2)
+   assert(target:dim() == 1)
+   local batchsize = input:size(1)
+   local inputsize = self.weight:size(2)
+   
+   self._gradWeight = self._gradWeight or self.gradWeight.new()
+   self._gradWeight:resizeAs(self._weight):zero() -- batchsize x k+1 x inputsize
+   self._gradOutput:resize(batchsize, self.k+1, 1)
+   self._gradOutput:mul(scale)
+   local _input = input:view(batchsize, 1, inputsize)
+   self._gradWeight:baddbmm(0, self._gradWeight, 1, self._gradOutput, _input)
+   
+   local sampleidx = self.sampleidx:view(batchsize * (self.k+1))
+   local _gradWeight = self._gradWeight:view(batchsize * (self.k+1), inputsize)
+   self.gradWeight:indexAdd(1, sampleidx, _gradWeight)
+   
+   local _gradOutput = self._gradOutput:view(batchsize * (self.k+1))
+   self.gradBias:indexAdd(1, sampleidx, _gradOutput)
 end
 
 function NCEModule:type(type, cache)
