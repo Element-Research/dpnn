@@ -2051,6 +2051,68 @@ function dpnntest.OneHot()
    end
 end
 
+function dpnntest.NCE()
+   local batchsize = 4
+   local k = 10
+   local inputsize = 3
+   local outputsize = 100
+   
+   local noise = {
+      sample = function(self, sampleidx, bs, k)
+         sampleidx = sampleidx or torch.LongTensor()
+         sampleidx:resize(bs, k)
+         sampleidx:random(1,outputsize) -- uniform dist
+         return sampleidx
+      end,
+      prob = function(self, sampleprob, sampleidx)
+         sampleprob = sampleprob or torch.Tensor()
+         sampleprob:resize(sampleidx:size())
+         sampleprob:fill(1/outputsize) -- uniform dist
+         return sampleprob
+      end
+   }
+   
+   local ncem = nn.NCEModule(inputsize, outputsize, k, noise)
+   
+   local input = torch.randn(batchsize, inputsize)
+   local target = torch.LongTensor(batchsize):random(1,outputsize)
+   local inputTable = {input, target}
+   
+   -- test training 
+   local output = ncem:forward(inputTable)
+   
+   mytester:assert(torch.type(output) == 'table')
+   mytester:assert(#output == 4)
+   
+   local Pmt, Pms, Pnt, Pns = unpack(output)
+   
+   mytester:assertTableEq(Pmt:size():totable(), {batchsize}, 0.0000001)
+   mytester:assertTableEq(Pms:size():totable(), {batchsize, k}, 0.0000001)
+   mytester:assertTableEq(Pnt:size():totable(), {batchsize}, 0.0000001)
+   mytester:assertTableEq(Pns:size():totable(), {batchsize, k}, 0.0000001)
+   
+   mytester:assert(ncem.sampleidx:min() >= 1 and ncem.sampleidx:max() <= outputsize)
+   mytester:assert(math.abs(Pns:mean() - 1/outputsize) < 0.0000001)
+   
+   local linear = nn.Linear(inputsize, outputsize)
+   linear.weight:copy(ncem.weight)
+   linear.bias:copy(ncem.bias)
+   local mlp = nn.Sequential():add(linear):add(nn.Exp())
+
+   local output2_ = mlp:forward(input)
+   local output2 = torch.Tensor(batchsize, k+1)
+   for i=1,batchsize do
+      output2[i]:index(output2_[i],1,ncem.sampleidx[i])
+   end
+   local Pmt2 = output2:select(2,1)
+   local Pms2 = output2:narrow(2,2,k)
+   
+   mytester:assertTensorEq(Pmt, Pmt2, 0.000001)
+   mytester:assertTensorEq(Pms, Pms2, 0.000001)
+   
+   
+end
+
 function dpnn.test(tests)
    mytester = torch.Tester()
    mytester:add(dpnntest)

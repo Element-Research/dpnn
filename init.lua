@@ -85,6 +85,9 @@ torch.include('dpnn', 'OneHot.lua')
 torch.include('dpnn', 'SpatialRegionDropout.lua')
 torch.include('dpnn', 'FireModule.lua')
 
+-- NCE
+torch.include('dpnn', 'NCEModule.lua')
+
 -- REINFORCE
 torch.include('dpnn', 'Reinforce.lua')
 torch.include('dpnn', 'ReinforceBernoulli.lua')
