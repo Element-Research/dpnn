@@ -2057,20 +2057,7 @@ function dpnntest.NCE()
    local inputsize = 3
    local outputsize = 100
    
-   local noise = {
-      sample = function(self, sampleidx, bs, k)
-         sampleidx = sampleidx or torch.LongTensor()
-         sampleidx:resize(bs, k)
-         sampleidx:random(1,outputsize) -- uniform dist
-         return sampleidx
-      end,
-      prob = function(self, sampleprob, sampleidx)
-         sampleprob = sampleprob or torch.Tensor()
-         sampleprob:resize(sampleidx:size())
-         sampleprob:fill(1/outputsize) -- uniform dist
-         return sampleprob
-      end
-   }
+   local noise = torch.Tensor(outputsize):random(1,100)
    
    local ncem = nn.NCEModule(inputsize, outputsize, k, noise)
    local ncec = nn.NCECriterion()
@@ -2095,7 +2082,10 @@ function dpnntest.NCE()
    mytester:assertTableEq(Pns:size():totable(), {batchsize, k}, 0.0000001)
    
    mytester:assert(ncem.sampleidx:min() >= 1 and ncem.sampleidx:max() <= outputsize)
-   mytester:assert(math.abs(Pns:mean() - 1/outputsize) < 0.0000001)
+   
+   local sampleprob2 = noise:index(1, ncem.sampleidx:view(-1)):view(batchsize, k+1)
+   mytester:assertTensorEq(sampleprob2:select(2,1), Pnt, 0.0000001)
+   mytester:assertTensorEq(sampleprob2:narrow(2,2,k), Pns, 0.0000001)
    
    local linear = nn.Linear(inputsize, outputsize)
    linear.weight:copy(ncem.weight)

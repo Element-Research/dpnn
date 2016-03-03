@@ -7,6 +7,10 @@ local NCEModule, parent = torch.class("nn.NCEModule", "nn.Linear")
 function NCEModule:__init(inputSize, outputSize, k, noise)
    parent.__init(self, inputSize, outputSize)
    assert(torch.type(k) == 'number')
+   if torch.isTensor(noise) then
+      -- assume it is unigrams
+      noise = self:unigramNoise(noise)
+   end
    assert(torch.type(noise) == 'table')
    assert(torch.type(noise.sample) == 'function')
    assert(torch.type(noise.prob) == 'function')
@@ -40,8 +44,13 @@ function NCEModule:updateOutput(inputTable)
       self.sampleidx:resize(batchsize, self.k+1)
       self.sampleidx:select(2,1):copy(target)
       
+      self._noiseidx = self._noiseidx or self.sampleidx.new()
+      self._noiseidx:resize(batchsize, self.k)
+      
       -- sample (batchsize x k+1) noise samples
-      self.noise:sample(self.sampleidx:narrow(2,2,self.k), batchsize, self.k)
+      self.noise:sample(self._noiseidx, batchsize, self.k)
+      
+      self.sampleidx:narrow(2,2,self.k):copy(self._noiseidx)
       
       -- make sure that targets are still first column of sampleidx
       if not self.testedtargets then
@@ -179,4 +188,24 @@ end
 function NCEModule:evaluate()
    self.output = torch.Tensor()
    return parent.evaluate(self)
+end
+
+function NCEModule:unigramNoise(unigrams)
+   assert(unigrams:dim() == 1)
+   local noise = {
+      unigrams = unigrams,
+      sample = function(self, sampleidx, batchsize, k)
+         sampleidx = sampleidx or torch.LongTensor()
+         self.unigrams.multinomial(sampleidx, self.unigrams, batchsize*k, true)
+         sampleidx:resize(batchsize, k)
+         return sampleidx
+      end,
+      prob = function(self, sampleprob, sampleidx)
+         sampleprob = sampleprob or self.unigrams.new()
+         sampleprob:index(self.unigrams, 1, sampleidx:view(-1))
+         sampleprob:resize(sampleidx:size())
+         return sampleprob
+      end
+   }
+   return noise
 end
