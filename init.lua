@@ -85,8 +85,9 @@ torch.include('dpnn', 'OneHot.lua')
 torch.include('dpnn', 'SpatialRegionDropout.lua')
 torch.include('dpnn', 'FireModule.lua')
 
--- NCE
+-- Noise Contrastive Estimation
 torch.include('dpnn', 'NCEModule.lua')
+torch.include('dpnn', 'NCECriterion.lua')
 
 -- REINFORCE
 torch.include('dpnn', 'Reinforce.lua')

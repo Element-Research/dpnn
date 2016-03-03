@@ -2073,12 +2073,15 @@ function dpnntest.NCE()
    }
    
    local ncem = nn.NCEModule(inputsize, outputsize, k, noise)
+   local ncec = nn.NCECriterion(ncem)
    
    local input = torch.randn(batchsize, inputsize)
    local target = torch.LongTensor(batchsize):random(1,outputsize)
    local inputTable = {input, target}
    
    -- test training 
+   
+   -- NCEModule.forward
    local output = ncem:forward(inputTable)
    
    mytester:assert(torch.type(output) == 'table')
@@ -2110,7 +2113,27 @@ function dpnntest.NCE()
    mytester:assertTensorEq(Pmt, Pmt2, 0.000001)
    mytester:assertTensorEq(Pms, Pms2, 0.000001)
    
+   -- NCECriterion.forward
+   local loss = ncec:forward(output, target)
    
+   -- eq 5.1 : P(origin=model) = Pmt / (Pmt + k*Pnt) 
+   local Pom = Pmt:clone()
+   local div = Pmt:clone():add(k, Pnt)
+   Pom:cdiv(div)
+   
+   -- eq 5.2 : P(origin=noise) = k*Pns / (Pms + k*Pns)
+   local Pon = Pns:clone():mul(k)
+   local div = Pms:clone():add(k, Pns)
+   Pon:cdiv(div)
+   
+   -- equation 6 in ref. A
+   
+   local lossm = torch.log(Pom):sum()
+   local lossn = torch.log(Pon):sum()
+   
+   local loss2 = - (lossm + lossn)/batchsize
+   
+   mytester:assert(math.abs(loss - loss2) < 0.000001)
 end
 
 function dpnn.test(tests)

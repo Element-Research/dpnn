@@ -7,7 +7,7 @@ local NCECriterion, parent = torch.class("nn.NCECriterion", "nn.Criterion")
 
 function NCECriterion:__init(ncemodule)
    parent.__init(self)
-   assert(torch.isTypeOf(ncemodule, 'nn.NCECriterion')
+   assert(torch.isTypeOf(ncemodule, 'nn.NCEModule'))
    self.ncemodule = ncemodule     
    self.sizeAverage = true    
 end
@@ -24,21 +24,21 @@ function NCECriterion:updateOutput(inputTable, target)
    
    -- equation 5 in ref. A
    
-   -- eq 5.1 : P(origin=model) = Pmt / (Pmt - k*Pnt) 
+   -- eq 5.1 : P(origin=model) = Pmt / (Pmt + k*Pnt) 
    self._Pom = self._Pom or Pmt.new()
    self._Pom:resizeAs(Pmt):copy(Pmt)
    self._Pomdiv = self._Pomdiv or Pmt.new()
    self._Pomdiv:resizeAs(Pmt):copy(Pmt)
-   self._Pomdiv:add(-k, Pnt)
+   self._Pomdiv:add(k, Pnt)
    self._Pom:cdiv(self._Pomdiv)
    
-   -- eq 5.2 : P(origin=noise) = k*Pns / (Pms - k*Pns)
+   -- eq 5.2 : P(origin=noise) = k*Pns / (Pms + k*Pns)
    self._Pon = self._Pon or Pns.new()
    self._Pon:resizeAs(Pns):copy(Pns):mul(k)
    self._Pondiv = self._Pondiv or Pms.new()
    self._Pondiv:resizeAs(Pms):copy(Pms)
-   self._Pondiv:add(-k, Pns)
-   self._Pon:cdiv(self._Pomdiv)
+   self._Pondiv:add(k, Pns)
+   self._Pon:cdiv(self._Pondiv)
    
    -- equation 6 in ref. A
    
@@ -51,7 +51,7 @@ function NCECriterion:updateOutput(inputTable, target)
    local lnPomsum = self._lnPom:sum()
    local lnPonsum = self._lnPon:sum()
    
-   self.output = - (lnPomsum + lnPomsum)
+   self.output = - (lnPomsum + lnPonsum)
    
    if self.sizeAverage then
       self.output = self.output / Pmt:size(1)
