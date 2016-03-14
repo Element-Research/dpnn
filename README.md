@@ -141,7 +141,7 @@ Classic momentum is computed as follows :
 ```lua
 momGradParams = momFactor*momGradParams + (1-momDamp)*gradParams
 gradParams = momGradParams
-```
+``` 
 
 where `momDamp` has a default value of `momFactor`.
 
@@ -150,7 +150,7 @@ Nesterov momentum (`momNesterov = true`) is computed as follows (the first line 
 ```lua
 momGradParams = momFactor*momGradParams + (1-momDamp)*gradParams
 gradParams = gradParams + momFactor*momGradParams
-```
+``` 
 The default is to use classic momentum (`momNesterov = false`).
 
 <a name='nn.Module.weightDecay'></a>
@@ -218,14 +218,16 @@ th> print(module:forward(torch.FloatTensor{1,2,3}))
 -1.8158
 -0.0805
 [torch.FloatTensor of size 4]
-```
+``` 
 
 <a name='nn.Serial'></a>
 ## Serial ##
+
 ```lua
 dmodule = nn.Serial(module, [tensortype])
 dmodule:[light,medium,heavy]Serial()
-```
+``` 
+
 This module is a decorator that can be used to control the serialization/deserialization 
 behavior of the encapsulated module. Basically, making the resulting string or 
 file heavy (the default), medium or light in terms of size. 
@@ -261,7 +263,7 @@ References :
 
 ```lua
 module = nn.Inception(config)
-```
+``` 
 
 This module uses `n`+2 parallel "columns". 
 The original paper uses 2+2 where the first two are (but there could be more than two):
@@ -308,13 +310,13 @@ For a complete example using this module, refer to the following :
 
 ```lua
 module = nn.Collapse(nInputDim)
-```
+``` 
 
 This module is the equivalent of:
 ```
 view = nn.View(-1)
 view:setNumInputDim(nInputDim)
-```
+``` 
 It collapses all non-batch dimensions. This is useful for converting 
 a spatial feature map to the single dimension required by a dense 
 hidden layer like Linear.
@@ -324,7 +326,7 @@ hidden layer like Linear.
 
 ```lua
 module = nn.Convert([inputShape, outputShape])
-```
+``` 
 Module to convert between different data formats.
 For example, we can flatten images by using :
 ```lua
@@ -333,7 +335,7 @@ module = nn.Convert('bchw', 'bf')
 or equivalently
 ```lua
 module = nn.Convert('chw', 'f')
-```
+``` 
 Lets try it with an input:
 ```lua
 print(module:forward(torch.randn(3,2,3,1)))
@@ -341,7 +343,7 @@ print(module:forward(torch.randn(3,2,3,1)))
 -0.9142  0.6013  0.5608 -1.0417 -1.4014  1.0177
 -1.5207 -0.1641 -0.4166  1.4810 -1.1725 -1.0037
 [torch.DoubleTensor of size 3x6]
-```
+``` 
 You could also try:
 
 ```lua
@@ -372,7 +374,7 @@ print(module:forward(input))
   1  2
   1  2
 [torch.DoubleTensor of size 1x3x2x2]
-```
+``` 
 
 
 Furthermore, it automatically converts the `input` to have the same type as `self.output`

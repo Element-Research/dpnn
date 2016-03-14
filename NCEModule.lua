@@ -175,7 +175,6 @@ function NCEModule:type(type, cache)
    if type then
       self.sampleidx = nil
       self.sampleprob = nil
-      self.output = {torch.Tensor(), torch.Tensor(), torch.Tensor(), torch.Tensor()}
    end
    return parent.type(self, type, cache)
 end
