@@ -32,6 +32,13 @@ function FireModule:__init(nInputPlane, s1x1, e1x1, e3x3, activation)
    Parent.__init(self, self.module)
 end
 
+--[[
+function FireModule:type(type, tensorCache)
+   assert(type, 'Module: must provide a type to convert to')
+   self.module = nn.utils.recursiveType(self.module, type, tensorCache)
+end
+--]]
+
 function FireModule:__tostring__()
    return string.format('%s inputPlanes: %d -> Squeeze Planes: %d -> '..
                         'Expand: %d(1x1) + %d(3x3), activation: %s',
