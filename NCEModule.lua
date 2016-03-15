@@ -180,12 +180,13 @@ function NCEModule:type(type, cache)
 end
 
 function NCEModule:training()
-   self.output = {torch.Tensor(), torch.Tensor(), torch.Tensor(), torch.Tensor()}
+   local o = self.gradInput[1].new()
+   self.output = {o,o.new(),o.new(),o.new()}
    return parent.training(self)
 end
 
 function NCEModule:evaluate()
-   self.output = torch.Tensor()
+   self.output = self.gradInput[1].new()
    return parent.evaluate(self)
 end
 
