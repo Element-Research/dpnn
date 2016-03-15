@@ -9,3 +9,9 @@ table.insert(empty, 'normalized')
 table.insert(empty, 'output')
 table.insert(empty, 'gradInput')
 BN.dpnn_mediumEmpty = empty
+
+-- for sharedClone
+local params = _.clone(parent.dpnn_parameters)
+table.insert(params, 'running_mean')
+table.insert(params, 'running_var')
+BN.dpnn_parameters = params

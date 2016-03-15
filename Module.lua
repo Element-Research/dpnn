@@ -160,18 +160,6 @@ function Module:sharedClone(shareParams, shareGradParams, stepClone)
    return clone
 end      
 
--- We don't want to call type multiple times on the same module
-local Module_type = nn.Module.type
-function Module:type(type, tensorcache)
-   tensorcache = tensorcache or {}
-   tensorcache.rnn_modules = tensorcache.rnn_modules or {}
-   if not tensorcache.rnn_modules[torch.pointer(self)] then 
-      Module_type(self, type, tensorcache)
-      tensorcache.rnn_modules[torch.pointer(self)] = true
-   end
-   return self
-end
-
 -- we override this method such that hidden modules
 -- will be included in the getParameters call.
 -- Hidden modules are common for recurrent modules that

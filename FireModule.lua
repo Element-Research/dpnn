@@ -3,7 +3,7 @@
 --]]
 --FIXME works only for batches.
 
-local FireModule, Parent = torch.class('nn.FireModule', 'nn.Module')
+local FireModule, Parent = torch.class('nn.FireModule', 'nn.Decorator')
 
 function FireModule:__init(nInputPlane, s1x1, e1x1, e3x3, activation)
    self.nInputPlane = nInputPlane
@@ -28,26 +28,16 @@ function FireModule:__init(nInputPlane, s1x1, e1x1, e3x3, activation)
    self.module:add(nn[self.activation]())
    self.module:add(self.expand)
    self.module:add(nn[self.activation]())
+   
+   Parent.__init(self, self.module)
 end
 
-function FireModule:updateOutput(input)
-   self.output = self.module:updateOutput(input)
-   return self.output
-end
-
-function FireModule:updateGradInput(input, gradOutput)
-   self.gradInput = self.module:updateGradInput(input, gradOutput)
-   return self.gradInput
-end
-
-function FireModule:accGradParameters(input, gradOutput)
-   self.module:accGradParameters(input, gradOutput)
-end
-
+--[[
 function FireModule:type(type, tensorCache)
    assert(type, 'Module: must provide a type to convert to')
    self.module = nn.utils.recursiveType(self.module, type, tensorCache)
 end
+--]]
 
 function FireModule:__tostring__()
    return string.format('%s inputPlanes: %d -> Squeeze Planes: %d -> '..

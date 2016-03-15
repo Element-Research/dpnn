@@ -1940,7 +1940,7 @@ function dpnntest.FireModule()
             input = input:cuda()
          end
          local output = model:forward(input)
-         local gradInput = model:forward(input, output)
+         local gradInput = model:backward(input, output)
       end
    end
 end
