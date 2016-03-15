@@ -3,9 +3,10 @@ require 'dpnn'
 require 'cunn'
 require 'cutorch'
 
-torch.setdefaulttensortype('torch.FloatTensor')
+--torch.setdefaulttensortype('torch.FloatTensor')
 
 -- FireModule issue 45
+--[[
 m = nn.Sequential()
 m:add(nn.FireModule(1,1,1,1))
 _, p = m:getParameters()
@@ -16,12 +17,14 @@ _, p = m:getParameters()
 print(p:sum())
 
 m:zeroGradParameters()
-print(p:sum())
+print(p:sum())--]]
 
 
 -- Testing FireModule
 input = torch.rand(1, 3, 6, 6)
 model = nn.FireModule(3, 1, 1, 1, 'Tanh')
+print(model)
+print(model.module)
 parameters, gradParameters = model:getParameters()
 output = model:forward(input)
 grads = torch.rand(output:size())
