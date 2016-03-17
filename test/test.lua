@@ -2288,6 +2288,116 @@ function dpnntest.NCE()
    end
 end
 
+function dpnnbigtest.NCE_benchmark()
+   local nclass = 1000000
+   local hiddensize = 200
+   local batchsize = 50
+   local nloop = 5
+   local k = 25
+   local unigrams = torch.Tensor(nclass):uniform(0,1)
+   local mlp = nn.Sequential()
+      :add(nn.Linear(hiddensize, nclass))
+      :add(nn.SoftMax())
+   local nll = nn.ClassNLLCriterion()
+   
+   local nce = nn.NCEModule(hiddensize, nclass, 25, unigrams)
+   nce:fastNoise()
+   local crit = nn.NCECriterion()
+   
+   local input = torch.randn(batchsize, hiddensize)
+   local target = torch.LongTensor(batchsize):random(1,nclass)
+   
+   local sync = function() return end
+   if pcall(function() require 'cunn' end) then
+      input = input:cuda()
+      target = target:cuda()
+      nce:cuda()
+      crit:cuda()
+      mlp:cuda()
+      nll:cuda()
+      sync = function() cutorch.synchronize() end
+   end
+   
+   print(torch.type(nce.unigrams))
+   
+   local output = nce:forward{input, target}
+   local loss = crit:forward(output, target)
+   local gradOutput = crit:backward(output, target)
+   local gradInput = nce:backward({input, target}, gradOutput)
+   
+   local output = mlp:forward(input)
+   local loss = nll:forward(output, target)
+   local gradOutput = nll:backward(output, target)
+   local gradInput = mlp:backward(input, gradOutput)
+   sync()
+   
+   local a = torch.Timer()
+   for i=1,nloop do
+      output = nce:forward{input, target}
+   end
+   sync()
+   local ncefwd = a:time().real
+   
+   a:reset()
+   for i=1,nloop do
+      loss = crit:forward(output, target)
+   end
+   sync()
+   local critfwd = a:time().real
+   
+   a:reset()
+   for i=1,nloop do
+      gradOutput = crit:backward(output, target)
+   end
+   sync()
+   local critbwd = a:time().real
+   
+   a:reset()
+   for i=1,nloop do
+      gradInput = nce:backward({input, target}, gradOutput)
+   end
+   sync()
+   local ncebwd = a:time().real
+   
+   -- mlp nll
+   
+   local a = torch.Timer()
+   for i=1,nloop do
+      output = mlp:forward(input)
+   end
+   sync()
+   local mlpfwd = a:time().real
+   
+   a:reset()
+   for i=1,nloop do
+      loss = nll:forward(output, target)
+   end
+   sync()
+   local nllfwd = a:time().real
+   
+   a:reset()
+   for i=1,nloop do
+      gradOutput = nll:backward(output, target)
+   end
+   sync()
+   local nllbwd = a:time().real
+   
+   a:reset()
+   for i=1,nloop do
+      gradInput = mlp:backward(input, gradOutput)
+   end
+   sync()
+   local mlpbwd = a:time().real
+   
+   local ncetotal = ncefwd+critfwd+critbwd+ncebwd
+   local lintotal = mlpfwd+nllfwd+nllbwd+mlpbwd
+   print("module:forward (nce vs linear)", ncefwd, mlpfwd)
+   print("criterion:forward (nce vs nll)", critfwd, nllfwd)
+   print("criterion:backward (nce vs nll)", critbwd, nllbwd)
+   print("module:backward (nce vs linear)", ncebwd, mlpbwd)
+   print("total (nce vs linear)", ncetotal, lintotal, lintotal/ncetotal)
+end
+
 function dpnn.test(tests)
    mytester = torch.Tester()
    mytester:add(dpnntest)

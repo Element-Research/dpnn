@@ -4,23 +4,26 @@
 ------------------------------------------------------------------------
 local NCEModule, parent = torch.class("nn.NCEModule", "nn.Linear")
 
-function NCEModule:__init(inputSize, outputSize, k, noise)
+-- for efficient serialization
+local empty = _.clone(parent.dpnn_mediumEmpty)
+table.insert(empty, 'sampleidx')
+table.insert(empty, 'sampleprob')
+table.insert(empty, '_noiseidx')
+table.insert(empty, '_noiseprob')
+table.insert(empty, '_noisesamples')
+NCEModule.dpnn_mediumEmpty = empty
+
+-- for sharedClone
+local params = _.clone(parent.dpnn_parameters)
+table.insert(params, 'unigrams')
+BN.dpnn_parameters = params
+
+function NCEModule:__init(inputSize, outputSize, k, unigrams)
    parent.__init(self, inputSize, outputSize)
    assert(torch.type(k) == 'number')
-   if torch.isTensor(noise) then
-      -- assume it is unigrams
-      noise = self:unigramNoise(noise)
-   end
-   assert(torch.type(noise) == 'table')
-   assert(torch.type(noise.sample) == 'function')
-   assert(torch.type(noise.prob) == 'function')
+   assert(torch.isTensor(unigrams))
    self.k = k
-   self.noise = noise
-   
-   local sampleidx = self.noise:sample(nil, 1, self.k)
-   assert(torch.isTensor(sampleidx))
-   local sampleprob = self.noise:prob(nil, sampleidx)
-   assert(torch.isTensor(sampleprob))
+   self.unigrams = unigrams
    
    -- output is {P_linear(target|input), P_linear(samples|input), P_noise(target), P_noise(samples)}
    self.output = {torch.Tensor(), torch.Tensor(), torch.Tensor(), torch.Tensor()}
@@ -34,23 +37,48 @@ function NCEModule:updateOutput(inputTable)
    local batchsize = input:size(1)
    local inputsize = self.weight:size(2)
    
-   if self.normalized then
+   if self.train == false and self.normalized then
+      self.linout = self.linout or input.new()
       -- full linear + softmax
-      error"Not implemented"
-   elseif self.train ~= false then
+      local nElement = self.linout:nElement()
+      self.linout:resize(batchsize, self.weight:size(1))
+      if self.linout:nElement() ~= nElement then
+         self.linout:zero()
+      end
+      self.addBuffer = self.addBuffer or input.new()
+      if self.addBuffer:nElement() ~= batchsize then
+         self.addBuffer:resize(batchsize):fill(1)
+      end
+      self.linout:addmm(0, self.linout, 1, input, self.weight:t())
+      if self.bias then self.linout:addr(1, self.addBuffer, self.bias) end
+      self.output = torch.type(self.output) == 'table' and input.new() or self.output
+      if self.logsoftmax then
+         input.THNN.LogSoftMax_updateOutput(
+            self.linout:cdata(),
+            self.output:cdata()
+         )
+      else
+         input.THNN.SoftMax_updateOutput(
+            self.linout:cdata(),
+            self.output:cdata()
+         )
+      end
+   else
+      self.output = torch.type(self.output) == 'table' and self.output
+         or {torch.Tensor(), torch.Tensor(), torch.Tensor(), torch.Tensor()}
       self.sampleidx = self.sampleidx or target.new()
       
       -- the last first column will contain the target indices
       self.sampleidx:resize(batchsize, self.k+1)
       self.sampleidx:select(2,1):copy(target)
       
-      self._noiseidx = self._noiseidx or self.sampleidx.new()
-      self._noiseidx:resize(batchsize, self.k)
+      self._sampleidx = self._sampleidx or self.sampleidx.new()
+      self._sampleidx:resize(batchsize, self.k)
       
       -- sample (batchsize x k+1) noise samples
-      self.noise:sample(self._noiseidx, batchsize, self.k)
+      self:noiseSample(self._sampleidx, batchsize, self.k)
       
-      self.sampleidx:narrow(2,2,self.k):copy(self._noiseidx)
+      self.sampleidx:narrow(2,2,self.k):copy(self._sampleidx)
       
       -- make sure that targets are still first column of sampleidx
       if not self.testedtargets then
@@ -90,33 +118,14 @@ function NCEModule:updateOutput(inputTable)
       
       -- get noise probability for all samples
       
-      self.sampleprob = self.noise:prob(self.sampleprob, self.sampleidx)
+      self.sampleprob = self.sampleprob or self._score.new()
+      self.sampleprob = self:noiseProb(self.sampleprob, self.sampleidx)
       
       local tprob = self.sampleprob:select(2,1)
       local nprob = self.sampleprob:narrow(2,2,self.k)
       
       self.output[3]:set(tprob)
       self.output[4]:set(nprob)
-   else
-      -- output : score(Y=target|X=input)
-      local input, target = unpack(inputTable)
-      assert(input:dim() == 2)
-      assert(target:dim() == 1)
-      local batchsize = input:size(1)
-      
-      -- build (batchsize x inputsize) weight tensor
-      self._weight = self._weight or self.weight.new()
-      self._weight:index(self.weight, 1, target)
-      
-      -- build (batchsize x 1) bias tensor
-      self._bias = self._bias or self.bias.new()
-      self._bias:index(self.bias, 1, target)
-      
-      -- compute score(Y=target|X=input) 
-      self._buff = self._buff or input.new()
-      self._buff:add(input, self._weight)
-      self.output:sum(self._buff, 2):add(self._bias)
-      self.output:exp()
    end
    
    return self.output
@@ -175,37 +184,55 @@ function NCEModule:type(type, cache)
    if type then
       self.sampleidx = nil
       self.sampleprob = nil
+      self._noiseidx = nil
+      self._noiseprob = nil
+      self._noisesamples = nil
    end
-   return parent.type(self, type, cache)
+   local unigrams = self.unigrams
+   self.unigrams = nil
+   local rtn = parent.type(self, type, cache)
+   self.unigrams = unigrams
+   return rtn
 end
 
-function NCEModule:training()
-   local o = self.gradInput[1].new()
-   self.output = {o,o.new(),o.new(),o.new()}
-   return parent.training(self)
+function NCEModule:noiseSample(sampleidx, batchsize, k)
+   assert(sampleidx)
+   self._noiseidx = self._noiseidx or torch.LongTensor()
+   self.unigrams.multinomial(self._noiseidx, self.unigrams, batchsize*k, true)
+   sampleidx:resize(batchsize, k):copy(self._noiseidx)
+   return sampleidx
 end
 
-function NCEModule:evaluate()
-   self.output = self.gradInput[1].new()
-   return parent.evaluate(self)
+function NCEModule:noiseProb(sampleprob, sampleidx)
+   assert(sampleprob)
+   assert(sampleidx)
+   self._noiseprob = self._noiseprob or self.unigrams.new()
+   self._noiseidx = self._noiseidx or torch.LongTensor()
+   self._noiseidx:resize(sampleidx:size()):copy(sampleidx)
+   
+   self._noiseprob:index(self.unigrams, 1, self._noiseidx:view(-1))
+   
+   sampleprob:resize(sampleidx:size()):copy(self._noiseprob)
+   return sampleprob
 end
 
-function NCEModule:unigramNoise(unigrams)
-   assert(unigrams:dim() == 1)
-   local noise = {
-      unigrams = unigrams,
-      sample = function(self, sampleidx, batchsize, k)
-         sampleidx = sampleidx or torch.LongTensor()
-         self.unigrams.multinomial(sampleidx, self.unigrams, batchsize*k, true)
-         sampleidx:resize(batchsize, k)
-         return sampleidx
-      end,
-      prob = function(self, sampleprob, sampleidx)
-         sampleprob = sampleprob or self.unigrams.new()
-         sampleprob:index(self.unigrams, 1, sampleidx:view(-1))
-         sampleprob:resize(sampleidx:size())
-         return sampleprob
+function NCEModule:fastNoise(freq, size)
+   -- sample every freq calls to sample
+   freq = freq or 20000
+   size = size or self.unigrams:nElement() * 10
+   local ncall = 0
+   self.noiseSample = function(self, sampleidx, batchsize, k)
+      if ncall == 0 then
+         self._noisesamples = self._noisesamples or torch.LongTensor()
+         self.unigrams.multinomial(self._noisesamples, self.unigrams, size, true)
+         ncall = freq
       end
-   }
-   return noise
+      ncall = ncall - 1
+      self._metaidx = self._metaidx or torch.LongTensor()
+      self._metaidx:resize(batchsize*k):random(1,self._noisesamples:nElement())
+      self._noiseidx = self._noiseidx or torch.LongTensor()
+      self._noiseidx:index(self._noisesamples, 1, self._metaidx)
+      sampleidx:resize(batchsize, k):copy(self._noiseidx)
+      return sampleidx
+   end
 end
