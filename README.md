@@ -23,10 +23,11 @@ The package provides the following Modules:
  * [SpatialUniformCrop](#nn.SpatialUniformCrop) : uniformly crops patches from a input;
  * [SpatialGlimpse](#nn.SpatialGlimpse) : takes a fovead glimpse of an image at a given location;
  * [WhiteNoise](#nn.WhiteNoise) : adds isotropic Gaussian noise to the signal when in training mode;
- * [OneHot](#nn.OneHot) : transforms a tensor of indices into [one-hot](https://en.wikipedia.org/wiki/One-hot) encoding.
+ * [OneHot](#nn.OneHot) : transforms a tensor of indices into [one-hot](https://en.wikipedia.org/wiki/One-hot) encoding;
  * [Kmeans](#nn.Kmeans) : [Kmeans](https://en.wikipedia.org/wiki/K-means_clustering) clustering layer. Forward computes distances with respect to centroids and returns index of closest centroid. Centroids can be updated using gradient descent. Centroids could be initialized randomly or by using [kmeans++](https://en.wikipedia.org/wiki/K-means%2B%2B) algoirthm;
  * [SpatialRegionDropout](#nn.SpatialRegionDropout) : Randomly dropouts a region (top, bottom, leftmost, rightmost) of the input image. Works with batch and any number of channels.;
- * [FireModule](#nn.FireModule) : FireModule as mentioned in the [SqueezeNet] (http://arxiv.org/pdf/1602.07360v1.pdf).;
+ * [FireModule](#nn.FireModule) : FireModule as mentioned in the [SqueezeNet](http://arxiv.org/pdf/1602.07360v1.pdf).;
+ * [NCEModule](#nn.NCEModule) : optimized placeholder for a `Linear` + `SoftMax` using [noise-contrastive estimation](https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf).
 
 The following modules and criterions can be used to implement the REINFORCE algorithm :
 
@@ -37,8 +38,9 @@ The following modules and criterions can be used to implement the REINFORCE algo
  * [VRClassReward](#nn.VRClassReward) : criterion for variance-reduced classification-based reward;
 
 Additional differentiable criterions
- * [BinaryLogisticRegression](#nn.BLR) : criterion for binary logistic regression.
- * [SpatialBinaryLogisticRegression](#nn.SpatialBLR) : criterion for pixel wise binary logistic regression.
+ * [BinaryLogisticRegression](#nn.BLR) : criterion for binary logistic regression;
+ * [SpatialBinaryLogisticRegression](#nn.SpatialBLR) : criterion for pixel wise binary logistic regression;
+ * [NCECriterion](#nn.NCECriterion) : criterion for [NCEModule](#nn.NCEModule).
 
 A lot of the functionality implemented here was pulled from 
 [dp](https://github.com/nicholas-leonard/dp), which makes heavy use of this package. 
@@ -686,6 +688,56 @@ fed through optional an `inputModule` and `targetModule` before being passed to 
 When `castTarget = true` (the default), the `targetModule` is cast along with the `inputModule` and 
 `criterion`. Otherwise, the `targetModule` isn't.  
 
+<a name='nn.NCEModule'></a>
+## NCEModule
+
+```lua
+ncem = nn.NCEModule(inputSize, outputSize, k, unigrams)
+``` 
+
+When used in conjunction with [NCECriterion](#nn.NCECriterion), 
+the `NCEModule` implements [noise-contrastive estimation](https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf).
+
+The point of the NCE is to speedup computation for large `Linear` + `SoftMax` layers.
+Computing a forward/backward for `Linear(inputSize, outputSize)` for a large `outputSize` can be very expensive.
+This is common when implementing language models having with large vocabularies of a million words.
+In such cases, NCE can be an efficient alternative to computing the full `Linear` + `SoftMax` during training and 
+cross-validation.
+
+The `inputSize` and `outputSize` are the same as for the `Linear` module. 
+The number of noise samples to be drawn per example is `k`. A value of 25 should work well. 
+Increasing it will yield better results, while a smaller value will be more efficient to process.
+The `unigrams` is a tensor of size `outputSize` that contains the frequencies or probability distribution over classes.
+It is used to sample noise samples via `torch.multinomial`. This can be quite slow in practice, 
+such that we recommend calling `ncem:fastNoise()` after initialization.
+
+For inference, or measuring perplexity, the full `Linear` + `SoftMax` will need to 
+be computed. The `NCEModule` can do this by switching on the following :
+
+```lua
+ncem:evaluate()
+ncem.normalized = true
+``` 
+
+Furthermore, to simulate `Linear` + `LogSoftMax` instead, one need only add the following to the above:
+
+```lua
+ncem.logsoftmax = true
+``` 
+
+An example is provided via the rnn package.
+
+<a name='nn.NCECriterion'></a>
+## NCECriterion
+
+```lua
+ncec = nn.NCECriterion()
+``` 
+
+This criterion only works with an [NCEModule](#nn.NCEModule) on the output layer.
+Together, they implement [noise-contrastive estimation](https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf).
+
+
 <a name='nn.Reinforce'></a>
 ## Reinforce ##
 Ref A. [Simple Statistical Gradient-Following Algorithms for Connectionist Reinforcement Learning](http://incompleteideas.net/sutton/williams-92.pdf)
@@ -822,7 +874,7 @@ the derivative of log categorical w.r.t. probability vector `p` is :
 d ln(f(x,p))     1/p[i]    if i = x  
 ------------ =   
     d p          0         otherwise
-```
+``` 
 
 <a name='nn.VRClassReward'></a>
 ## VRClassReward ##
@@ -833,7 +885,7 @@ Specifically, it is a Variance Reduces (VR) classification reinforcement leanrin
 
 ```lua
 vcr = nn.VRClassReward(module [, scale, criterion])
-```
+``` 
  
 While it conforms to the Criterion interface (which it inherits), 
 it does not backpropagate gradients (except for the baseline `b`; see below).
@@ -873,15 +925,16 @@ This criterion implements the score criterion mentioned in (ref. A).
 
 ```lua
 criterion = nn.BinaryLogisticRegression()
-```
+``` 
 
 BinaryLogisticRegression implements following cost function for binary classification.
+
 ```
 
  log( 1 + exp( -y_k * score(x_k) ) )
 
-```
-where ```y_k``` is binary target ```score(x_k)``` is the corresponding prediction. ```y_k``` has value ```{-1, +1}``` and ```score(x_k)``` has value in ```[-1, +1]```.
+``` 
+where `y_k` is binary target `score(x_k)` is the corresponding prediction. `y_k` has value `{-1, +1}` and `score(x_k)` has value in `[-1, +1]`.
 
 <a name='nn.SpatialBLR'></a>
 ## SpatialBinaryLogisticRegression ##
@@ -891,12 +944,12 @@ This criterion implements the spatial component of the criterion mentioned in  (
 
 ```lua
 criterion = nn.SpatialBinaryLogisticRegression()
-```
+``` 
 
 SpatialBinaryLogisticRegression implements following cost function for binary pixel classification.
 ```
    1
 _______ sum_ij [ log( 1 + exp( -m_ij * f_ij ) ) ]
  2*w*h
-```
-where ```m_ij``` is target binary image and ```f_ij``` is the corresponding prediction. ```m_ij``` has value ```{-1, +1}``` and ```f_ij``` has value in ```[-1, +1]```.
+``` 
+where `m_ij` is target binary image and `f_ij` is the corresponding prediction. `m_ij` has value `{-1, +1}` and `f_ij` has value in `[-1, +1]`.

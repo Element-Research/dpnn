@@ -16,7 +16,7 @@ NCEModule.dpnn_mediumEmpty = empty
 -- for sharedClone
 local params = _.clone(parent.dpnn_parameters)
 table.insert(params, 'unigrams')
-BN.dpnn_parameters = params
+NCEModule.dpnn_parameters = params
 
 function NCEModule:__init(inputSize, outputSize, k, unigrams)
    parent.__init(self, inputSize, outputSize)
