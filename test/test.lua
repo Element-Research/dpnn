@@ -1945,6 +1945,30 @@ function dpnntest.FireModule()
    end
 end
 
+-- Unit Test SpatialFeatNormalization
+function dpnntest.SpatialFeatNormalization()
+   local hasCuda = pcall(function() require 'cunn' end)
+   local useCudas = {false, hasCuda}
+   local input = torch.zeros(3, 32, 32):fill(2)
+   local mean = torch.zeros(3):fill(1)
+   local std = torch.zeros(3):fill(0.5)
+   local outputValue = 2
+   local gradValue = 4
+   for _, useCuda in pairs(useCudas) do
+      local model = nn.SpatialFeatNormalization(mean, std)
+      if useCuda then
+         model:cuda()
+         input = input:cuda()
+      end
+      local output = model:forward(input)
+      local gradInput = model:backward(input, output)
+      mytester:assert( output:mean() == outputValue,
+                     "SpatialFeatNormalization forward mean value incorrect.")
+      mytester:assert( gradInput:mean() == gradValue,
+                     "SpatialFeatNormalization backward mean value incorrect.")
+   end
+end
+
 function dpnntest.OneHot()
    local nClass = 10
    

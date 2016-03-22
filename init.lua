@@ -84,6 +84,7 @@ torch.include('dpnn', 'Kmeans.lua')
 torch.include('dpnn', 'OneHot.lua')
 torch.include('dpnn', 'SpatialRegionDropout.lua')
 torch.include('dpnn', 'FireModule.lua')
+torch.include('dpnn', 'SpatialFeatNormalization.lua')
 
 -- REINFORCE
 torch.include('dpnn', 'Reinforce.lua')

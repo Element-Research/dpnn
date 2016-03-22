@@ -27,6 +27,7 @@ The package provides the following Modules:
  * [Kmeans](#nn.Kmeans) : [Kmeans](https://en.wikipedia.org/wiki/K-means_clustering) clustering layer. Forward computes distances with respect to centroids and returns index of closest centroid. Centroids can be updated using gradient descent. Centroids could be initialized randomly or by using [kmeans++](https://en.wikipedia.org/wiki/K-means%2B%2B) algoirthm;
  * [SpatialRegionDropout](#nn.SpatialRegionDropout) : Randomly dropouts a region (top, bottom, leftmost, rightmost) of the input image. Works with batch and any number of channels.;
  * [FireModule](#nn.FireModule) : FireModule as mentioned in the [SqueezeNet] (http://arxiv.org/pdf/1602.07360v1.pdf).;
+ * [SpatialFeatNormalization](#nn.SpatialFeatNormalization) : Module for widely used preprocessing step of mean zeroing and standardization for images.
 
 The following modules and criterions can be used to implement the REINFORCE algorithm :
 
@@ -577,6 +578,13 @@ module = nn.FireModule(nInputPlane, s1x1, e1x1, e3x3, activation)
 FireModule is comprised of two submodules 1) A *squeeze* convolution module comprised of `1x1` filters followed by 2) an *expand* module that is comprised of a mix of `1x1` and `3x3` convolution filters.
 Arguments: `s1x1`: number of `1x1` filters in the squeeze submodule, `e1x1`: number of `1x1` filters in the expand submodule, `e3x3`: number of `3x3` filters in the expand submodule. It is recommended that `s1x1` be less than `(e1x1+e3x3)` if you want to limit the number of input channels to the `3x3` filters in the expand submodule.
 FireModule works only with batches, for single sample convert the sample to a batch of size 1.
+
+<a name='nn.SpatialFeatNormalization'></a>
+## SpatialFeatNormalization ##
+```lua
+module = nn.SpatialFeatNormalization(mean, std)
+```
+This module normalizies each feature channel of input image based on its corresponding mean and standard deviation scalar values. This module does not learn the `mean` and `std`, they are provided as arguments.
 
 <a name = 'nn.OneHot'></a>
 ## OneHot ##
