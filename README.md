@@ -425,7 +425,7 @@ print(module:forward{ 'el', {'a','b','c'} })
 ## CAddTensorTable ##
 
 ```lua
-module = nn.CAddTensortable()
+module = nn.CAddTensorTable()
 ```
 
 Adds the first element `el` of the input table `tab` to each tensor contained in the second element of `tab`, which is itself a table
