@@ -25,7 +25,7 @@ function Constant:updateOutput(input)
       local value = self.value:view(1, table.unpack(vsize))
       self.output:copy(value:expand(self.output:size())) 
    else
-      self.output:resize(self.size):copy(self.value)
+      self.output:resize(self.value:size()):copy(self.value)
    end
    return self.output
 end

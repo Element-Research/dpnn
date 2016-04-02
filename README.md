@@ -483,7 +483,8 @@ module = nn.Constant(value, nInputDim)
 
 This module outputs a constant value given an input.
 If `nInputDim` is specified, it uses the input to determine the size of the batch. 
-The `value` is then replicated over the batch.
+The `value` is then replicated over the batch. 
+Otherwise, the `value` Tensor is output as is.
 During `backward`, the returned `gradInput` is a zero Tensor of the same size as the `input`.
 This module has no trainable parameters. 
 
