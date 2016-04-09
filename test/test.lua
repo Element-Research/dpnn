@@ -1945,6 +1945,30 @@ function dpnntest.FireModule()
    end
 end
 
+-- Unit Test SpatialFeatNormalization
+function dpnntest.SpatialFeatNormalization()
+   local hasCuda = pcall(function() require 'cunn' end)
+   local useCudas = {false, hasCuda}
+   local input = torch.zeros(3, 32, 32):fill(2)
+   local mean = torch.zeros(3):fill(1)
+   local std = torch.zeros(3):fill(0.5)
+   local outputValue = 2
+   local gradValue = 4
+   for _, useCuda in pairs(useCudas) do
+      local model = nn.SpatialFeatNormalization(mean, std)
+      if useCuda then
+         model:cuda()
+         input = input:cuda()
+      end
+      local output = model:forward(input)
+      local gradInput = model:backward(input, output)
+      mytester:assert( output:mean() == outputValue,
+                     "SpatialFeatNormalization forward mean value incorrect.")
+      mytester:assert( gradInput:mean() == gradValue,
+                     "SpatialFeatNormalization backward mean value incorrect.")
+   end
+end
+
 function dpnntest.OneHot()
    local nClass = 10
    
@@ -2396,6 +2420,42 @@ function dpnnbigtest.NCE_benchmark()
    print("criterion:backward (nce vs nll)", critbwd, nllbwd)
    print("module:backward (nce vs linear)", ncebwd, mlpbwd)
    print("total (nce vs linear)", ncetotal, lintotal, lintotal/ncetotal)
+end
+
+function dpnntest.NaN()
+   local _ = require 'moses'
+   local input = torch.randn(2,3)
+   local gradOutput = torch.randn(2,4)
+   local lin = nn.Linear(3,4)
+   lin:zeroGradParameters()
+   local nan = nn.NaN(lin)
+   mytester:assert(nan.id == 1)
+   -- test that it works when no NaNs are present
+   local output = nan:forward(input):clone()
+   local gradInput = nan:backward(input, gradOutput):clone()
+   local gradWeight = lin.gradWeight:clone()
+   local gradBias = lin.gradBias:clone()
+   lin:zeroGradParameters()
+   local output2 = lin:forward(input)
+   local gradInput2 = lin:backward(input, gradOutput)
+   mytester:assertTensorEq(output, output2, 0.000001)
+   mytester:assertTensorEq(gradInput, gradInput2, 0.000001)
+   mytester:assertTensorEq(gradWeight, lin.gradWeight, 0.000001)
+   mytester:assertTensorEq(gradBias, lin.gradBias, 0.000001)
+   -- test with some NaNs
+   input:zero():log():log()
+   local sum = input:sum()
+   mytester:assert(_.isNaN(sum))
+   mytester:assert(not pcall(function() nan:forward(input) end))
+   lin.bias:fill(sum)
+   input = torch.randn(2,3)
+   mytester:assert(not pcall(function() nan:forward(input) end))
+   lin.bias:uniform(0,1)
+   gradOutput:fill(sum)
+   mytester:assert(not pcall(function() nan:backward(input, gradOutput) end))
+   gradOutput:uniform(0,1)
+   lin.gradBias:fill(sum)
+   mytester:assert(not pcall(function() nan:backward(input, gradOutput) end))
 end
 
 function dpnn.test(tests)

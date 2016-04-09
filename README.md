@@ -10,6 +10,7 @@ The package provides the following Modules:
  * [Decorator](#nn.Decorator) : abstract class to change the behaviour of an encapsulated module ;
  * [DontCast](#nn.DontCast) : prevent encapsulated module from being casted by `Module:type()` ;
  * [Serial](#nn.Serial) : decorate a module makes its serialized output more compact ; 
+ * [NaN](#nn.NaN) : decorate a module to detect the source of NaN errors ;
  * [Inception](#nn.Inception) : implements the Inception module of the GoogleLeNet article ;
  * [Collapse](#nn.Collapse) : just like `nn.View(-1)`;
  * [Convert](#nn.Convert) : convert between different tensor types or shapes;
@@ -25,9 +26,10 @@ The package provides the following Modules:
  * [WhiteNoise](#nn.WhiteNoise) : adds isotropic Gaussian noise to the signal when in training mode;
  * [OneHot](#nn.OneHot) : transforms a tensor of indices into [one-hot](https://en.wikipedia.org/wiki/One-hot) encoding;
  * [Kmeans](#nn.Kmeans) : [Kmeans](https://en.wikipedia.org/wiki/K-means_clustering) clustering layer. Forward computes distances with respect to centroids and returns index of closest centroid. Centroids can be updated using gradient descent. Centroids could be initialized randomly or by using [kmeans++](https://en.wikipedia.org/wiki/K-means%2B%2B) algoirthm;
- * [SpatialRegionDropout](#nn.SpatialRegionDropout) : Randomly dropouts a region (top, bottom, leftmost, rightmost) of the input image. Works with batch and any number of channels.;
- * [FireModule](#nn.FireModule) : FireModule as mentioned in the [SqueezeNet](http://arxiv.org/pdf/1602.07360v1.pdf).;
+ * [SpatialRegionDropout](#nn.SpatialRegionDropout) : Randomly dropouts a region (top, bottom, leftmost, rightmost) of the input image. Works with batch and any number of channels;
+ * [FireModule](#nn.FireModule) : FireModule as mentioned in the [SqueezeNet](http://arxiv.org/pdf/1602.07360v1.pdf);
  * [NCEModule](#nn.NCEModule) : optimized placeholder for a `Linear` + `SoftMax` using [noise-contrastive estimation](https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf).
+ * [SpatialFeatNormalization](#nn.SpatialFeatNormalization) : Module for widely used preprocessing step of mean zeroing and standardization for images.
 
 The following modules and criterions can be used to implement the REINFORCE algorithm :
 
@@ -256,6 +258,53 @@ attribute `dpnn_gradParameters`, which defaults to `{gradWeight, gradBias}`.
 We recomment using `mediumSerial()` for training, and `lightSerial()` for 
 production (feed-forward-only models).
 
+<a name='nn.NaN'></a>
+## NaN ##
+
+```lua
+dmodule = nn.NaN(module, [id])
+``` 
+
+The `NaN` module asserts that the `output` and `gradInput` of the decorated `module` do not contain NaNs.
+This is useful for locating the source of those pesky NaN errors. 
+The `id` defaults to automatically incremented values of `1,2,3,...`.
+
+For example :
+
+```lua
+linear = nn.Linear(3,4)
+mlp = nn.Sequential()
+mlp:add(nn.NaN(nn.Identity()))
+mlp:add(nn.NaN(linear))
+mlp:add(nn.NaN(nn.Linear(4,2)))
+print(mlp)
+``` 
+
+As you can see the `NaN` layers are have unique ids :
+
+```lua
+nn.Sequential {
+  [input -> (1) -> (2) -> (3) -> output]
+  (1): nn.NaN(1) @ nn.Identity
+  (2): nn.NaN(2) @ nn.Linear(3 -> 4)
+  (3): nn.NaN(3) @ nn.Linear(4 -> 2)
+}
+``` 
+
+And if we fill the `bias` of the linear module with NaNs and call `forward`:
+
+```lua
+nan = math.log(math.log(0)) -- this is a nan value
+linear.bias:fill(nan)
+mlp:forward(torch.randn(2,3))
+```  
+
+We get a nice error message:
+```lua
+/usr/local/share/lua/5.1/dpnn/NaN.lua:39: NaN found in parameters of module :
+nn.NaN(2) @ nn.Linear(3 -> 4)
+``` 
+
 <a name='nn.Inception'></a>
 ## Inception ##
 References :
@@ -428,7 +477,7 @@ print(module:forward{ 'el', {'a','b','c'} })
 ## CAddTensorTable ##
 
 ```lua
-module = nn.CAddTensortable()
+module = nn.CAddTensorTable()
 ```
 
 Adds the first element `el` of the input table `tab` to each tensor contained in the second element of `tab`, which is itself a table
@@ -486,7 +535,8 @@ module = nn.Constant(value, nInputDim)
 
 This module outputs a constant value given an input.
 If `nInputDim` is specified, it uses the input to determine the size of the batch. 
-The `value` is then replicated over the batch.
+The `value` is then replicated over the batch. 
+Otherwise, the `value` Tensor is output as is.
 During `backward`, the returned `gradInput` is a zero Tensor of the same size as the `input`.
 This module has no trainable parameters. 
 
@@ -581,6 +631,13 @@ module = nn.FireModule(nInputPlane, s1x1, e1x1, e3x3, activation)
 FireModule is comprised of two submodules 1) A *squeeze* convolution module comprised of `1x1` filters followed by 2) an *expand* module that is comprised of a mix of `1x1` and `3x3` convolution filters.
 Arguments: `s1x1`: number of `1x1` filters in the squeeze submodule, `e1x1`: number of `1x1` filters in the expand submodule, `e3x3`: number of `3x3` filters in the expand submodule. It is recommended that `s1x1` be less than `(e1x1+e3x3)` if you want to limit the number of input channels to the `3x3` filters in the expand submodule.
 FireModule works only with batches, for single sample convert the sample to a batch of size 1.
+
+<a name='nn.SpatialFeatNormalization'></a>
+## SpatialFeatNormalization ##
+```lua
+module = nn.SpatialFeatNormalization(mean, std)
+```
+This module normalizies each feature channel of input image based on its corresponding mean and standard deviation scalar values. This module does not learn the `mean` and `std`, they are provided as arguments.
 
 <a name = 'nn.OneHot'></a>
 ## OneHot ##

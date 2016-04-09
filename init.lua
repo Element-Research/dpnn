@@ -33,6 +33,7 @@ torch.include('dpnn', 'BatchNormalization.lua')
 torch.include('dpnn', 'Decorator.lua')
 torch.include('dpnn', 'Serial.lua')
 torch.include('dpnn', 'DontCast.lua')
+torch.include('dpnn', 'NaN.lua')
 
 -- modules
 torch.include('dpnn', 'PrintSize.lua')
@@ -58,6 +59,7 @@ torch.include('dpnn', 'Kmeans.lua')
 torch.include('dpnn', 'OneHot.lua')
 torch.include('dpnn', 'SpatialRegionDropout.lua')
 torch.include('dpnn', 'FireModule.lua')
+torch.include('dpnn', 'SpatialFeatNormalization.lua')
 
 -- Noise Contrastive Estimation
 torch.include('dpnn', 'NCEModule.lua')
