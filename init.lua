@@ -59,6 +59,7 @@ torch.include('dpnn', 'BatchNormalization.lua')
 torch.include('dpnn', 'Decorator.lua')
 torch.include('dpnn', 'Serial.lua')
 torch.include('dpnn', 'DontCast.lua')
+torch.include('dpnn', 'NaN.lua')
 
 -- modules
 torch.include('dpnn', 'PrintSize.lua')

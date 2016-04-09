@@ -2075,6 +2075,42 @@ function dpnntest.OneHot()
    end
 end
 
+function dpnntest.NaN()
+   local _ = require 'moses'
+   local input = torch.randn(2,3)
+   local gradOutput = torch.randn(2,4)
+   local lin = nn.Linear(3,4)
+   lin:zeroGradParameters()
+   local nan = nn.NaN(lin)
+   mytester:assert(nan.id == 1)
+   -- test that it works when no NaNs are present
+   local output = nan:forward(input):clone()
+   local gradInput = nan:backward(input, gradOutput):clone()
+   local gradWeight = lin.gradWeight:clone()
+   local gradBias = lin.gradBias:clone()
+   lin:zeroGradParameters()
+   local output2 = lin:forward(input)
+   local gradInput2 = lin:backward(input, gradOutput)
+   mytester:assertTensorEq(output, output2, 0.000001)
+   mytester:assertTensorEq(gradInput, gradInput2, 0.000001)
+   mytester:assertTensorEq(gradWeight, lin.gradWeight, 0.000001)
+   mytester:assertTensorEq(gradBias, lin.gradBias, 0.000001)
+   -- test with some NaNs
+   input:zero():log():log()
+   local sum = input:sum()
+   mytester:assert(_.isNaN(sum))
+   mytester:assert(not pcall(function() nan:forward(input) end))
+   lin.bias:fill(sum)
+   input = torch.randn(2,3)
+   mytester:assert(not pcall(function() nan:forward(input) end))
+   lin.bias:uniform(0,1)
+   gradOutput:fill(sum)
+   mytester:assert(not pcall(function() nan:backward(input, gradOutput) end))
+   gradOutput:uniform(0,1)
+   lin.gradBias:fill(sum)
+   mytester:assert(not pcall(function() nan:backward(input, gradOutput) end))
+end
+
 function dpnn.test(tests)
    mytester = torch.Tester()
    mytester:add(dpnntest)

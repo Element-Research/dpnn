@@ -10,6 +10,7 @@ The package provides the following Modules:
  * [Decorator](#nn.Decorator) : abstract class to change the behaviour of an encapsulated module ;
  * [DontCast](#nn.DontCast) : prevent encapsulated module from being casted by `Module:type()` ;
  * [Serial](#nn.Serial) : decorate a module makes its serialized output more compact ; 
+ * [NaN](#nn.NaN) : decorate a module to detect the source of NaN errors ;
  * [Inception](#nn.Inception) : implements the Inception module of the GoogleLeNet article ;
  * [Collapse](#nn.Collapse) : just like `nn.View(-1)`;
  * [Convert](#nn.Convert) : convert between different tensor types or shapes;
@@ -219,14 +220,14 @@ th> print(module:forward(torch.FloatTensor{1,2,3}))
 -1.8158
 -0.0805
 [torch.FloatTensor of size 4]
-```
+``` 
 
 <a name='nn.Serial'></a>
 ## Serial ##
 ```lua
 dmodule = nn.Serial(module, [tensortype])
 dmodule:[light,medium,heavy]Serial()
-```
+``` 
 This module is a decorator that can be used to control the serialization/deserialization 
 behavior of the encapsulated module. Basically, making the resulting string or 
 file heavy (the default), medium or light in terms of size. 
@@ -252,6 +253,53 @@ attribute `dpnn_gradParameters`, which defaults to `{gradWeight, gradBias}`.
 
 We recomment using `mediumSerial()` for training, and `lightSerial()` for 
 production (feed-forward-only models).
+
+<a name='nn.NaN'></a>
+## NaN ##
+
+```lua
+dmodule = nn.NaN(module, [id])
+``` 
+
+The `NaN` module asserts that the `output` and `gradInput` of the decorated `module` do not contain NaNs.
+This is useful for locating the source of those pesky NaN errors. 
+The `id` defaults to automatically incremented values of `1,2,3,...`.
+
+For example :
+
+```lua
+linear = nn.Linear(3,4)
+mlp = nn.Sequential()
+mlp:add(nn.NaN(nn.Identity()))
+mlp:add(nn.NaN(linear))
+mlp:add(nn.NaN(nn.Linear(4,2)))
+print(mlp)
+``` 
+
+As you can see the `NaN` layers are have unique ids :
+
+```lua
+nn.Sequential {
+  [input -> (1) -> (2) -> (3) -> output]
+  (1): nn.NaN(1) @ nn.Identity
+  (2): nn.NaN(2) @ nn.Linear(3 -> 4)
+  (3): nn.NaN(3) @ nn.Linear(4 -> 2)
+}
+``` 
+
+And if we fill the `bias` of the linear module with NaNs and call `forward`:
+
+```lua
+nan = math.log(math.log(0)) -- this is a nan value
+linear.bias:fill(nan)
+mlp:forward(torch.randn(2,3))
+```  
+
+We get a nice error message:
+```lua
+/usr/local/share/lua/5.1/dpnn/NaN.lua:39: NaN found in parameters of module :
+nn.NaN(2) @ nn.Linear(3 -> 4)
+``` 
 
 <a name='nn.Inception'></a>
 ## Inception ##
