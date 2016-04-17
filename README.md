@@ -39,6 +39,7 @@ The following modules and criterions can be used to implement the REINFORCE algo
  * [VRClassReward](#nn.VRClassReward) : criterion for variance-reduced classification-based reward;
 
 Additional differentiable criterions
+ * [ModuleCriterion](#nn.ModuleCriterion) : adds an optional `inputModule` and `targetModule` before a decorated criterion;
  * [BinaryLogisticRegression](#nn.BLR) : criterion for binary logistic regression.
  * [SpatialBinaryLogisticRegression](#nn.SpatialBLR) : criterion for pixel wise binary logistic regression.
 
@@ -735,7 +736,7 @@ criterion = nn.ModuleCriterion(criterion [, inputModule, targetModule, castTarge
 ``` 
 
 This criterion decorates a `criterion` by allowing the `input` and `target` to be 
-fed through optional an `inputModule` and `targetModule` before being passed to the 
+fed through an optional `inputModule` and `targetModule` before being passed to the 
 `criterion`. The `inputModule` must not contain parameters as these would not be updated. 
 
 When `castTarget = true` (the default), the `targetModule` is cast along with the `inputModule` and 
