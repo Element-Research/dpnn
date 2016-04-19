@@ -35,6 +35,7 @@ The following modules and criterions can be used to implement the REINFORCE algo
  * [Reinforce](#nn.Reinforce) : abstract class for REINFORCE modules;
  * [ReinforceBernoulli](#nn.ReinforceBernoulli) : samples from Bernoulli distribution;
  * [ReinforceNormal](#nn.ReinforceNormal) : samples from Normal distribution;
+ * [ReinforceGamma](#nn.ReinforceNormal) : samples from Gamma distribution;
  * [ReinforceCategorical](#nn.ReinforceCategorical) : samples from Categorical (Multinomial with one sample) distribution;
  * [VRClassReward](#nn.VRClassReward) : criterion for variance-reduced classification-based reward;
 
@@ -845,6 +846,38 @@ d ln(f(x,u,s))   (x - u)
 
 As an example, it is used to sample locations for the [RecurrentAttention](https://github.com/Element-Research/rnn#rnn.RecurrentAttention) 
 module (see [this example](https://github.com/Element-Research/rnn/blob/master/examples/recurrent-visual-attention.lua)).
+
+<a name='nn.ReinforceGamma'></a>
+## ReinforceGamma ##
+Ref A. [Simple Statistical Gradient-Following Algorithms for Connectionist Reinforcement Learning](http://incompleteideas.net/sutton/williams-92.pdf)
+
+```lua
+module = nn.ReinforceGamma(scale, [stochastic])
+```
+
+A [Reinforce](#nn.Reinforce) subclass that implements the REINFORCE algorithm 
+(ref. A) for a Gamma probability distribution parametrized by shape (k) and scale (theta) variables.
+Inputs are the shapes of the gamma distribution.
+During training, outputs are samples drawn from this distribution.
+During evaluation, when `stochastic=false`, outputs are equal to the mean, defined as the product of
+shape and scale ie. `k*theta`.
+Uses the REINFORCE algorithm (ref. A) which is 
+implemented through the [reinforce](#nn.Module.reinforce) interface (`gradOutputs` are ignored).
+
+Given the following variables : 
+   
+  * `f` : gamma probability density function
+  * `g` : digamma function
+  * `x` : the sampled values (i.e. `self.output`)
+  * `k` : shape (`input`)
+  * `t` : scale
+
+the derivative of log gamma w.r.t. shape `k` is :
+```
+d ln(f(x,k,t))
+-------------- = ln(x) - g(k) - ln(t)
+      d k
+```
 
 <a name='nn.ReinforceCategorical'></a>
 ## ReinforceCategorical ##

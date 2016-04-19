@@ -33,29 +33,28 @@ function ReinforceGamma:updateOutput(input)
    
    self.output:resizeAs(shape)
 
-   if self.stochastic or self.train ~= false then
-
-      if torch.type(scale) == 'number' then
-        scale = shape.new():resizeAs(shape):fill(scale)
-      elseif torch.isTensor(scale) then
-         if scale:dim() == shape:dim() then
-            assert(scale:isSameSizeAs(shape))
-         else
-            assert(scale:dim()+1 == shape:dim())
-            self._scale = self._scale or scale.new()
-            self._scale:view(scale,1,table.unpack(scale:size():totable()))
-            self.__scale = self.__scale or scale.new()
-            self.__scale:expandAs(self._scale, shape)
-            scale = self.__scale
-         end
+   if torch.type(scale) == 'number' then
+     scale = shape.new():resizeAs(shape):fill(scale)
+   elseif torch.isTensor(scale) then
+      if scale:dim() == shape:dim() then
+         assert(scale:isSameSizeAs(shape))
       else
-         error"unsupported shape type"
+         assert(scale:dim()+1 == shape:dim())
+         self._scale = self._scale or scale.new()
+         self._scale:view(scale,1,table.unpack(scale:size():totable()))
+         self.__scale = self.__scale or scale.new()
+         self.__scale:expandAs(self._scale, shape)
+         scale = self.__scale
       end
+   else
+      error"unsupported shape type"
+   end
 
+   if self.stochastic or self.train ~= false then
       self.output:copy(randomkit.gamma(shape:squeeze():float(),scale:squeeze():float()))
    else
       -- use maximum a posteriori (MAP) estimate
-      self.output:copy(shape)
+      self.output:copy(shape):cmul(scale)
    end
 
    return self.output
