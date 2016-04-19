@@ -89,6 +89,7 @@ torch.include('dpnn', 'SpatialFeatNormalization.lua')
 
 -- REINFORCE
 torch.include('dpnn', 'Reinforce.lua')
+torch.include('dpnn', 'ReinforceGamma.lua')
 torch.include('dpnn', 'ReinforceBernoulli.lua')
 torch.include('dpnn', 'ReinforceNormal.lua')
 torch.include('dpnn', 'ReinforceCategorical.lua')

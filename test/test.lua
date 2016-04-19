@@ -771,6 +771,47 @@ function dpnntest.ReinforceNormal()
    mytester:assertTensorEq(gradInput[2], gradStdev, 0.000001, "ReinforceNormal backward table input - gradStdev err")
 end
 
+function dpnntest.ReinforceGamma()
+   require 'randomkit'
+   require 'cephes'
+   local input = torch.rand(500,1000):fill(250) -- shapes
+   local gradOutput = torch.Tensor() -- will be ignored
+   local reward = torch.randn(500)
+   -- test scalar scale
+   local scale = 2
+   local rn = nn.ReinforceGamma(scale)
+   local output = rn:forward(input)
+   mytester:assert(input:isSameSizeAs(output), "ReinforceGamma forward size err")
+   local outmean = torch.mean(output)
+   -- expected value of distribution is shape*scale
+   local err = math.abs(outmean - torch.mean(torch.mul(input,scale)))
+   mytester:assert(err < 0.1, "ReinforceGamma forward mean err")
+   rn:reinforce(reward)
+   local gradInput = rn:updateGradInput(input, gradOutput)
+   local gradInput2 = torch.log(output:clone())
+   gradInput2:add(-1, cephes.digamma(input))
+   gradInput2:add(-1*torch.log(scale) )
+   local reward2 = reward:view(500,1):expandAs(input)
+   gradInput2:cmul(reward2):mul(-1)
+   mytester:assertTensorEq(gradInput2, gradInput, 0.00001, "ReinforceGamma backward err")
+   -- test input {mean, stdev}
+   local shape, scale = torch.rand(4,10), torch.rand(4,10)
+   local input = {shape, scale}
+   local rn = nn.ReinforceGamma()
+   local output = rn:updateOutput(input)
+   local reward = torch.randn(4)
+   rn:reinforce(reward)
+   local gradInput = rn:backward(input, gradOutput)
+   mytester:assert(shape:isSameSizeAs(output), "ReinforceGamma forward table input - output size err")
+   mytester:assert(gradInput[1]:isSameSizeAs(shape), "ReinforceGamma backward table input - mean size err")
+   mytester:assert(gradInput[2]:isSameSizeAs(scale), "ReinforceGamma backward table input - stdev size err")
+   local gradScale = torch.cdiv(output:clone(), torch.pow(scale,2) )
+   gradScale:add( -1, torch.cdiv( shape, scale) )
+   local reward2 = reward:view(4,1):expandAs(gradScale)
+   gradScale:cmul(reward2):mul(-1)
+   mytester:assertTensorEq(gradInput[2], gradScale, 0.000001, "ReinforceGamma backward table input - gradStdev err")
+end
+
 function dpnntest.ReinforceBernoulli()
    local input = torch.Tensor(1000,10) 
    local p = torch.rand(1,10) -- probability of sampling a 1
@@ -1574,7 +1615,6 @@ function dpnntest.TotalDropout()
 end
 
 function dpnnbigtest.Reinforce()
-   error"this needs to be updated with new VRClassReward interface"
    -- let us try to reinforce an mlp to learn a simple distribution
    local n = 10
    local inputs = torch.Tensor(n,3):uniform(0,0.1)
@@ -1654,11 +1694,33 @@ function dpnnbigtest.Reinforce()
    mlp:add(nn.Clip(-1,1))
    mlp:add(nn.Linear(hiddenSize, inputs:size(2)))
    mlp:add(nn.SoftMax())
+
+   local concat = nn.ConcatTable()
+   concat:add(mlp)
+   concat:add( nn.Sequential():add( nn.Constant(1,1) ):add(nn.Add(1)) )
    
-   local cost = nn.VRClassReward(mlp, beta, alpha)
+   local cost = nn.VRClassReward(concat, alpha)
    
-   train(mlp, cost, N, 'ReinforceNormal')
+   train(concat, cost, N, 'ReinforceNormal')
    
+   -- ReinforceGamma
+   local hiddenSize = 200
+   local N = 10
+   local mlp = nn.Sequential()
+   mlp:add(nn.Linear(inputs:size(2),hiddenSize))
+   mlp:add(nn.Sigmoid())
+   mlp:add(nn.ReinforceGamma(stdev))
+   mlp:add(nn.Linear(hiddenSize, inputs:size(2)))
+   mlp:add(nn.SoftMax())
+   
+   local concat = nn.ConcatTable()
+   concat:add(mlp)
+   concat:add( nn.Sequential():add( nn.Constant(1,1) ):add(nn.Add(1)) )
+   
+   local cost = nn.VRClassReward(concat, alpha)
+   
+   train(concat, cost, N, 'ReinforceGamma')
+
    -- ReinforceBernoulli
    local hiddenSize = 20
    local N = 30
@@ -1669,9 +1731,13 @@ function dpnnbigtest.Reinforce()
    mlp:add(nn.Linear(hiddenSize, inputs:size(2)))
    mlp:add(nn.SoftMax())
    
-   local cost = nn.VRClassReward(mlp, beta, alpha)
+   local concat = nn.ConcatTable()
+   concat:add(mlp)
+   concat:add( nn.Sequential():add( nn.Constant(1,1) ):add(nn.Add(1)) )
    
-   train(mlp, cost, N, 'ReinforceBernoulli')
+   local cost = nn.VRClassReward(concat, alpha)
+   
+   train(concat, cost, N, 'ReinforceBernoulli')
    
    -- ReinforceCategorical
    local hiddenSize = 200
@@ -1684,9 +1750,13 @@ function dpnnbigtest.Reinforce()
    mlp:add(nn.AddConstant(0.00001))
    mlp:add(nn.ReinforceCategorical())
    
-   local cost = nn.VRClassReward(mlp, beta, alpha)
+   local concat = nn.ConcatTable()
+   concat:add(mlp)
+   concat:add( nn.Sequential():add( nn.Constant(1,1) ):add(nn.Add(1)) )
    
-   train(mlp, cost, N, 'ReinforceCategorical')
+   local cost = nn.VRClassReward(concat, alpha)
+   
+   train(concat, cost, N, 'ReinforceCategorical')
 end
 
 -- Unit Test WhiteNoise
