@@ -35,7 +35,7 @@ The following modules and criterions can be used to implement the REINFORCE algo
  * [Reinforce](#nn.Reinforce) : abstract class for REINFORCE modules;
  * [ReinforceBernoulli](#nn.ReinforceBernoulli) : samples from Bernoulli distribution;
  * [ReinforceNormal](#nn.ReinforceNormal) : samples from Normal distribution;
- * [ReinforceGamma](#nn.ReinforceNormal) : samples from Gamma distribution;
+ * [ReinforceGamma](#nn.ReinforceGamma) : samples from Gamma distribution;
  * [ReinforceCategorical](#nn.ReinforceCategorical) : samples from Categorical (Multinomial with one sample) distribution;
  * [VRClassReward](#nn.VRClassReward) : criterion for variance-reduced classification-based reward;
 
