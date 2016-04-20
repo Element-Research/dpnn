@@ -13,8 +13,8 @@
 local ReinforceGamma, parent = torch.class("nn.ReinforceGamma", "nn.Reinforce")
 
 function ReinforceGamma:__init(scale, stochastic)
-   require('randomkit') -- needed to sample gamma dist
-   require('cephes') -- needed to compute digamma for gradient
+   require('randomkit') -- needed to sample gamma dist : luarocks install randomkit
+   require('cephes') -- needed to compute digamma for gradient : 
    parent.__init(self, stochastic)
    self.scale = scale
    if not scale then

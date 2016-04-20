@@ -1669,13 +1669,15 @@ function dpnnbigtest.Reinforce()
             end
             reward = reward/inputs:size(1)
             
-            if reward*0.7 >= baseReward then
+            -- is the baseReward lesser than 70% of reward after training?
+            -- i.e. did the reward increase sufficiently?
+            if reward*0.7 > baseReward then
                converged = true
                break
             end
          end
          
-         if reward*0.7 >= baseReward then
+         if reward*0.7 > baseReward then
             converged = true
             break
          end
