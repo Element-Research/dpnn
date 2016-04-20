@@ -853,10 +853,11 @@ Ref A. [Simple Statistical Gradient-Following Algorithms for Connectionist Reinf
 
 ```lua
 module = nn.ReinforceGamma(scale, [stochastic])
-```
+``` 
 
 A [Reinforce](#nn.Reinforce) subclass that implements the REINFORCE algorithm 
-(ref. A) for a Gamma probability distribution parametrized by shape (k) and scale (theta) variables.
+(ref. A) for a [Gamma probability distribution](https://en.wikipedia.org/wiki/Gamma_distribution) 
+parametrized by shape (k) and scale (theta) variables.
 Inputs are the shapes of the gamma distribution.
 During training, outputs are samples drawn from this distribution.
 During evaluation, when `stochastic=false`, outputs are equal to the mean, defined as the product of
@@ -877,7 +878,7 @@ the derivative of log gamma w.r.t. shape `k` is :
 d ln(f(x,k,t))
 -------------- = ln(x) - g(k) - ln(t)
       d k
-```
+``` 
 
 <a name='nn.ReinforceCategorical'></a>
 ## ReinforceCategorical ##
