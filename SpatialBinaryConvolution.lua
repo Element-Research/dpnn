@@ -9,13 +9,14 @@ local SpatialBinaryConvolution, parent = torch.class('nn.SpatialBinaryConvolutio
 
 function SpatialBinaryConvolution:__init(nInputPlane, nOutputPlane, kW, kH, dW, dH, padW, padH)
    parent.__init(self, nInputPlane, nOutputPlane, kW, kH, dW, dH, padW, padH)
-   parent.noBias()
+   parent.noBias(self)
+
    self.iwh = self.nInputPlane * self.kW * self.kH 
    self.owh = self.nOutputPlane * self.kW * self.kH 
 end
 
 -- Function to binarize weights and compute L1 norms
-function binarize(self)
+function binarizeWeight(self)
 
    -- Grad Input alphas
    self.gradInputAlphas = self.gradInputAlphas or self.weight.new()
@@ -44,7 +45,7 @@ function SpatialBinaryConvolution:updateOutput(input)
    binarizeWeight(self)
 
    -- Convolution
-   self.output = parent.updateOutput(input)
+   self.output = parent.updateOutput(self, input)
 
    -- Scale alphas
    if self.output:nDimension() == 4 then
@@ -60,16 +61,16 @@ function SpatialBinaryConvolution:updateOutput(input)
 end
 
 function SpatialBinaryConvolution:updateGradInput(input, gradOutput)
-   self.gradInput = parent.updateGradInput(input, gradOutput)
+   self.gradInput = parent.updateGradInput(self, input, gradOutput)
 
    -- Scale gradInput accordingly
    if self.gradInput:nDimension() == 4 then
-      for i=1, nInputPlane do
-         self.gradInput[{{}, {i}}]:mul(self.gradInputAlphas)
+      for i=1, self.nInputPlane do
+         self.gradInput[{{}, {i}}]:mul(self.gradInputAlphas[i])
       end
    else
-      for i=1, nInputPlane do
-         self.gradInput[{{i}}]:mul(self.gradInputAlphas)
+      for i=1, self.nInputPlane do
+         self.gradInput[{{i}}]:mul(self.gradInputAlphas[i])
       end
    end
    return self.gradInput
@@ -80,11 +81,11 @@ function SpatialBinaryConvolution:accGradParameters(input, gradOutput, scale)
    assert(self.gradWeight:sum()==0, 
           "Called zeroGradParameters before backward.")
    
-   parent.accGradParameters(input, gradOutput, scale)
+   parent.accGradParameters(self, input, gradOutput, scale)
 
    -- Scale gradWeight by alphas
    for i=1, self.nOutputPlane do
-      self.gradWeight[i]:mul(self.alphas)
+      self.gradWeight[i]:mul(self.alphas[i])
    end
 
    -- Copy back floating point weights for weight update.
@@ -96,6 +97,6 @@ function SpatialBinaryConvolution:type(type, tensorCache)
    parent.type(self, type, tensorCache)
 end
 
-function:__tostring__()
+function SpatialBinaryConvolution:__tostring__()
    return "Binary Convolution: "..parent.__tostring__(self)
 end
