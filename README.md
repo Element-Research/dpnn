@@ -29,6 +29,7 @@ The package provides the following Modules:
  * [SpatialRegionDropout](#nn.SpatialRegionDropout) : Randomly dropouts a region (top, bottom, leftmost, rightmost) of the input image. Works with batch and any number of channels.;
  * [FireModule](#nn.FireModule) : FireModule as mentioned in the [SqueezeNet] (http://arxiv.org/pdf/1602.07360v1.pdf).;
  * [SpatialFeatNormalization](#nn.SpatialFeatNormalization) : Module for widely used preprocessing step of mean zeroing and standardization for images.
+ * [SpatialBinaryConvolution](#nn.SpatialBinaryConvolution) : Module for binary spatial convolution (Binary weights) as mentioned in [XNOR-Net](http://arxiv.org/pdf/1603.05279v2.pdf).
 
 The following modules and criterions can be used to implement the REINFORCE algorithm :
 
@@ -636,6 +637,15 @@ FireModule works only with batches, for single sample convert the sample to a ba
 module = nn.SpatialFeatNormalization(mean, std)
 ```
 This module normalizies each feature channel of input image based on its corresponding mean and standard deviation scalar values. This module does not learn the `mean` and `std`, they are provided as arguments.
+
+<a name='nn.SpatialBinaryConvolution'></a>
+## SpatialBinaryConvolution ##
+
+```lua
+module = nn.SpatialBinaryConvolution(nInputPlane, nOutputPlane, kW, kH)
+```
+Binary weights are used for forward and backward. Floating point weights are used for weight updates. Check **Binary-Weight-Network** section of [XNOR-net](http://arxiv.org/pdf/1603.05279v2.pdf).
+
 
 <a name = 'nn.OneHot'></a>
 ## OneHot ##
