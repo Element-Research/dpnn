@@ -1927,6 +1927,32 @@ function dpnntest.SpatialRegionDropout()
    end
 end
 
+-- Unit Test SpatialBinaryConvolution
+function dpnntest.SpatialBinaryConvolution()
+   local hasCuda = pcall(function() require 'cunn' end)
+   local useCudas = {false, hasCuda}
+   local nInputPlane = 3
+   local nOutputPlane = 16
+   local kW = 3
+   local kH = 3
+   local height = 224
+   local width = 224
+
+   local model = nn.SpatialBinaryConvolution(nInputPlane, nOutputPlane,
+                                             kW, kH)
+   local input = torch.rand(nInputPlane, height, width)
+
+   for _, useCuda in pairs(useCudas) do
+      if useCuda then
+         model:cuda()
+         input = input:cuda()
+      end
+      model:zeroGradParameters()
+      local output = model:forward(input)
+      local gradInput = model:backward(input, output)
+   end
+end
+
 -- Unit Test Kmeans layer
 function dpnnbigtest.Kmeans()
    local k = 10

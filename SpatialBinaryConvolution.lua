@@ -17,7 +17,6 @@ end
 
 -- Function to binarize weights and compute L1 norms
 function binarizeWeight(self)
-
    -- Grad Input alphas
    self.gradInputAlphas = self.gradInputAlphas or self.weight.new()
    self.gradInputAlphas:resize(self.nInputPlane)
