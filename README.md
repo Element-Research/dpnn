@@ -644,7 +644,7 @@ This module normalizies each feature channel of input image based on its corresp
 ```lua
 module = nn.SpatialBinaryConvolution(nInputPlane, nOutputPlane, kW, kH)
 ```
-Binary weights are used for forward and backward. Floating point weights are used for weight updates. Check **Binary-Weight-Network** section of [XNOR-net](http://arxiv.org/pdf/1603.05279v2.pdf).
+Initialization is sample as nn/SpatialConvolution. Binary weights are used for forward and backward. Floating point weights are used for weight updates. Check **Binary-Weight-Network** section of [XNOR-net](http://arxiv.org/pdf/1603.05279v2.pdf).
 
 
 <a name = 'nn.OneHot'></a>
