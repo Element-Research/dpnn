@@ -17,26 +17,37 @@ end
 
 -- Function to binarize weights and compute L1 norms
 function binarizeWeight(self)
+   self.tempWeight = self.tempWeight or self.weight.new()
+
    -- Grad Input alphas
    self.gradInputAlphas = self.gradInputAlphas or self.weight.new()
    self.gradInputAlphas:resize(self.nInputPlane)
-   for i=1, self.nInputPlane do
-      self.gradInputAlphas[i] = self.weight[{{}, {i}}]:norm(1)
-   end
+
+   local temp = self.weight:transpose(1,2)
+   self.tempWeight:resizeAs(temp):copy(temp)
+   self.gradInputAlphas:norm(self.tempWeight:view(self.nInputPlane, -1), 1, 2)
    self.gradInputAlphas:div(self.owh) -- 1/owh
 
-   -- alphas and binarize filters.
-   self.tempWeight = self.tempWeight or self.weight.new()
+   -- alphas
    self.tempWeight:resizeAs(self.weight):copy(self.weight)
-   self.alphas = self.alphas or torch.Tensor()
+   self.alphas = self.alphas or self.weight.new()
    self.alphas:resize(self.nOutputPlane)
-   for i=1, self.nOutputPlane do
-      self.alphas[i] = self.weight[i]:norm(1)
-      self.weight[i]:apply(function(x) 
-                              if x>=0 then return 1 else return -1 end
-                          end)
-   end
+   self.alphas:norm(self.weight:view(self.nOutputPlane, -1), 1, 2)
    self.alphas:div(self.iwh) -- 1/iwh
+
+   -- Binarize weights
+   if not self.wmask then
+      if torch.type(self.weight) == 'torch.CudaTensor' then
+         self.wmask = torch.CudaTensor()
+      else
+         self.wmask = torch.ByteTensor()
+      end
+   end
+  
+   self.weight.ge(self.wmask, self.weight, 0)
+   self.weight[self.wmask] = 1
+   self.weight.lt(self.wmask, self.weight, 0)
+   self.weight[self.wmask] = -1
 end
 
 function SpatialBinaryConvolution:updateOutput(input)
@@ -49,11 +60,11 @@ function SpatialBinaryConvolution:updateOutput(input)
    -- Scale alphas
    if self.output:nDimension() == 4 then
       for i=1, self.nOutputPlane do
-         self.output[{{}, {i}}]:mul(self.alphas[i])
+         self.output[{{}, {i}}]:mul(self.alphas[i][1])
       end
    else
       for i=1, self.nOutputPlane do
-         self.output[{{i}}]:mul(self.alphas[i])
+         self.output[{{i}}]:mul(self.alphas[i][1])
       end
    end
    return self.output 
@@ -65,11 +76,11 @@ function SpatialBinaryConvolution:updateGradInput(input, gradOutput)
    -- Scale gradInput accordingly
    if self.gradInput:nDimension() == 4 then
       for i=1, self.nInputPlane do
-         self.gradInput[{{}, {i}}]:mul(self.gradInputAlphas[i])
+         self.gradInput[{{}, {i}}]:mul(self.gradInputAlphas[i][1])
       end
    else
       for i=1, self.nInputPlane do
-         self.gradInput[{{i}}]:mul(self.gradInputAlphas[i])
+         self.gradInput[{{i}}]:mul(self.gradInputAlphas[i][1])
       end
    end
    return self.gradInput
@@ -84,7 +95,7 @@ function SpatialBinaryConvolution:accGradParameters(input, gradOutput, scale)
 
    -- Scale gradWeight by alphas
    for i=1, self.nOutputPlane do
-      self.gradWeight[i]:mul(self.alphas[i])
+      self.gradWeight[i]:mul(self.alphas[i][1])
    end
 
    -- Copy back floating point weights for weight update.
@@ -92,7 +103,10 @@ function SpatialBinaryConvolution:accGradParameters(input, gradOutput, scale)
 end
 
 function SpatialBinaryConvolution:type(type, tensorCache)
-   self.tempWeight = self.tempWeight and torch.Tensor()
+   self.tempWeight = nil
+   self.alphas = nil
+   self.gradInputAlphas = nil
+   self.wmask = nil
    parent.type(self, type, tensorCache)
 end
 
