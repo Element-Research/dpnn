@@ -43,7 +43,8 @@ function binarizeWeight(self)
          self.wmask = torch.ByteTensor()
       end
    end
-  
+
+   -- Binarizing weights
    self.weight.ge(self.wmask, self.weight, 0)
    self.weight[self.wmask] = 1
    self.weight.lt(self.wmask, self.weight, 0)
@@ -57,15 +58,31 @@ function SpatialBinaryConvolution:updateOutput(input)
    -- Convolution
    self.output = parent.updateOutput(self, input)
 
-   -- Scale alphas
+   -- Scale output by alphas
+   self._tempAlphas = self._tempAlphas or self.output.new()   
+   self._tempAlphasExpanded = self._tempAlphasExpanded or self.output.new() 
+   self._tempAlphasSamples = self._tempAlphasSamples or self.output.new()
    if self.output:nDimension() == 4 then
-      for i=1, self.nOutputPlane do
-         self.output[{{}, {i}}]:mul(self.alphas[i][1])
-      end
+      local batchSize = self.output:size(1)
+      local height = self.output:size(3)
+      local width = self.output:size(4)
+
+      self._tempAlphas = self.alphas:view(1, self.nOutputPlane, 1, 1)
+      self._tempAlphasExpanded:expand(self._tempAlphas, batchSize,
+                                      self.nOutputPlane, height, width)
+      self._tempAlphasSamples:resizeAs(self._tempAlphasExpanded)
+                             :copy(self._tempAlphasExpanded)
+      self.output:cmul(self._tempAlphasSamples)
    else
-      for i=1, self.nOutputPlane do
-         self.output[{{i}}]:mul(self.alphas[i][1])
-      end
+      local height = self.output:size(2)
+      local width = self.output:size(3)
+
+      self._tempAlphas = self.alphas:view(self.nOutputPlane, 1, 1)
+      self._tempAlphasExpanded:expand(self._tempAlphas, self.nOutputPlane,
+                                      height, width)
+      self._tempAlphasSamples:resizeAs(self._tempAlphasExpanded)
+                             :copy(self._tempAlphasExpanded)
+      self.output:cmul(self._tempAlphasSamples)
    end
    return self.output 
 end
@@ -73,15 +90,37 @@ end
 function SpatialBinaryConvolution:updateGradInput(input, gradOutput)
    self.gradInput = parent.updateGradInput(self, input, gradOutput)
 
-   -- Scale gradInput accordingly
+   -- Scale gradInput by gradAlphas
+   self._tempGradAlphas = self._temp or self.gradInput.new()
+   self._tempGradAlphasExpanded = self._temp or self.gradInput.new()
+   self._tempGradAlphasSamples = self._temp or self.gradInput.new()
    if self.gradInput:nDimension() == 4 then
-      for i=1, self.nInputPlane do
-         self.gradInput[{{}, {i}}]:mul(self.gradInputAlphas[i][1])
-      end
+      local batchSize = self.gradInput:size(1)
+      local height = self.gradInput:size(3)
+      local width = self.gradInput:size(4)
+
+      self._tempGradAlphas = self.gradInputAlphas:view(1, self.nInputPlane,
+                                                       1, 1)
+      self._tempGradAlphasExpanded:expand(self._tempGradAlphas,
+                                          batchSize, self.nInputPlane,
+                                          height, width)
+      self._tempGradAlphasSamples:resizeAs(self._tempGradAlphasExpanded)
+                                 :copy(self._tempGradAlphasExpanded)
+
+      self.gradInput:cmul(self._tempGradAlphasSamples)
    else
-      for i=1, self.nInputPlane do
-         self.gradInput[{{i}}]:mul(self.gradInputAlphas[i][1])
-      end
+      local height = self.gradInput:size(2)
+      local width = self.gradInput:size(3)
+
+      self._tempGradAlphas = self.gradInputAlphas:view(self.nInputPlane,
+                                                       1, 1)
+      self._tempGradAlphasExpanded:expand(self._tempGradAlphas,
+                                          self.nInputPlane,
+                                          height, width)
+      self._tempGradAlphasSamples:resizeAs(self._tempGradAlphasExpanded)
+                                 :copy(self._tempGradAlphasExpanded)
+
+      self.gradInput:cmul(self._tempGradAlphasSamples)
    end
    return self.gradInput
 end
@@ -93,10 +132,21 @@ function SpatialBinaryConvolution:accGradParameters(input, gradOutput, scale)
    
    parent.accGradParameters(self, input, gradOutput, scale)
 
+   self._gradWeightAlphas = self._gradWeightAlphas or self.gradWeight.new()
+   self._gradWeightAlphasExpanded = self._gradWeightAlphasExpanded
+                                    or self.gradWeight.new()
+   self._gradWeightAlphasSamples = self._gradWeightAlphasSamples
+                                   or self.gradWeight.new()
+
+   self._gradWeightAlphas = self.alphas:view(self.nOutputPlane, 1, 1, 1)
+   self._gradWeightAlphasExpanded:expand(self._gradWeightAlphas,
+                                         self.nOutputPlane, self.nInputPlane,
+                                         self.kH, self.kW)
+   self._gradWeightAlphasSamples:resizeAs(self._gradWeightAlphasExpanded)
+                                :copy(self._gradWeightAlphasExpanded)
+   
    -- Scale gradWeight by alphas
-   for i=1, self.nOutputPlane do
-      self.gradWeight[i]:mul(self.alphas[i][1])
-   end
+   self.gradWeight:cmul(self._gradWeightAlphasSamples)
 
    -- Copy back floating point weights for weight update.
    self.weight:copy(self.tempWeight)
@@ -107,6 +157,19 @@ function SpatialBinaryConvolution:type(type, tensorCache)
    self.alphas = nil
    self.gradInputAlphas = nil
    self.wmask = nil
+
+   self._tempAlphas = nil 
+   self._tempAlphasExpanded = nil
+   self._tempAlphasSamples = nil
+
+   self._tempGradAlphas = nil
+   self._tempGradAlphasExpanded = nil
+   self._tempGradAlphasSamples = nil
+
+   self._gradWeightAlphas = nil
+   self._gradWeightAlphasExpanded = nil
+   self._gradWeightAlphasSamples = nil
+
    parent.type(self, type, tensorCache)
 end
 
