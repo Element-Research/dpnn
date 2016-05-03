@@ -16,7 +16,7 @@ function SpatialBinaryConvolution:__init(nInputPlane, nOutputPlane, kW, kH, dW, 
 end
 
 -- Function to binarize weights and compute L1 norms
-function binarizeWeight(self)
+function SpatialBinaryConvolution:binarizeWeight()
    self.tempWeight = self.tempWeight or self.weight.new()
 
    -- Grad Input alphas
@@ -53,7 +53,7 @@ end
 
 function SpatialBinaryConvolution:updateOutput(input)
    -- Binarize Weights
-   binarizeWeight(self)
+   self.binarizeWeight(self)
 
    -- Convolution
    self.output = parent.updateOutput(self, input)
@@ -128,7 +128,7 @@ end
 function SpatialBinaryConvolution:accGradParameters(input, gradOutput, scale)
 
    assert(self.gradWeight:sum()==0, 
-          "Called zeroGradParameters before backward.")
+          "Call zeroGradParameters before backward.")
    
    parent.accGradParameters(self, input, gradOutput, scale)
 
