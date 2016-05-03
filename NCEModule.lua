@@ -198,6 +198,7 @@ end
 function NCEModule:noiseSample(sampleidx, batchsize, k)
    assert(sampleidx)
    self._noiseidx = self._noiseidx or torch.LongTensor()
+   self._noiseidx:resize(batchsize, k):zero()
    self.unigrams.multinomial(self._noiseidx, self.unigrams, batchsize*k, true)
    sampleidx:resize(batchsize, k):copy(self._noiseidx)
    return sampleidx
@@ -224,6 +225,7 @@ function NCEModule:fastNoise(freq, size)
    self.noiseSample = function(self, sampleidx, batchsize, k)
       if ncall == 0 then
          self._noisesamples = self._noisesamples or torch.LongTensor()
+         self._noisesamples:resize(size, k):zero()
          self.unigrams.multinomial(self._noisesamples, self.unigrams, size, true)
          ncall = freq
       end

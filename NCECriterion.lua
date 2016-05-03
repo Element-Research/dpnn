@@ -23,6 +23,8 @@ function NCECriterion:updateOutput(inputTable, target)
    assert(Pnt:dim() == 1)
    assert(Pns:dim() == 2)
    
+   ASSERT THE FUCK OUT OF NANs here.
+   
    -- equation 5 in ref. A
    
    -- eq 5.1 : P(origin=model) = Pmt / (Pmt + k*Pnt) 
