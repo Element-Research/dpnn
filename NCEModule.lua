@@ -255,4 +255,57 @@ function NCEModule:clearState()
    self.gradInput[2]:set()
 end
 
--- TODO : speedup unigram sampling using frequency bins...
+-- NOT IN USE : the following is experimental and not currently in use.
+-- ref.: https://hips.seas.harvard.edu/blog/2013/03/03/the-alias-method-efficient-sampling-with-many-discrete-outcomes/
+function NCEModule:aliasDraw(J, q)
+   local K  = J:nElement()
+
+   -- Draw from the overall uniform mixture.
+   local kk = math.random(1,K)
+
+   -- Draw from the binary mixture, either keeping the
+   -- small one, or choosing the associated larger one.
+   if math.random() < q[kk] then
+      return kk
+   else
+      return J[kk]
+   end
+end
+
+function NCEModule:aliasSetup(probs)
+   assert(probs:dim() == 1)
+   local K = probs:nElement()
+   local q = probs.new(K)
+   local J = torch.LongTensor(K):zero()
+
+   -- Sort the data into the outcomes with probabilities
+   -- that are larger and smaller than 1/K.
+   local smaller, larger = {}, {}
+   for kk = 1,K do
+      local prob = probs[kk]
+      q[kk] = K*prob
+      if q[kk] < 1 then
+         table.insert(smaller, kk)
+      else
+         table.insert(larger, kk)
+      end
+   end
+   
+   -- Loop though and create little binary mixtures that
+   -- appropriately allocate the larger outcomes over the
+   -- overall uniform mixture.
+   while #smaller > 0 and #larger > 0 do
+      local small = table.remove(smaller)
+      local large = table.remove(larger)
+
+      J[small] = large
+      q[large] = q[large] - (1.0 - q[small])
+
+      if q[large] < 1.0 then
+         table.insert(smaller,large)
+      else
+         table.insert(larger,large)
+      end
+   end
+   return J, q
+end
