@@ -127,28 +127,14 @@ end
 
 function SpatialBinaryConvolution:accGradParameters(input, gradOutput, scale)
 
-   assert(self.gradWeight:sum()==0, 
-          "Call zeroGradParameters before backward.")
-   
    parent.accGradParameters(self, input, gradOutput, scale)
 
-   self._gradWeightAlphas = self._gradWeightAlphas or self.gradWeight.new()
-   self._gradWeightAlphasExpanded = self._gradWeightAlphasExpanded
-                                    or self.gradWeight.new()
-   self._gradWeightAlphasSamples = self._gradWeightAlphasSamples
-                                   or self.gradWeight.new()
+   --[[
+   Copy back floating point weights for weight update.
+   This could be done individually after forward and backward, but to avoid
+   additional copy is done at the end of backward.
+   --]]
 
-   self._gradWeightAlphas = self.alphas:view(self.nOutputPlane, 1, 1, 1)
-   self._gradWeightAlphasExpanded:expand(self._gradWeightAlphas,
-                                         self.nOutputPlane, self.nInputPlane,
-                                         self.kH, self.kW)
-   self._gradWeightAlphasSamples:resizeAs(self._gradWeightAlphasExpanded)
-                                :copy(self._gradWeightAlphasExpanded)
-   
-   -- Scale gradWeight by alphas
-   self.gradWeight:cmul(self._gradWeightAlphasSamples)
-
-   -- Copy back floating point weights for weight update.
    self.weight:copy(self.tempWeight)
 end
 
@@ -165,10 +151,6 @@ function SpatialBinaryConvolution:type(type, tensorCache)
    self._tempGradAlphas = nil
    self._tempGradAlphasExpanded = nil
    self._tempGradAlphasSamples = nil
-
-   self._gradWeightAlphas = nil
-   self._gradWeightAlphasExpanded = nil
-   self._gradWeightAlphasSamples = nil
 
    parent.type(self, type, tensorCache)
 end
