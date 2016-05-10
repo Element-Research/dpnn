@@ -187,6 +187,7 @@ function NCEModule:type(type, cache)
       self._noiseidx = nil
       self._noiseprob = nil
       self._noisesamples = nil
+      self._metaidx = nil
    end
    local unigrams = self.unigrams
    self.unigrams = nil
@@ -238,3 +239,20 @@ function NCEModule:fastNoise(freq, size)
       return sampleidx
    end
 end
+
+function NCEModule:clearState()
+   self.sampleidx = nil
+   self.sampleprob = nil
+   self._noiseidx = nil
+   self._noiseprob = nil
+   self._noisesamples = nil
+   self._metaidx = nil
+   self.output[1]:set()
+   self.output[2]:set()
+   self.output[3]:set()
+   self.output[4]:set()
+   self.gradInput[1]:set()
+   self.gradInput[2]:set()
+end
+
+-- TODO : speedup unigram sampling using frequency bins...
