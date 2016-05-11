@@ -1,7 +1,7 @@
 local OneHot, parent = torch.class('nn.OneHot', 'nn.Module')
 
 -- adapted from https://github.com/karpathy/char-rnn
--- and https://github.com/hughperkins/char-rnn-er
+-- and https://github.com/hughperkins/char-lstm
 
 function OneHot:__init(outputSize)
    parent.__init(self)
@@ -20,7 +20,13 @@ function OneHot:updateOutput(input)
    if torch.type(input) == 'torch.CudaTensor' or torch.type(input) == 'torch.ClTensor' then
       self.output:scatter(self.output:dim(), input_, 1)
    else
-      if torch.type(input) ~= 'torch.LongTensor' then
+      if torch.type(self.output) == 'torch.CudaTensor' then 
+         -- input is not cuda, module is, cast input to cuda
+         self._input = self._input or torch.CudaTensor()
+         self._input:resize(input_:size()):copy(input_)
+         input_ = self._input
+      elseif torch.type(input) ~= 'torch.LongTensor' then 
+         -- input is not long, module isnot cuda, cast input to long
          self._input = self._input or torch.LongTensor()
          self._input:resize(input_:size()):copy(input_)
          input_ = self._input
