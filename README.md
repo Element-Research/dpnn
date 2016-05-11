@@ -30,19 +30,24 @@ The package provides the following Modules:
  * [FireModule](#nn.FireModule) : FireModule as mentioned in the [SqueezeNet](http://arxiv.org/pdf/1602.07360v1.pdf);
  * [NCEModule](#nn.NCEModule) : optimized placeholder for a `Linear` + `SoftMax` using [noise-contrastive estimation](https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf).
  * [SpatialFeatNormalization](#nn.SpatialFeatNormalization) : Module for widely used preprocessing step of mean zeroing and standardization for images.
+ * [SpatialBinaryConvolution](#nn.SpatialBinaryConvolution) : Module for binary spatial convolution (Binary weights) as mentioned in [XNOR-Net](http://arxiv.org/pdf/1603.05279v2.pdf).
 
 The following modules and criterions can be used to implement the REINFORCE algorithm :
 
  * [Reinforce](#nn.Reinforce) : abstract class for REINFORCE modules;
  * [ReinforceBernoulli](#nn.ReinforceBernoulli) : samples from Bernoulli distribution;
  * [ReinforceNormal](#nn.ReinforceNormal) : samples from Normal distribution;
+ * [ReinforceGamma](#nn.ReinforceGamma) : samples from Gamma distribution;
  * [ReinforceCategorical](#nn.ReinforceCategorical) : samples from Categorical (Multinomial with one sample) distribution;
  * [VRClassReward](#nn.VRClassReward) : criterion for variance-reduced classification-based reward;
 
 Additional differentiable criterions
  * [BinaryLogisticRegression](#nn.BLR) : criterion for binary logistic regression;
  * [SpatialBinaryLogisticRegression](#nn.SpatialBLR) : criterion for pixel wise binary logistic regression;
- * [NCECriterion](#nn.NCECriterion) : criterion for [NCEModule](#nn.NCEModule).
+ * [NCECriterion](#nn.NCECriterion) : criterion exclusively used with [NCEModule](#nn.NCEModule).
+ * [ModuleCriterion](#nn.ModuleCriterion) : adds an optional `inputModule` and `targetModule` before a decorated criterion;
+ * [BinaryLogisticRegression](#nn.BLR) : criterion for binary logistic regression.
+ * [SpatialBinaryLogisticRegression](#nn.SpatialBLR) : criterion for pixel wise binary logistic regression.
 
 A lot of the functionality implemented here was pulled from 
 [dp](https://github.com/nicholas-leonard/dp), which makes heavy use of this package. 
@@ -639,6 +644,15 @@ module = nn.SpatialFeatNormalization(mean, std)
 ```
 This module normalizies each feature channel of input image based on its corresponding mean and standard deviation scalar values. This module does not learn the `mean` and `std`, they are provided as arguments.
 
+<a name='nn.SpatialBinaryConvolution'></a>
+## SpatialBinaryConvolution ##
+
+```lua
+module = nn.SpatialBinaryConvolution(nInputPlane, nOutputPlane, kW, kH)
+```
+Functioning of SpatialBinaryConvolution is similar to nn/SpatialConvolution. Only difference is that Binary weights are used for forward/backward and floating point weights are used for weight updates. Check **Binary-Weight-Network** section of [XNOR-net](http://arxiv.org/pdf/1603.05279v2.pdf).
+
+
 <a name = 'nn.OneHot'></a>
 ## OneHot ##
 
@@ -739,7 +753,7 @@ criterion = nn.ModuleCriterion(criterion [, inputModule, targetModule, castTarge
 ``` 
 
 This criterion decorates a `criterion` by allowing the `input` and `target` to be 
-fed through optional an `inputModule` and `targetModule` before being passed to the 
+fed through an optional `inputModule` and `targetModule` before being passed to the 
 `criterion`. The `inputModule` must not contain parameters as these would not be updated. 
 
 When `castTarget = true` (the default), the `targetModule` is cast along with the `inputModule` and 
@@ -750,6 +764,7 @@ When `castTarget = true` (the default), the `targetModule` is cast along with th
 
 ```lua
 ncem = nn.NCEModule(inputSize, outputSize, k, unigrams)
+ncem:fastNoise() -- use this to make it faster
 ``` 
 
 When used in conjunction with [NCECriterion](#nn.NCECriterion), 
@@ -898,6 +913,39 @@ d ln(f(x,u,s))   (x - u)
 
 As an example, it is used to sample locations for the [RecurrentAttention](https://github.com/Element-Research/rnn#rnn.RecurrentAttention) 
 module (see [this example](https://github.com/Element-Research/rnn/blob/master/examples/recurrent-visual-attention.lua)).
+
+<a name='nn.ReinforceGamma'></a>
+## ReinforceGamma ##
+Ref A. [Simple Statistical Gradient-Following Algorithms for Connectionist Reinforcement Learning](http://incompleteideas.net/sutton/williams-92.pdf)
+
+```lua
+module = nn.ReinforceGamma(scale, [stochastic])
+``` 
+
+A [Reinforce](#nn.Reinforce) subclass that implements the REINFORCE algorithm 
+(ref. A) for a [Gamma probability distribution](https://en.wikipedia.org/wiki/Gamma_distribution) 
+parametrized by shape (k) and scale (theta) variables.
+Inputs are the shapes of the gamma distribution.
+During training, outputs are samples drawn from this distribution.
+During evaluation, when `stochastic=false`, outputs are equal to the mean, defined as the product of
+shape and scale ie. `k*theta`.
+Uses the REINFORCE algorithm (ref. A) which is 
+implemented through the [reinforce](#nn.Module.reinforce) interface (`gradOutputs` are ignored).
+
+Given the following variables : 
+   
+  * `f` : gamma probability density function
+  * `g` : digamma function
+  * `x` : the sampled values (i.e. `self.output`)
+  * `k` : shape (`input`)
+  * `t` : scale
+
+the derivative of log gamma w.r.t. shape `k` is :
+```
+d ln(f(x,k,t))
+-------------- = ln(x) - g(k) - ln(t)
+      d k
+``` 
 
 <a name='nn.ReinforceCategorical'></a>
 ## ReinforceCategorical ##

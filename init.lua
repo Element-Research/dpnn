@@ -18,6 +18,7 @@ torch.include('dpnn', 'Container.lua')
 torch.include('dpnn', 'Sequential.lua')
 torch.include('dpnn', 'ParallelTable.lua')
 torch.include('dpnn', 'LookupTable.lua')
+torch.include('dpnn', 'SpatialBinaryConvolution.lua')
 
 -- extensions to existing criterions
 torch.include('dpnn', 'Criterion.lua')
@@ -67,6 +68,7 @@ torch.include('dpnn', 'NCECriterion.lua')
 
 -- REINFORCE
 torch.include('dpnn', 'Reinforce.lua')
+torch.include('dpnn', 'ReinforceGamma.lua')
 torch.include('dpnn', 'ReinforceBernoulli.lua')
 torch.include('dpnn', 'ReinforceNormal.lua')
 torch.include('dpnn', 'ReinforceCategorical.lua')
