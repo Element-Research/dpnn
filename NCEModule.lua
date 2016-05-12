@@ -10,7 +10,6 @@ table.insert(empty, 'sampleidx')
 table.insert(empty, 'sampleprob')
 table.insert(empty, '_noiseidx')
 table.insert(empty, '_noiseprob')
-table.insert(empty, '_noisesamples')
 NCEModule.dpnn_mediumEmpty = empty
 
 -- for sharedClone
@@ -25,9 +24,20 @@ function NCEModule:__init(inputSize, outputSize, k, unigrams)
    self.k = k
    self.unigrams = unigrams
    
+   self:fastNoise()
+   
    -- output is {P_linear(target|input), P_linear(samples|input), P_noise(target), P_noise(samples)}
    self.output = {torch.Tensor(), torch.Tensor(), torch.Tensor(), torch.Tensor()}
    self.gradInput = {torch.Tensor(), torch.Tensor()}
+end
+
+function NCEModule:fastNoise()
+   -- we use alias to speedup multinomial sampling (see noiseSample method)
+   require 'torchx'
+   assert(torch.AliasMultinomial, "update torchx : luarocks install torchx")
+   self.unigrams:div(self.unigrams:sum())
+   self.aliasmultinomial = torch.AliasMultinomial(self.unigrams)
+   self.aliasmultinomial.dpnn_parameters = {'J', 'q'}
 end
 
 function NCEModule:updateOutput(inputTable)
@@ -64,8 +74,8 @@ function NCEModule:updateOutput(inputTable)
          )
       end
    else
-      self.output = torch.type(self.output) == 'table' and self.output
-         or {torch.Tensor(), torch.Tensor(), torch.Tensor(), torch.Tensor()}
+      self.output = (torch.type(self.output) == 'table' and #self.output == 4) and self.output
+         or {input.new(), input.new(), input.new(), input.new()}
       self.sampleidx = self.sampleidx or target.new()
       
       -- the last first column will contain the target indices
@@ -147,10 +157,12 @@ function NCEModule:updateGradInput(inputTable, gradOutput)
    self._gradOutput:cmul(self._score) -- gradient of exp
    
    -- gradient of linear
+   self.gradInput[1] = self.gradInput[1] or input.new()
    self.gradInput[1]:resize(batchsize, 1, inputsize):zero()
    self.gradInput[1]:baddbmm(0, 1, self._gradOutput, self._weight)
    self.gradInput[1]:resizeAs(input)
 
+   self.gradInput[2] = self.gradInput[2] or input.new()
    if self.gradInput[2]:nElement() ~= target:nElement() then
       self.gradInput[2]:resize(target:size()):zero()
    end
@@ -186,23 +198,15 @@ function NCEModule:type(type, cache)
       self.sampleprob = nil
       self._noiseidx = nil
       self._noiseprob = nil
-      self._noisesamples = nil
       self._metaidx = nil
    end
    local unigrams = self.unigrams
    self.unigrams = nil
+   local am = self.aliasmultinomial
    local rtn = parent.type(self, type, cache)
    self.unigrams = unigrams
+   self.aliasmultinomial = am
    return rtn
-end
-
-function NCEModule:noiseSample(sampleidx, batchsize, k)
-   assert(sampleidx)
-   self._noiseidx = self._noiseidx or torch.LongTensor()
-   self._noiseidx:resize(batchsize, k):zero()
-   self.unigrams.multinomial(self._noiseidx, self.unigrams, batchsize*k, true)
-   sampleidx:resize(batchsize, k):copy(self._noiseidx)
-   return sampleidx
 end
 
 function NCEModule:noiseProb(sampleprob, sampleidx)
@@ -218,26 +222,17 @@ function NCEModule:noiseProb(sampleprob, sampleidx)
    return sampleprob
 end
 
-function NCEModule:fastNoise(freq, size)
-   -- sample every freq calls to sample
-   freq = freq or 20000
-   size = size or self.unigrams:nElement() * 10
-   local ncall = 0
-   self.noiseSample = function(self, sampleidx, batchsize, k)
-      if ncall == 0 then
-         self._noisesamples = self._noisesamples or torch.LongTensor()
-         self._noisesamples:resize(size, k):zero()
-         self.unigrams.multinomial(self._noisesamples, self.unigrams, size, true)
-         ncall = freq
-      end
-      ncall = ncall - 1
-      self._metaidx = self._metaidx or torch.LongTensor()
-      self._metaidx:resize(batchsize*k):random(1,self._noisesamples:nElement())
+function NCEModule:noiseSample(sampleidx, batchsize, k)
+   if torch.type(sampleidx) ~= 'torch.LongTensor' then
       self._noiseidx = self._noiseidx or torch.LongTensor()
-      self._noiseidx:index(self._noisesamples, 1, self._metaidx)
+      self._noiseidx:resize(batchsize, k)
+      self.aliasmultinomial:batchdraw(self._noiseidx)
       sampleidx:resize(batchsize, k):copy(self._noiseidx)
-      return sampleidx
+   else
+      sampleidx:resize(batchsize, k)
+      self.aliasmultinomial:batchdraw(sampleidx)
    end
+   return sampleidx
 end
 
 function NCEModule:clearState()
@@ -245,67 +240,14 @@ function NCEModule:clearState()
    self.sampleprob = nil
    self._noiseidx = nil
    self._noiseprob = nil
-   self._noisesamples = nil
-   self._metaidx = nil
-   self.output[1]:set()
-   self.output[2]:set()
-   self.output[3]:set()
-   self.output[4]:set()
-   self.gradInput[1]:set()
-   self.gradInput[2]:set()
-end
-
--- NOT IN USE : the following is experimental and not currently in use.
--- ref.: https://hips.seas.harvard.edu/blog/2013/03/03/the-alias-method-efficient-sampling-with-many-discrete-outcomes/
-function NCEModule:aliasDraw(J, q)
-   local K  = J:nElement()
-
-   -- Draw from the overall uniform mixture.
-   local kk = math.random(1,K)
-
-   -- Draw from the binary mixture, either keeping the
-   -- small one, or choosing the associated larger one.
-   if math.random() < q[kk] then
-      return kk
+   if torch.isTensor(self.output) then
+      self.output:set()
    else
-      return J[kk]
-   end
-end
-
-function NCEModule:aliasSetup(probs)
-   assert(probs:dim() == 1)
-   local K = probs:nElement()
-   local q = probs.new(K)
-   local J = torch.LongTensor(K):zero()
-
-   -- Sort the data into the outcomes with probabilities
-   -- that are larger and smaller than 1/K.
-   local smaller, larger = {}, {}
-   for kk = 1,K do
-      local prob = probs[kk]
-      q[kk] = K*prob
-      if q[kk] < 1 then
-         table.insert(smaller, kk)
-      else
-         table.insert(larger, kk)
+      for i,output in ipairs(self.output) do
+         output:set()
       end
    end
-   
-   -- Loop though and create little binary mixtures that
-   -- appropriately allocate the larger outcomes over the
-   -- overall uniform mixture.
-   while #smaller > 0 and #larger > 0 do
-      local small = table.remove(smaller)
-      local large = table.remove(larger)
-
-      J[small] = large
-      q[large] = q[large] - (1.0 - q[small])
-
-      if q[large] < 1.0 then
-         table.insert(smaller,large)
-      else
-         table.insert(larger,large)
-      end
+   for i,gradInput in ipairs(self.gradInput) do
+      gradInput:set()
    end
-   return J, q
 end

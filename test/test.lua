@@ -2411,6 +2411,24 @@ function dpnntest.NCE()
    end
 end
 
+function dpnntest.NCE_multinomial()
+   local probs = torch.Tensor(10):uniform(0,1)
+   probs:div(probs:sum())
+   local nce = nn.NCEModule(10, 10, 2500, probs)
+   
+   local output = torch.LongTensor()
+   nce:noiseSample(output, 1000, 2500)
+   
+   local counts = torch.Tensor(10):zero()
+   output:apply(function(x)
+      counts[x] = counts[x] + 1
+   end)
+   
+   counts:div(counts:sum())
+   
+   mytester:assertTensorEq(probs, counts, 0.001)
+end
+
 function dpnnbigtest.NCE_benchmark()
    local nclass = 1000000
    local hiddensize = 200
@@ -2424,7 +2442,6 @@ function dpnnbigtest.NCE_benchmark()
    local nll = nn.ClassNLLCriterion()
    
    local nce = nn.NCEModule(hiddensize, nclass, 25, unigrams)
-   nce:fastNoise()
    local crit = nn.NCECriterion()
    
    local input = torch.randn(batchsize, hiddensize)
