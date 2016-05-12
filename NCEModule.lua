@@ -3,6 +3,7 @@
 -- Ref.: A. https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf
 ------------------------------------------------------------------------
 local NCEModule, parent = torch.class("nn.NCEModule", "nn.Linear")
+NCEModule.version = 2
 
 -- for efficient serialization
 local empty = _.clone(parent.dpnn_mediumEmpty)
