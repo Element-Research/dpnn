@@ -761,9 +761,10 @@ When `castTarget = true` (the default), the `targetModule` is cast along with th
 
 <a name='nn.NCEModule'></a>
 ## NCEModule
+Ref. A [RNNLM training with NCE for Speech Recognition](https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf)
 
 ```lua
-ncem = nn.NCEModule(inputSize, outputSize, k, unigrams)
+ncem = nn.NCEModule(inputSize, outputSize, k, unigrams, [Z])
 ``` 
 
 When used in conjunction with [NCECriterion](#nn.NCECriterion), 
@@ -780,6 +781,8 @@ The number of noise samples to be drawn per example is `k`. A value of 25 should
 Increasing it will yield better results, while a smaller value will be more efficient to process.
 The `unigrams` is a tensor of size `outputSize` that contains the frequencies or probability distribution over classes.
 It is used to sample noise samples via a fast implementation of `torch.multinomial`.
+The `Z` is the normalization constant of the approximated SoftMax. 
+The default is `math.exp(9)` as specified in Ref. A.
 
 For inference, or measuring perplexity, the full `Linear` + `SoftMax` will need to 
 be computed. The `NCEModule` can do this by switching on the following :

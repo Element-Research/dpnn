@@ -68,22 +68,22 @@ function NCECriterion:updateGradInput(inputTable, target)
    
    -- equation 7 in ref. A
    
-   -- d Pmt / d input = -k*Pnt / ( Pmt * (Pmt + k*Pnt) )
-   local dPmt = self.gradInput[1]
-   dPmt = dPmt or Pnt.new()
-   dPmt:resizeAs(Pnt):copy(Pnt):mul(-k)
-   dPmt:cdiv(self._Pomdiv)
+   -- d ln(Pom) / d input = -k*Pnt / ( Pmt * (Pmt + k*Pnt) )
+   local dlnPom = self.gradInput[1]
+   dlnPom = dlnPom or Pnt.new()
+   dlnPom:resizeAs(Pnt):copy(Pnt):mul(-k)
+   dlnPom:cdiv(self._Pomdiv)
    Pmt:add(eps)
-   dPmt:cdiv(Pmt)
+   dlnPom:cdiv(Pmt) -- d ln(Pmt) / d Pmt = 1 / d Pmt
    Pmt:add(-eps)
    
-   -- d Pms / d input = Pms / ( Pms * (Pms + k*Pns) )
-   local dPms = self.gradInput[2]
-   dPms = dPms or Pms.new()
-   dPms:resizeAs(Pms):copy(Pms)
-   dPms:cdiv(self._Pondiv)
+   -- d ln(Pon) / d input = Pms / ( Pms * (Pms + k*Pns) )
+   local dlnPon = self.gradInput[2]
+   dlnPon = dlnPon or Pms.new()
+   dlnPon:resizeAs(Pms):copy(Pms)
+   dlnPon:cdiv(self._Pondiv)
    Pms:add(eps)
-   dPms:cdiv(Pms)
+   dlnPon:cdiv(Pms) -- d ln(Pms) / d Pms = 1 / d Pms
    Pms:add(-eps)
    
    if self.gradInput[3]:nElement() ~= Pnt:nElement() then
@@ -94,8 +94,8 @@ function NCECriterion:updateGradInput(inputTable, target)
    end
    
    if self.sizeAverage then
-      dPmt:div(Pmt:size(1))
-      dPms:div(Pmt:size(1))
+      dlnPom:div(Pmt:size(1))
+      dlnPon:div(Pmt:size(1))
    end
    
    return self.gradInput   

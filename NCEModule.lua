@@ -18,12 +18,13 @@ local params = _.clone(parent.dpnn_parameters)
 table.insert(params, 'unigrams')
 NCEModule.dpnn_parameters = params
 
-function NCEModule:__init(inputSize, outputSize, k, unigrams)
+function NCEModule:__init(inputSize, outputSize, k, unigrams, Z)
    parent.__init(self, inputSize, outputSize)
    assert(torch.type(k) == 'number')
    assert(torch.isTensor(unigrams))
    self.k = k
    self.unigrams = unigrams
+   self.Z = Z or math.exp(9)
    
    self:fastNoise()
    
@@ -111,32 +112,33 @@ function NCEModule:updateOutput(inputTable)
       assert(self._bias:nElement() == batchsize*(self.k+1))
       self._bias:resize(batchsize, self.k+1)
       
-      -- get score of noise and target (batchsize x k+1) samples
-      self._score = self._score or input.new()
-      self._score:resizeAs(self._bias):copy(self._bias)
-      self._score:resize(batchsize, 1, self.k+1)
+      -- get model probability (pm) of sample and target (batchsize x k+1) samples
+      self._pm = self._pm or input.new()
+      self._pm:resizeAs(self._bias):copy(self._bias)
+      self._pm:resize(batchsize, 1, self.k+1)
       local _input = input:view(batchsize, 1, inputsize)
-      self._score:baddbmm(1, self._score, 1, _input, self._weight:transpose(2,3))
-      self._score:resize(batchsize, self.k+1)
-      self._score:exp()
+      self._pm:baddbmm(1, self._pm, 1, _input, self._weight:transpose(2,3))
+      self._pm:resize(batchsize, self.k+1)
+      self._pm:exp()
+      self._pm:div(self.Z) -- divide by normalization constant
       
-      -- separate target from noise scores
-      local tscore = self._score:select(2,1)
-      local nscore = self._score:narrow(2,2,self.k)
+      -- separate target from sample model probabilities
+      local Pmt = self._pm:select(2,1)
+      local Pms = self._pm:narrow(2,2,self.k)
       
-      self.output[1]:set(tscore)
-      self.output[2]:set(nscore)
+      self.output[1]:set(Pmt)
+      self.output[2]:set(Pms)
       
-      -- get noise probability for all samples
+      -- get noise probability (pn) for all samples
       
-      self.sampleprob = self.sampleprob or self._score.new()
+      self.sampleprob = self.sampleprob or self._pm.new()
       self.sampleprob = self:noiseProb(self.sampleprob, self.sampleidx)
       
-      local tprob = self.sampleprob:select(2,1)
-      local nprob = self.sampleprob:narrow(2,2,self.k)
+      local Pnt = self.sampleprob:select(2,1)
+      local Pns = self.sampleprob:narrow(2,2,self.k)
       
-      self.output[3]:set(tprob)
-      self.output[4]:set(nprob)
+      self.output[3]:set(Pnt)
+      self.output[4]:set(Pns)
    end
    
    return self.output
@@ -150,12 +152,14 @@ function NCEModule:updateGradInput(inputTable, gradOutput)
    local batchsize = input:size(1)
    local inputsize = self.weight:size(2)
    
+   -- the rest of equation 7 (combine both sides of + sign into one tensor)
    self._gradOutput = self._gradOutput or dPmt.new()
    self._gradOutput:resize(batchsize, self.k+1)
    self._gradOutput:select(2,1):copy(dPmt)
    self._gradOutput:narrow(2,2,self.k):copy(dPms)
    self._gradOutput:resize(batchsize, 1, self.k+1)
-   self._gradOutput:cmul(self._score) -- gradient of exp
+   -- d Pm / d linear = exp(linear)/z
+   self._gradOutput:cmul(self._pm)
    
    -- gradient of linear
    self.gradInput[1] = self.gradInput[1] or input.new()
