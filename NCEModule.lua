@@ -3,7 +3,7 @@
 -- Ref.: A. https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf
 ------------------------------------------------------------------------
 local NCEModule, parent = torch.class("nn.NCEModule", "nn.Linear")
-NCEModule.version = 2
+NCEModule.version = 3
 
 -- for efficient serialization
 local empty = _.clone(parent.dpnn_mediumEmpty)
@@ -16,6 +16,7 @@ NCEModule.dpnn_mediumEmpty = empty
 -- for sharedClone
 local params = _.clone(parent.dpnn_parameters)
 table.insert(params, 'unigrams')
+table.insert(params, 'Z')
 NCEModule.dpnn_parameters = params
 
 function NCEModule:__init(inputSize, outputSize, k, unigrams, Z)
@@ -24,7 +25,7 @@ function NCEModule:__init(inputSize, outputSize, k, unigrams, Z)
    assert(torch.isTensor(unigrams))
    self.k = k
    self.unigrams = unigrams
-   self.Z = Z or math.exp(9)
+   self.Z = torch.Tensor{Z or -1}
    
    self:fastNoise()
    
@@ -120,7 +121,14 @@ function NCEModule:updateOutput(inputTable)
       self._pm:baddbmm(1, self._pm, 1, _input, self._weight:transpose(2,3))
       self._pm:resize(batchsize, self.k+1)
       self._pm:exp()
-      self._pm:div(self.Z) -- divide by normalization constant
+      
+      if self.Z[1] <= 0 then
+         -- approximate Z using current batch
+         self.Z[1] = self._pm:mean()*self.weight:size(1)
+         print("normalization constant Z approximated to "..self.Z[1])
+      end
+      
+      self._pm:div(self.Z[1]) -- divide by normalization constant
       
       -- separate target from sample model probabilities
       local Pmt = self._pm:select(2,1)
