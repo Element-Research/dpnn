@@ -2213,7 +2213,7 @@ function dpnntest.NCE()
    local linear = nn.Linear(inputsize, outputsize)
    linear.weight:copy(ncem.weight)
    linear.bias:copy(ncem.bias)
-   local mlp = nn.Sequential():add(linear):add(nn.Exp()):add(nn.MulConstant(1/math.exp(9)))
+   local mlp = nn.Sequential():add(linear):add(nn.Exp()):add(nn.MulConstant(1/ncem.Z[1]))
 
    local output2_ = mlp:forward(input)
    local output2 = torch.Tensor(batchsize, k+1)
