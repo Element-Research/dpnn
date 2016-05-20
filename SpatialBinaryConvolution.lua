@@ -13,6 +13,15 @@ function SpatialBinaryConvolution:__init(nInputPlane, nOutputPlane, kW, kH, dW, 
 
    self.iwh = self.nInputPlane * self.kW * self.kH 
    self.owh = self.nOutputPlane * self.kW * self.kH 
+   self.train = true
+end
+
+function SpatialBinaryConvolution:training()
+   self.train = true
+end
+
+function SpatialBinaryConvolution:evaluate()
+   self.train = false
 end
 
 -- Function to binarize weights and compute L1 norms
@@ -84,6 +93,10 @@ function SpatialBinaryConvolution:updateOutput(input)
                              :copy(self._tempAlphasExpanded)
       self.output:cmul(self._tempAlphasSamples)
    end
+
+   -- In evaluate mode.
+   if not self.train then self.weight:copy(self.tempWeight) end
+
    return self.output 
 end
 
