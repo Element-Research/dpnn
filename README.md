@@ -657,7 +657,7 @@ Functioning of SpatialBinaryConvolution is similar to nn/SpatialConvolution. Onl
 ## SimpleColorTransform ##
 
 ```lua
-range = torch.rand(inputChannels) -- Could be user specified values.
+range = torch.rand(inputChannels) -- Typically range is specified by user.
 module = nn.SimpleColorTransform(inputChannels, range)
 ```
 
