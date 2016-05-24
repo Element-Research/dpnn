@@ -8,6 +8,8 @@
 local SimpleColorTransform, Parent = torch.class('nn.SimpleColorTransform', 'nn.Module')
 
 function SimpleColorTransform:__init(inputChannels, range)
+   Parent.__init(self)
+
    self.train = true
    self.inputChannels = inputChannels
    assert(inputChannels == range:nElement(),
@@ -42,7 +44,7 @@ function SimpleColorTransform:updateOutput(input)
                                :copy(self._tempNoiseExpanded)
          self.output:add(self._tempNoiseSamples)
 
-      else if self.output:nDimension() == 3 then
+      elseif self.output:nDimension() == 3 then
          local channels = self.output:size(1)
          local height = self.output:size(2)
          local width = self.output:size(3)
@@ -51,7 +53,7 @@ function SimpleColorTransform:updateOutput(input)
          -- Randomly sample noise for each channel 
          self.noise:resize(channels)
          for i=1, channels do
-            self.noise[i] = torch.uniform(-range[i], range[i])
+            self.noise[i] = torch.uniform(-self.range[i], self.range[i])
          end
          self._tempNoise = self.noise:view(self.inputChannels, 1, 1)
          self._tempNoiseExpanded:expand(self._tempNoise, channels,
@@ -80,8 +82,7 @@ function SimpleColorTransform:type(type, tensorCache)
    self._tempNoise = nil
    self._tempNoiseExpanded = nil
    self._tempNoiseSamples = nil
-
-   parent.type(self, type, tensorCache)
+   Parent.type(self, type, tensorCache)
 end
 
 function SimpleColorTransform:__tostring__()

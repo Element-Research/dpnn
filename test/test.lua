@@ -1954,6 +1954,23 @@ function dpnntest.SpatialBinaryConvolution()
    end
 end
 
+-- Unit Test SimpleColorTransform
+function dpnntest.SimpleColorTransform()
+   local hasCuda = pcall(function() require 'cunn' end)
+   local useCudas = {false, hasCuda}
+   local model = nn.SimpleColorTransform(3, torch.rand(3))
+   local input = torch.rand(32, 3, 100, 100)
+
+   for _, useCuda in pairs(useCudas) do
+      if useCuda then
+         model:cuda()
+         input = input:cuda()
+      end
+      local output = model:forward(input)
+      local gradInput = model:backward(input, input)
+   end
+end
+
 -- Unit Test Kmeans layer
 function dpnnbigtest.Kmeans()
    local k = 10
