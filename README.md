@@ -31,6 +31,7 @@ The package provides the following Modules:
  * [NCEModule](#nn.NCEModule) : optimized placeholder for a `Linear` + `SoftMax` using [noise-contrastive estimation](https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf).
  * [SpatialFeatNormalization](#nn.SpatialFeatNormalization) : Module for widely used preprocessing step of mean zeroing and standardization for images.
  * [SpatialBinaryConvolution](#nn.SpatialBinaryConvolution) : Module for binary spatial convolution (Binary weights) as mentioned in [XNOR-Net](http://arxiv.org/pdf/1603.05279v2.pdf).
+ * [SimpleColorTransform](#nn.SimpleColorTransform) : Module for adding independent random noise to input image channels.
 
 The following modules and criterions can be used to implement the REINFORCE algorithm :
 
@@ -652,6 +653,13 @@ module = nn.SpatialBinaryConvolution(nInputPlane, nOutputPlane, kW, kH)
 ```
 Functioning of SpatialBinaryConvolution is similar to nn/SpatialConvolution. Only difference is that Binary weights are used for forward/backward and floating point weights are used for weight updates. Check **Binary-Weight-Network** section of [XNOR-net](http://arxiv.org/pdf/1603.05279v2.pdf).
 
+<a name='nn.SimpleColorTransform'></a>
+## SimpleColorTransform ##
+
+```lua
+range = torch.rand(inputChannels) -- Could be user specified values.
+module = nn.SimpleColorTransform(inputChannels, range)
+```
 
 <a name = 'nn.OneHot'></a>
 ## OneHot ##
