@@ -1958,8 +1958,12 @@ end
 function dpnntest.SimpleColorTransform()
    local hasCuda = pcall(function() require 'cunn' end)
    local useCudas = {false, hasCuda}
-   local model = nn.SimpleColorTransform(3, torch.rand(3))
-   local input = torch.rand(32, 3, 100, 100)
+   local value = 10
+   local rangeValue = 2
+   local precision = rangeValue*0.1
+   local range = torch.zeros(3):fill(rangeValue)
+   local model = nn.SimpleColorTransform(3, range)
+   local input = torch.zeros(32, 3, 100, 100):fill(value)
 
    for _, useCuda in pairs(useCudas) do
       if useCuda then
@@ -1967,7 +1971,11 @@ function dpnntest.SimpleColorTransform()
          input = input:cuda()
       end
       local output = model:forward(input)
+      mytester:assert(output:std() <= rangeValue+precision,
+                       "SimpleColorTransform output value incorrect.")
       local gradInput = model:backward(input, input)
+      mytester:assert(gradInput:sum() == input:sum(),
+                       "SimpleColorTransform gradInput value incorrect.")
    end
 end
 
