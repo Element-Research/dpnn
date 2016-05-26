@@ -660,7 +660,7 @@ Functioning of SpatialBinaryConvolution is similar to nn/SpatialConvolution. Onl
 range = torch.rand(inputChannels) -- Typically range is specified by user.
 module = nn.SimpleColorTransform(inputChannels, range)
 ```
-This module performs a simple data augmentation technique. In this module we simply add random noise to each color channel independently. In more advanced data augmentation technique noise is added using principal components of color channels (We haven't implemented it yet).
+This module performs a simple data augmentation technique. SimpleColorTransform module simply adds random noise to each color channel independently. In more advanced data augmentation technique noise is added using principal components of color channels (We haven't implemented it yet).
 
 <a name = 'nn.OneHot'></a>
 ## OneHot ##
