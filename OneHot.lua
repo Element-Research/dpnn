@@ -11,7 +11,11 @@ end
 function OneHot:updateOutput(input)
    local size
    if type(input) == 'number' then
-      input = torch.LongTensor({input})
+      if self:type() == 'torch.CudaTensor' then
+			input = torch.CudaTensor({input})
+		else
+			input = torch.LongTensor({input})
+		end
       size = {}
    else
       size = input:size():totable()
