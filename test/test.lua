@@ -2085,6 +2085,12 @@ function dpnntest.OneHot()
    mytester:assertTensorEq(output, output2, 0.000001, "OneHot forward batch err")
    mytester:assert(output:dim() == 2)
 
+   -- non-batch mode (number input)
+   local num = 3
+   local output3 = torch.zeros(nClass)
+   output3[num] = 1.0
+   mytester:assertTensorEq(oh:forward(num), output3, 0.000001, "OneHot forward number err")
+
    local gradInput = oh:backward(input, gradOutput)
    mytester:assertTensorEq(gradInput, input:double():zero(), 0.000001, "OneHot backward batch err")
 
@@ -2107,6 +2113,9 @@ function dpnntest.OneHot()
       local gradInput2 = oh:backward(input, gradOutput)
       mytester:assertTensorEq(gradInput, gradInput2:double(), 0.000001, "OneHot backward batch err")
       cutorch.synchronize()
+
+      -- non-batch mode (number input)
+      mytester:assertTensorEq(oh:forward(num), output3:cuda(), 0.000001, "OneHot forward number err")
    end
    
    -- multi-dimensional input
