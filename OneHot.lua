@@ -12,10 +12,12 @@ function OneHot:updateOutput(input)
    local size
    if type(input) == 'number' then
       if self:type() == 'torch.CudaTensor' then
-			input = torch.CudaTensor({input})
-		else
-			input = torch.LongTensor({input})
-		end
+         self._single = self._single or torch.CudaTensor():resize(1);
+      else
+         self._single = self._single or torch.LongTensor():resize(1);
+      end
+      self._single[1] = input
+      input = self._single;
       size = {}
    else
       size = input:size():totable()
@@ -57,6 +59,7 @@ function OneHot:updateGradInput(input, gradOutput)
 end
 
 function OneHot:type(type, typecache)
+   self._single = nil
    self._input = nil
    return parent.type(self, type, typecache)
 end
