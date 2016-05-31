@@ -1983,10 +1983,10 @@ end
 function dpnntest.PCAColorTransform()
    local hasCuda = pcall(function() require 'cunn' end)
    local useCudas = {false, hasCuda}
-   local std = 0.1
+   local std = 1
    local value = 10
    local rangeValue = 2
-   local precision = rangeValue * std
+   local precision = rangeValue * 3*std
    local eigenVectors = torch.Tensor({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}})
    local eigenValues = torch.zeros(3):fill(rangeValue) 
    local model = nn.PCAColorTransform(3, eigenVectors, eigenValues, std)
@@ -1998,6 +1998,7 @@ function dpnntest.PCAColorTransform()
          input = input:cuda()
       end
       local output = model:forward(input)
+      print(output:mean(), output:std())
       mytester:assert(output:std() <= rangeValue+precision,
                        "PCAColorTransform output value incorrect.")
       local gradInput = model:backward(input, input)
