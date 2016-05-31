@@ -1979,6 +1979,34 @@ function dpnntest.SimpleColorTransform()
    end
 end
 
+-- Unit Test PCAColorTransform
+function dpnntest.PCAColorTransform()
+   local hasCuda = pcall(function() require 'cunn' end)
+   local useCudas = {false, hasCuda}
+   local value = 10
+   local eigenVectors = torch.rand(3,3)
+   local eigenValues = torch.rand(3)
+   local model = nn.PCAColorTransform(3, eigenVectors, eigenValues)
+   local input = torch.zeros(32, 3, 100, 100):fill(value)
+
+   for _, useCuda in pairs(useCudas) do
+      if useCuda then
+         model:cuda()
+         input = input:cuda()
+      end
+      local output = model:forward(input)
+      --[[
+      mytester:assert(output:std() <= rangeValue+precision,
+                       "SimpleColorTransform output value incorrect.")
+      --]]
+      local gradInput = model:backward(input, input)
+      --[[
+      mytester:assert(gradInput:sum() == input:sum(),
+                       "SimpleColorTransform gradInput value incorrect.")
+      --]]
+   end
+end
+
 -- Unit Test Kmeans layer
 function dpnnbigtest.Kmeans()
    local k = 10
