@@ -24,7 +24,7 @@ function PCAColorTransform:__init(inputChannels, eigenVectors, eigenValues, std)
           "Number of input channels do not match number of eigen values.")
 
    self.eigenVectors = eigenVectors
-   self.eigenValues = self.eigenValues
+   self.eigenValues = eigenValues
    self.std = std or 0.1
 end
 
@@ -55,7 +55,7 @@ function PCAColorTransform:updateOutput(input)
 
          -- Scale by eigen vectors 
          self.noise:resize(batchSize, self.inputChannels)
-         self.noise:t():addmm(self.eigenVector, self.alphas)
+         self.noise:t():addmm(self.eigenVectors, self.alphas)
 
          -- Add noise to the input
          self._tempNoise = self.noise:view(batchSize, self.inputChannels, 1, 1)
@@ -78,7 +78,7 @@ function PCAColorTransform:updateOutput(input)
 
          -- Scale by eigen vectors 
          self.noise:resize(1, self.inputChannels)
-         self.noise:t():addmm(self.eigenVector, self.alphas)
+         self.noise:t():addmm(self.eigenVectors, self.alphas)
 
          -- Add noise to the input
          self._tempNoise = self.noise:view(self.inputChannels, 1, 1)
