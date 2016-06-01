@@ -1998,6 +1998,7 @@ function dpnntest.PCAColorTransform()
          input = input:cuda()
       end
       local output = model:forward(input)
+      print(model.alphas)
       print(output:mean(), output:std())
       mytester:assert(output:std() <= rangeValue+precision,
                        "PCAColorTransform output value incorrect.")

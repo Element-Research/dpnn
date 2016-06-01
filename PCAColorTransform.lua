@@ -47,14 +47,14 @@ function PCAColorTransform:updateOutput(input)
          assert(channels == self.inputChannels)
          
          -- Randomly sample noise for each channel and scale by eigen values
-         self.alphas:resize(channels, batchSize):zero()
+         self.alphas:resize(channels, batchSize)
          self.alphas:normal(0, self.std)
          self._tempLambda = self.eigenValues:view(self.inputChannels, 1)
          self._tempLambdaExpanded = self._tempLambda:expand(channels, batchSize)
          self.alphas:cmul(self._tempLambdaExpanded)
 
          -- Scale by eigen vectors 
-         self.noise:resize(batchSize, self.inputChannels)
+         self.noise:resize(batchSize, self.inputChannels):zero()
          self.noise:t():addmm(self.eigenVectors, self.alphas)
 
          -- Add noise to the input
