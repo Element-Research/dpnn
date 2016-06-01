@@ -1983,14 +1983,14 @@ end
 function dpnntest.PCAColorTransform()
    local hasCuda = pcall(function() require 'cunn' end)
    local useCudas = {false, hasCuda}
-   std = 1
-   value = 10
-   rangeValue = 2
-   precision = rangeValue * 3*std
-   eigenVectors = torch.Tensor({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}})
-   eigenValues = torch.zeros(3):fill(rangeValue) 
-   model = nn.PCAColorTransform(3, eigenVectors, eigenValues, std)
-   input = torch.zeros(32, 3, 100, 100):fill(value)
+   local std = 1
+   local value = 10
+   local rangeValue = 2
+   local precision = rangeValue * 3*std
+   local eigenVectors = torch.Tensor({{1, 0, 0}, {0, 1, 0}, {0, 0, 1}})
+   local eigenValues = torch.zeros(3):fill(rangeValue) 
+   local model = nn.PCAColorTransform(3, eigenVectors, eigenValues, std)
+   local input = torch.zeros(32, 3, 100, 100):fill(value)
 
    for _, useCuda in pairs(useCudas) do
       if useCuda then
