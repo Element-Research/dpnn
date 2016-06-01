@@ -77,7 +77,7 @@ function PCAColorTransform:updateOutput(input)
          self.alphas:cmul(self._tempLambdaExpanded)
 
          -- Scale by eigen vectors 
-         self.noise:resize(1, self.inputChannels)
+         self.noise:resize(1, self.inputChannels):zero()
          self.noise:t():addmm(self.eigenVectors, self.alphas)
 
          -- Add noise to the input
@@ -112,5 +112,6 @@ function PCAColorTransform:type(type, tensorCache)
 end
 
 function PCAColorTransform:__tostring__()
-  return string.format('PCAColorTransform', torch.type(self))
+  return string.format('%s channels: %d, std: %f', torch.type(self),
+                        self.inputChannels, self.std)
 end
