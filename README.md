@@ -672,7 +672,7 @@ eigenValues = torch.rand(inputChannels) -- Eigen
 std = 0.1 -- Std deviation of normal distribution with mean zero for noise.
 module = nn.PCAColorTransform(inputChannels, eigenVectors, eigenValues, std)
 ```
-This module performs a data augmentation using Principal Component analysis of pixel values. When in training mode, mulitples of principal components are added to input image pixels. Magnitude of values added (noise) is dependent upon the corresponding eigen value and `std` value provided (default 0.1). This technique was used in the famous [AlexNet](https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf) paper.
+This module performs a data augmentation using Principal Component analysis of pixel values. When in training mode, mulitples of principal components are added to input image pixels. Magnitude of values added (noise) is dependent upon the corresponding eigen value and random value sampled from a Gaussian distribution with mean zero and `std` (default 0.1) standard deviation. This technique was used in the famous [AlexNet](https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf) paper.
 
 <a name = 'nn.OneHot'></a>
 ## OneHot ##
