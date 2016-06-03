@@ -484,7 +484,8 @@ function Module:updateGradParameters(momFactor, momDamp, momNesterov)
       end
       local momGradParams = self:momentumGradParameters()
       for i,gradParam in pairs(gradParams) do
-         momGradParams[i]:mul(momFactor):add(1-momDamp, gradParam)
+         momGradParams[i]:mul(momFactor)
+         momGradParams[i]:add(1-momDamp, gradParam)
       end
       
       if momNesterov then

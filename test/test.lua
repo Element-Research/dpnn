@@ -2199,7 +2199,7 @@ function dpnntest.OneHot()
    end
 end
 
-function dpnntest.NCE()
+function dpnntest.NCE_main()
    local batchsize = 4
    local k = 10
    local inputsize = 3
@@ -2353,7 +2353,7 @@ function dpnntest.NCE()
       local linear = nn.Linear(inputsize, outputsize)
       linear.weight:copy(ncem.weight)
       linear.bias:copy(ncem.bias)
-      local mlp = nn.Sequential():add(linear):add(nn.Exp())
+      local mlp = nn.Sequential():add(linear):add(nn.Exp()):add(nn.MulConstant(1/ncem.Z[1]))
       mlp:cuda()
 
       local output2_ = mlp:forward(input)
@@ -2455,6 +2455,8 @@ function dpnntest.NCE_multinomial()
 end
 
 function dpnnbigtest.NCE_benchmark()
+   pcall(function() require 'cunn' end) -- make sure to import cunn before initializing large tensors, else weird segfault...
+   
    local nclass = 1000000
    local hiddensize = 200
    local batchsize = 50
@@ -2483,8 +2485,6 @@ function dpnnbigtest.NCE_benchmark()
       sync = function() cutorch.synchronize() end
    end
    
-   print(torch.type(nce.unigrams))
-   
    local output = nce:forward{input, target}
    local loss = crit:forward(output, target)
    local gradOutput = crit:backward(output, target)
@@ -2494,8 +2494,8 @@ function dpnnbigtest.NCE_benchmark()
    local loss = nll:forward(output, target)
    local gradOutput = nll:backward(output, target)
    local gradInput = mlp:backward(input, gradOutput)
-   sync()
    
+   sync()
    local a = torch.Timer()
    for i=1,nloop do
       output = nce:forward{input, target}
@@ -2525,7 +2525,6 @@ function dpnnbigtest.NCE_benchmark()
    local ncebwd = a:time().real
    
    -- mlp nll
-   
    local a = torch.Timer()
    for i=1,nloop do
       output = mlp:forward(input)
@@ -2561,6 +2560,38 @@ function dpnnbigtest.NCE_benchmark()
    print("criterion:backward (nce vs nll)", critbwd, nllbwd)
    print("module:backward (nce vs linear)", ncebwd, mlpbwd)
    print("total (nce vs linear)", ncetotal, lintotal, lintotal/ncetotal)
+   
+   if not (cunn and cutorch.getDeviceCount() > 1) then
+      return
+   end
+   
+   nce:multicuda(1,2)
+   
+   local output = nce:forward{input, target}
+   local loss = crit:forward(output, target)
+   local gradOutput = crit:backward(output, target)
+   local gradInput = nce:backward({input, target}, gradOutput)
+   sync()
+   
+   local a = torch.Timer()
+   for i=1,nloop do
+      output = nce:forward{input, target}
+   end
+   sync()
+   local ncefwd2 = a:time().real
+   
+   a:reset()
+   for i=1,nloop do
+      gradInput = nce:backward({input, target}, gradOutput)
+   end
+   sync()
+   local ncebwd2 = a:time().real
+   
+   local total1 = ncefwd+ncebwd
+   local total2 = ncefwd2+ncebwd2
+   print("module:forward (1 vs 2 gpu)", ncefwd, ncefwd2)
+   print("module:backward (1 vs 2 gpu)", ncebwd, ncebwd2)
+   print("total (1 vs 2 gpu)", total1, total2, total2/total1)
 end
 
 function dpnntest.NaN()
@@ -2597,6 +2628,87 @@ function dpnntest.NaN()
    gradOutput:uniform(0,1)
    lin.gradBias:fill(sum)
    mytester:assert(not pcall(function() nan:backward(input, gradOutput) end))
+end
+
+function dpnntest.NCE_multicuda()
+   if not pcall(function() require 'torchx' end) then
+      return
+   end
+   if not pcall(function() require 'cunn' end) then
+      return
+   end
+   if cutorch.getDeviceCount() < 2 then 
+      return
+   end
+   assert(torchx.version and torchx.version >= 1, "Update torchx")
+   
+   local nclass = 1000
+   local hiddensize = 20
+   local batchsize = 5
+   local k = 25
+   local unigrams = torch.Tensor(nclass):uniform(0,1)
+   local noise = torch.LongTensor(batchsize, k):random(1,nclass)
+   
+   local crit = nn.NCECriterion():cuda()
+   local crit2 = nn.NCECriterion():cuda()
+   
+   local nce = nn.NCEModule(hiddensize, nclass, k, unigrams)
+   
+   -- make it deterministic
+   nce.noiseSample = function(self, sampleidx, batchsize, k)
+      sampleidx:resize(batchsize, k)
+      sampleidx:copy(noise)
+      return sampleidx
+   end
+   
+   local nce2 = nce:clone()
+   nce2:cuda()
+   
+   local input = torch.randn(batchsize, hiddensize):cuda()
+   local target = torch.LongTensor(batchsize):random(1,nclass):cuda()
+   
+   nce:multicuda(1, 2)
+   
+   local output = nce:forward{input, target}
+   local loss = crit:forward(output, target)
+   local gradOutput = crit:backward(output, target)
+   nce:zeroGradParameters()
+   local gradInput = nce:backward({input, target}, gradOutput)
+   
+   local output2 = nce2:forward{input, target}
+   local loss2 = crit2:forward(output2, target)
+   local gradOutput2 = crit2:backward(output2, target)
+   nce2:zeroGradParameters()
+   local gradInput2 = nce2:backward({input, target}, gradOutput2)
+   
+   mytester:assertTensorEq(output[1], output2[1], 0.00001)
+   mytester:assertTensorEq(output[2], output2[2], 0.00001)
+   mytester:assertTensorEq(output[3], output2[3], 0.00001)
+   mytester:assertTensorEq(output[4], output2[4], 0.00001)
+   
+   mytester:assertTensorEq(gradInput[1], gradInput2[1], 0.00001)
+   mytester:assertTensorEq(gradInput[2], gradInput2[2], 0.00001)
+   
+   
+   nce2:updateParameters(0.1)
+   nce:updateParameters(0.1)
+   
+   mytester:assertTensorEq(nce2.bias, nce.bias, 0.000001)
+   mytester:assertTensorEq(nce2.gradBias, nce.gradBias, 0.000001)
+   mytester:assertTensorEq(nce2.weight[{{},{1,hiddensize/2}}]:float(), nce.weight.tensors[1]:float(), 0.000001)
+   mytester:assertTensorEq(nce2.weight[{{},{1+(hiddensize/2), hiddensize}}]:float(), nce.weight.tensors[2]:float(), 0.000001)
+   mytester:assertTensorEq(nce2.gradWeight[{{},{1,hiddensize/2}}]:float(), nce.gradWeight.tensors[1]:float(), 0.000001)
+   mytester:assertTensorEq(nce2.gradWeight[{{},{1+(hiddensize/2), hiddensize}}]:float(), nce.gradWeight.tensors[2]:float(), 0.000001)
+   
+   -- test momentum
+   nce2:updateGradParameters(0.9)
+   nce:updateGradParameters(0.9)
+   
+   mytester:assertTensorEq(nce2.gradBias, nce.gradBias, 0.000001)
+   mytester:assertTensorEq(nce2.momGradParams[1][{{},{1,hiddensize/2}}]:float(), nce.momGradParams[1].tensors[1]:float(), 0.000001)
+   mytester:assertTensorEq(nce2.momGradParams[1][{{},{1+(hiddensize/2), hiddensize}}]:float(), nce.momGradParams[1].tensors[2]:float(), 0.000001)
+   mytester:assertTensorEq(nce2.gradWeight[{{},{1,hiddensize/2}}]:float(), nce.gradWeight.tensors[1]:float(), 0.000001)
+   mytester:assertTensorEq(nce2.gradWeight[{{},{1+(hiddensize/2), hiddensize}}]:float(), nce.gradWeight.tensors[2]:float(), 0.000001)
 end
 
 function dpnn.test(tests)
