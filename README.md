@@ -32,7 +32,7 @@ The package provides the following Modules:
  * [SpatialFeatNormalization](#nn.SpatialFeatNormalization) : Module for widely used preprocessing step of mean zeroing and standardization for images.
  * [SpatialBinaryConvolution](#nn.SpatialBinaryConvolution) : Module for binary spatial convolution (Binary weights) as mentioned in [XNOR-Net](http://arxiv.org/pdf/1603.05279v2.pdf).
  * [SimpleColorTransform](#nn.SimpleColorTransform) : Module for adding independent random noise to input image channels.
- * [PCAColorTransform](#nn.PCAColorTransform) : Module for adding noise to input image channels using eigen vectors and values of the color values.
+ * [PCAColorTransform](#nn.PCAColorTransform) : Module for adding noise to input image using Principal Components Analysis.
 
 The following modules and criterions can be used to implement the REINFORCE algorithm :
 
