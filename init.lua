@@ -20,6 +20,7 @@ torch.include('dpnn', 'ParallelTable.lua')
 torch.include('dpnn', 'LookupTable.lua')
 torch.include('dpnn', 'SpatialBinaryConvolution.lua')
 torch.include('dpnn', 'SimpleColorTransform.lua')
+torch.include('dpnn', 'GPU.lua')
 
 -- extensions to existing criterions
 torch.include('dpnn', 'Criterion.lua')
