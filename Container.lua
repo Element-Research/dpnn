@@ -27,3 +27,25 @@ function Container:sparseParameters()
     end
     return params, gradParams, scales, size
 end
+
+function Container:parameters()
+    local function tinsert(to, from)
+        if torch.type(from) == 'table' then -- we change this line so that it works with torch.MultiCudaTensor
+            for i=1,#from do
+                tinsert(to,from[i])
+            end
+        else
+            table.insert(to,from)
+        end
+    end
+    local w = {}
+    local gw = {}
+    for i=1,#self.modules do
+        local mw,mgw = self.modules[i]:parameters()
+        if mw then
+            tinsert(w,mw)
+            tinsert(gw,mgw)
+        end
+    end
+    return w,gw
+end

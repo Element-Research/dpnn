@@ -80,3 +80,29 @@ function GPU:fromBatch(...)
       return parent.fromBatch(self, unpack(args))
    end
 end
+
+-- set the device of the decorated module
+function GPU:setDevice(device)
+   self.device = device or self.device
+   
+   local function recursiveModuleDevice(obj)
+      if type(obj) == 'table' and not (torch.isTypeOf(obj, 'nn.GPU') or torch.type(obj) == 'torch.MultiCudaTensor') then
+         for k,v in pairs(obj) do
+            obj[k] = recursiveModuleDevice(v)
+         end
+      elseif torch.type(obj):match('torch.Cuda.*Tensor') then
+         if obj:getDevice() ~= self.device then
+            obj = obj:clone() -- this will reallocate it to self.device
+            local newdevice = obj:getDevice()
+            -- when nElement() == 0 newdevice is 0
+            assert(newdevice == self.device or newdevice == 0)
+         end
+      end
+      assert(obj ~= nil)
+      return obj
+   end
+   
+   assert(self.modules[1])
+   self.modules[1] = cutorch.withDevice(self.device, function() return recursiveModuleDevice(self.modules[1]) end)
+   return self
+end

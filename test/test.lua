@@ -773,8 +773,9 @@ function dpnntest.ReinforceNormal()
 end
 
 function dpnntest.ReinforceGamma()
-   require 'randomkit'
-   require 'cephes'
+   if not pcall(function() require 'randomkit'; require 'cephes' end) then
+      return
+   end
    local input = torch.rand(500,1000):fill(250) -- shapes
    local gradOutput = torch.Tensor() -- will be ignored
    local reward = torch.randn(500)
