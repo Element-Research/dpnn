@@ -32,6 +32,7 @@ The package provides the following Modules:
  * [SpatialFeatNormalization](#nn.SpatialFeatNormalization) : Module for widely used preprocessing step of mean zeroing and standardization for images.
  * [SpatialBinaryConvolution](#nn.SpatialBinaryConvolution) : Module for binary spatial convolution (Binary weights) as mentioned in [XNOR-Net](http://arxiv.org/pdf/1603.05279v2.pdf).
  * [SimpleColorTransform](#nn.SimpleColorTransform) : Module for adding independent random noise to input image channels.
+ * [PCAColorTransform](#nn.PCAColorTransform) : Module for adding noise to input image channels using eigen vectors and values of the color values.
 
 The following modules and criterions can be used to implement the REINFORCE algorithm :
 
@@ -660,7 +661,18 @@ Functioning of SpatialBinaryConvolution is similar to nn/SpatialConvolution. Onl
 range = torch.rand(inputChannels) -- Typically range is specified by user.
 module = nn.SimpleColorTransform(inputChannels, range)
 ```
-This module performs a simple data augmentation technique. SimpleColorTransform module adds random noise to each color channel independently. In more advanced data augmentation technique noise is added using principal components of color channels (We haven't implemented it yet).
+This module performs a simple data augmentation technique. SimpleColorTransform module adds random noise to each color channel independently. In more advanced data augmentation technique noise is added using principal components of color channels. For that please check *PCAColorTransform*
+
+<a name='nn.PCAColorTransform'></a>
+## PCAColorTransform ##
+
+```lua
+eigenVectors = torch.rand(inputChannels, inputChannels) -- Eigen Vectors
+eigenValues = torch.rand(inputChannels) -- Eigen
+std = 0.1 -- Std deviation of normal distribution with mean zero for noise.
+module = nn.PCAColorTransform(inputChannels, eigenVectors, eigenValues, std)
+```
+This module performs a data augmentation using Principal Component analysis of pixel values. When in training mode, mulitples of principal components are added to input image pixels. Magnitude of values added (noise) is dependent upon the corresponding eigen value and `std` value provided (default 0.1). This technique was used in the famous [AlexNet](https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf) paper.
 
 <a name = 'nn.OneHot'></a>
 ## OneHot ##
