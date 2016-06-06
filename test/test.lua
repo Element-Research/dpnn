@@ -1979,6 +1979,35 @@ function dpnntest.SimpleColorTransform()
    end
 end
 
+-- Unit Test PCAColorTransform
+function dpnntest.PCAColorTransform()
+   local hasCuda = pcall(function() require 'cunn' end)
+   local useCudas = {false, hasCuda}
+   local std = 0.1
+   local value = 145
+   local rangeValue = 1800
+   local precision = rangeValue * 3 * std
+   local eigenVectors = torch.Tensor({{ 0.58786434,  0.56388045,  0.58004685},
+                                      {-0.65427388, -0.0902746 ,  0.75085031},
+                                      {-0.47575331,  0.82090763, -0.31586303}})
+   local eigenValues = torch.Tensor({4491.21, 722.85, 68.07})
+   local model = nn.PCAColorTransform(3, eigenVectors, eigenValues, std)
+   local input = torch.zeros(32, 3, 100, 100):fill(value)
+
+   for _, useCuda in pairs(useCudas) do
+      if useCuda then
+         model:cuda()
+         input = input:cuda()
+      end
+      local output = model:forward(input)
+      mytester:assert(output:std() <= rangeValue+precision,
+                       "PCAColorTransform output value incorrect.")
+      local gradInput = model:backward(input, input)
+      mytester:assert(gradInput:sum() == input:sum(),
+                       "PCAColorTransform gradInput value incorrect.")
+   end
+end
+
 -- Unit Test Kmeans layer
 function dpnnbigtest.Kmeans()
    local k = 10
@@ -2110,6 +2139,12 @@ function dpnntest.OneHot()
    mytester:assertTensorEq(output, output2, 0.000001, "OneHot forward batch err")
    mytester:assert(output:dim() == 2)
 
+   -- non-batch mode (number input)
+   local num = 3
+   local output3 = torch.zeros(nClass)
+   output3[num] = 1.0
+   mytester:assertTensorEq(oh:forward(num), output3, 0.000001, "OneHot forward number err")
+
    local gradInput = oh:backward(input, gradOutput)
    mytester:assertTensorEq(gradInput, input:double():zero(), 0.000001, "OneHot backward batch err")
 
@@ -2132,6 +2167,9 @@ function dpnntest.OneHot()
       local gradInput2 = oh:backward(input, gradOutput)
       mytester:assertTensorEq(gradInput, gradInput2:double(), 0.000001, "OneHot backward batch err")
       cutorch.synchronize()
+
+      -- non-batch mode (number input)
+      mytester:assertTensorEq(oh:forward(num), output3:cuda(), 0.000001, "OneHot forward number err")
    end
    
    -- multi-dimensional input

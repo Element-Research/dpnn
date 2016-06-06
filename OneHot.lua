@@ -9,12 +9,24 @@ function OneHot:__init(outputSize)
 end
 
 function OneHot:updateOutput(input)
-   local size = input:size():totable()
+   local size
+   if type(input) == 'number' then
+      if self:type() == 'torch.CudaTensor' then
+         self._single = self._single or torch.CudaTensor():resize(1);
+      else
+         self._single = self._single or torch.LongTensor():resize(1);
+      end
+      self._single[1] = input
+      input = self._single;
+      size = {}
+   else
+      size = input:size():totable()
+   end
    table.insert(size, self.outputSize)
    
    self.output:resize(unpack(size)):zero()
    
-   size[input:dim()+1] = 1
+   size[#size] = 1
    local input_ = input:view(unpack(size))
    
    if torch.type(input) == 'torch.CudaTensor' or torch.type(input) == 'torch.ClTensor' then
@@ -38,11 +50,16 @@ function OneHot:updateOutput(input)
 end
 
 function OneHot:updateGradInput(input, gradOutput)
-   self.gradInput:resize(input:size()):zero()
-   return self.gradInput
+   if type(input) == 'number' then
+      return 0
+   else
+      self.gradInput:resize(input:size()):zero()
+      return self.gradInput
+   end
 end
 
 function OneHot:type(type, typecache)
+   self._single = nil
    self._input = nil
    return parent.type(self, type, typecache)
 end
