@@ -2237,7 +2237,7 @@ function dpnntest.OneHot()
    end
 end
 
-function dpnntest.NCE()
+function dpnntest.NCE_main()
    local batchsize = 4
    local k = 10
    local inputsize = 3
@@ -2392,7 +2392,7 @@ function dpnntest.NCE()
       local linear = nn.Linear(inputsize, outputsize)
       linear.weight:copy(ncem.weight)
       linear.bias:copy(ncem.bias)
-      local mlp = nn.Sequential():add(linear):add(nn.Exp())
+      local mlp = nn.Sequential():add(linear):add(nn.Exp()):add(nn.MulConstant(1/ncem.Z[1]))
       mlp:cuda()
 
       local output2_ = mlp:forward(input)
