@@ -3,7 +3,7 @@
 -- Ref.: A. https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf
 ------------------------------------------------------------------------
 local NCEModule, parent = torch.class("nn.NCEModule", "nn.Linear")
-NCEModule.version = 4 -- added batchnoise
+NCEModule.version = 5 -- added batchnoise
 
 -- for efficient serialization using nn.Serial
 local empty = _.clone(parent.dpnn_mediumEmpty)
@@ -68,7 +68,7 @@ function NCEModule:updateOutput(inputTable)
       if self.addBuffer:nElement() ~= batchsize then
          self.addBuffer:resize(batchsize):fill(1)
       end
-      self.linout:addmm(0, self.linout, 1, input, self.weight:t())
+      self.weight.addmm(self.linout, 0, self.linout, 1, input, self.weight:t())
       if self.bias then self.linout:addr(1, self.addBuffer, self.bias) end
       self.output = torch.type(self.output) == 'table' and input.new() or self.output
       if self.logsoftmax then
@@ -96,8 +96,8 @@ function NCEModule:updateOutput(inputTable)
       self.sampleidx:resize(self.k + batchsize)
       
       -- build (batchsize+k, inputsize) weight tensor
-      self._weight = self._weight or self.weight.new()
-      self._weight:index(self.weight, 1, self.sampleidx)
+      self._weight = self._weight or self.bias.new()
+      self.weight.index(self._weight, self.weight, 1, self.sampleidx)
       assert(self._weight:nElement() == (self.k+batchsize)*inputsize)
       self._weight:resize(self.k+batchsize, inputsize)
       
@@ -175,8 +175,8 @@ function NCEModule:updateOutput(inputTable)
       end
       
       -- build (batchsize x k+1 x inputsize) weight tensor
-      self._weight = self._weight or self.weight.new()
-      self._weight:index(self.weight, 1, self.sampleidx:view(-1))
+      self._weight = self._weight or self.bias.new()
+      self.weight.index(self._weight, self.weight, 1, self.sampleidx:view(-1))
       assert(self._weight:nElement() == batchsize*(self.k+1)*inputsize)
       self._weight:resize(batchsize, self.k+1, inputsize)
       
@@ -284,7 +284,7 @@ function NCEModule:accGradParameters(inputTable, gradOutput, scale)
    local inputsize = self.weight:size(2)
    
    if self.batchnoise then
-      self._gradWeight = self._gradWeight or self.gradWeight.new()
+      self._gradWeight = self._gradWeight or self.bias.new()
       self._gradWeight:resizeAs(self._weight):zero() -- (batchsize + k) x inputsize
       
       local sgradWeight = self._gradWeight:narrow(1, 1, self.k)
@@ -302,7 +302,7 @@ function NCEModule:accGradParameters(inputTable, gradOutput, scale)
       self.gradBias:indexAdd(1, self.sampleidx:sub(1,self.k), self._tgradOutput:view(-1))
       
    else
-      self._gradWeight = self._gradWeight or self.gradWeight.new()
+      self._gradWeight = self._gradWeight or self.bias.new()
       self._gradWeight:resizeAs(self._weight):zero() -- batchsize x k+1 x inputsize
       self._gradOutput:resize(batchsize, self.k+1, 1)
       self._gradOutput:mul(scale)
@@ -333,7 +333,23 @@ function NCEModule:type(type, cache)
    local unigrams = self.unigrams
    self.unigrams = nil
    local am = self.aliasmultinomial
-   local rtn = parent.type(self, type, cache)
+   
+   local rtn
+   if type and torch.type(self.weight) == 'torch.MultiCudaTensor' then
+      assert(type == 'torch.CudaTensor', "Cannot convert a multicuda NCEModule to anything other than cuda")
+      local weight = self.weight
+      local gradWeight = self.gradWeight
+      self.weight = nil
+      self.gradWeight = nil
+      
+      rtn = parent.type(self, type, cache)
+      
+      self.weight = weight
+      self.gradWeight = gradWeight
+   else
+      rtn = parent.type(self, type, cache)
+   end
+   
    self.unigrams = unigrams
    self.aliasmultinomial = am
    return rtn
@@ -382,4 +398,26 @@ function NCEModule:clearState()
    for i,gradInput in ipairs(self.gradInput) do
       gradInput:set()
    end
+end
+
+function NCEModule:multicuda(device1, device2)
+   assert(device1 and device2, "specify two devices as arguments")
+   require 'torchx'
+   assert(torchx.version and torchx.version >= 1, "update torchx: luarocks install torchx")
+   
+   self:float()
+   
+   local isize = self.weight:size(2)
+   local weights = {
+      cutorch.withDevice(device1, function() return self.weight[{{}, {1, torch.round(isize/2)}}]:cuda() end),
+      cutorch.withDevice(device2, function() return self.weight[{{}, {torch.round(isize/2)+1, isize}}]:cuda() end)
+   }
+   self.weight = torch.MultiCudaTensor(2, weights)
+   local gradWeights = {
+      cutorch.withDevice(device1, function() return self.gradWeight[{{}, {1, torch.round(isize/2)}}]:cuda() end),
+      cutorch.withDevice(device2, function() return self.gradWeight[{{}, {torch.round(isize/2)+1, isize}}]:cuda() end)
+   }
+   self.gradWeight = torch.MultiCudaTensor(2, gradWeights)
+   
+   self:cuda()
 end

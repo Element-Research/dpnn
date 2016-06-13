@@ -69,7 +69,7 @@ function Module:sharedClone(shareParams, shareGradParams, stepClone)
                   if param then
                      params[paramName] = param
                      obj[paramName] = nil
-                     if param:storage() then
+                     if torch.isTensor(param) and param.storage and param:storage() then
                         pointers[torch.pointer(param:storage():data())] = true
                      end
                   end
@@ -82,7 +82,7 @@ function Module:sharedClone(shareParams, shareGradParams, stepClone)
                   if gradParam then
                      params[paramName] = gradParam
                      obj[paramName] = nil
-                     if gradParam:storage() then
+                     if torch.isTensor(gradParam) and gradParam.storage and gradParam:storage() then
                         pointers[torch.pointer(gradParam:storage():data())] = true
                      end
                   end
@@ -144,8 +144,13 @@ function Module:sharedClone(shareParams, shareGradParams, stepClone)
                clone[k] = param
                original[k] = param
             elseif torch.isTensor(param) then
-               clone[k] = param.new():set(param)
-               original[k] = param
+               if param.storage then
+                  clone[k] = param.new():set(param)
+                  original[k] = param
+               else -- for torch.MultiCudaTensor
+                  clone[k] = param
+                  original[k] = param
+               end
             elseif type(param) == 'table' then
                recursiveSet(clone[k], original[k], param)
             end
@@ -397,7 +402,7 @@ function Module:gradParamClip(cutoffNorm, moduleLocal)
    local norm = 0
    if moduleLocal and self.modules then
       for i,module in ipairs(self.modules) do
-         norm = norm + math.pow(module:gradParamClip(maxOutNorm, maxInNorm), 2)
+         norm = norm + math.pow(module:gradParamClip(cutoffNorm, moduleLocal), 2)
       end
       norm = math.sqrt(norm)
    else
@@ -406,13 +411,25 @@ function Module:gradParamClip(cutoffNorm, moduleLocal)
          return norm
       end
       for k,gradParam in pairs(gradParams) do -- pairs for sparse params
-         norm = norm + math.pow(gradParam:norm(),2)
+         if torch.type(gradParam) == 'torch.CudaTensor' then
+            cutorch.withDevice(gradParam:getDevice(), function() -- support multi-device models
+               norm = norm + math.pow(gradParam:norm(),2)
+            end)
+         else
+            norm = norm + math.pow(gradParam:norm(),2)
+         end
       end
       norm = math.sqrt(norm)
       if norm > cutoffNorm then
          -- rescale gradParams to obtain desired cutoffNorm
          for k,gradParam in pairs(gradParams) do
-            gradParam:mul(cutoffNorm/norm)
+            if torch.type(gradParam) == 'torch.CudaTensor' then
+               cutorch.withDevice(gradParam:getDevice(), function() -- support multi-device models
+                  gradParam:mul(cutoffNorm/norm)
+               end)
+            else
+               gradParam:mul(cutoffNorm/norm)
+            end
          end
       end
    end
@@ -455,7 +472,13 @@ function Module:momentumGradParameters()
       end
       self.momGradParams = {}
       for i,gradParam in pairs(gradParams) do 
-         self.momGradParams[i] = gradParam.new():resizeAs(gradParam):copy(gradParam)
+         if torch.type(gradParam) == 'torch.CudaTensor' then
+            cutorch.withDevice(gradParam:getDevice(), function() -- support multi-device models
+               self.momGradParams[i] = gradParam.new():resizeAs(gradParam):copy(gradParam)
+            end)
+         else
+            self.momGradParams[i] = gradParam.new():resizeAs(gradParam):copy(gradParam)
+         end
       end
    end
    return self.momGradParams
@@ -484,7 +507,8 @@ function Module:updateGradParameters(momFactor, momDamp, momNesterov)
       end
       local momGradParams = self:momentumGradParameters()
       for i,gradParam in pairs(gradParams) do
-         momGradParams[i]:mul(momFactor):add(1-momDamp, gradParam)
+         momGradParams[i]:mul(momFactor)
+         momGradParams[i]:add(1-momDamp, gradParam)
       end
       
       if momNesterov then
