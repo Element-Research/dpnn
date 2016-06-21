@@ -40,6 +40,19 @@ function NCEModule:__init(inputSize, outputSize, k, unigrams, Z)
    self.gradInput = {torch.Tensor(), torch.Tensor()}
 end
 
+function NCEModule:reset(stdv)
+   if stdv then
+      self.weight:uniform(-stdv, stdv)
+      self.bias:uniform(-stdv, stdv)
+   else
+      stdv = stdv or 1./math.sqrt(self.weight:size(2))
+      self.weight:uniform(-stdv, stdv)
+      -- this is useful for Z = 1
+      self.bias:fill(-math.log(self.weight:size(1)))
+   end
+   return self
+end
+
 function NCEModule:fastNoise()
    -- we use alias to speedup multinomial sampling (see noiseSample method)
    require 'torchx'
@@ -85,6 +98,7 @@ function NCEModule:updateOutput(inputTable)
    elseif self.batchnoise then
       self.output = (torch.type(self.output) == 'table' and #self.output == 4) and self.output
          or {input.new(), input.new(), input.new(), input.new()}
+      assert(torch.type(target) == 'torch.CudaTensor' or torch.type(target) == 'torch.LongTensor')
       self.sampleidx = self.sampleidx or target.new()
       
       -- the last elements contain the target indices
