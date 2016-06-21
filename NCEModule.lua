@@ -3,7 +3,7 @@
 -- Ref.: A. https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf
 ------------------------------------------------------------------------
 local NCEModule, parent = torch.class("nn.NCEModule", "nn.Linear")
-NCEModule.version = 5 -- added batchnoise
+NCEModule.version = 6 -- better bias init
 
 -- for efficient serialization using nn.Serial
 local empty = _.clone(parent.dpnn_mediumEmpty)
