@@ -48,7 +48,7 @@ function NCEModule:reset(stdv)
       stdv = stdv or 1./math.sqrt(self.weight:size(2))
       self.weight:uniform(-stdv, stdv)
       -- this is useful for Z = 1
-      self.bias:fill(-math.log(self.weight:size(1)))
+      self.bias:fill(-math.log(self.bias:size(1)))
    end
    return self
 end
@@ -358,6 +358,7 @@ function NCEModule:type(type, cache)
       
       rtn = parent.type(self, type, cache)
       
+      assert(torch.type(self.aliasmultinomial.J) ~= 'torch.CudaTensor')
       self.weight = weight
       self.gradWeight = gradWeight
    else
