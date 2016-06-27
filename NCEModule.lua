@@ -2,6 +2,7 @@
 --[[ Noise Contrast Estimation Module]]--
 -- Ref.: A. https://www.cs.toronto.edu/~amnih/papers/ncelm.pdf
 ------------------------------------------------------------------------
+local _ = require 'moses'
 local NCEModule, parent = torch.class("nn.NCEModule", "nn.Linear")
 NCEModule.version = 3
 

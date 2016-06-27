@@ -1,7 +1,7 @@
 require 'torch'
 require 'nn'
 require 'nnx'
-_ = require 'moses'
+local _ = require 'moses'
 
 -- create global dpnn table
 dpnn = {}
@@ -10,73 +10,75 @@ dpnn.version = 2
 unpack = unpack or table.unpack -- lua 5.2 compat
 
 -- for testing:
-torch.include('dpnn', 'test.lua')
+require('dpnn.test')
 
 -- extensions to existing modules
-torch.include('dpnn', 'Module.lua')
-torch.include('dpnn', 'Container.lua')
-torch.include('dpnn', 'Sequential.lua')
-torch.include('dpnn', 'ParallelTable.lua')
-torch.include('dpnn', 'LookupTable.lua')
-torch.include('dpnn', 'SpatialBinaryConvolution.lua')
-torch.include('dpnn', 'SimpleColorTransform.lua')
-torch.include('dpnn', 'PCAColorTransform.lua')
+require('dpnn.Module')
+require('dpnn.Container')
+require('dpnn.Sequential')
+require('dpnn.ParallelTable')
+require('dpnn.LookupTable')
+require('dpnn.SpatialBinaryConvolution')
+require('dpnn.SimpleColorTransform')
+require('dpnn.PCAColorTransform')
 
 -- extensions to existing criterions
-torch.include('dpnn', 'Criterion.lua')
+require('dpnn.Criterion')
 
 -- extensions to make serialization more efficient
-torch.include('dpnn', 'SpatialMaxPooling.lua')
-torch.include('dpnn', 'SpatialConvolution.lua')
-torch.include('dpnn', 'SpatialConvolutionMM.lua')
-torch.include('dpnn', 'SpatialBatchNormalization.lua')
-torch.include('dpnn', 'BatchNormalization.lua')
+require('dpnn.SpatialMaxPooling')
+require('dpnn.SpatialConvolution')
+require('dpnn.SpatialConvolutionMM')
+require('dpnn.SpatialBatchNormalization')
+require('dpnn.BatchNormalization')
 
 -- decorator modules
-torch.include('dpnn', 'Decorator.lua')
-torch.include('dpnn', 'Serial.lua')
-torch.include('dpnn', 'DontCast.lua')
-torch.include('dpnn', 'NaN.lua')
+require('dpnn.Decorator')
+require('dpnn.Serial')
+require('dpnn.DontCast')
+require('dpnn.NaN')
 
 -- modules
-torch.include('dpnn', 'PrintSize.lua')
-torch.include('dpnn', 'Convert.lua')
-torch.include('dpnn', 'Constant.lua')
-torch.include('dpnn', 'Collapse.lua')
-torch.include('dpnn', 'ZipTable.lua')
-torch.include('dpnn', 'ZipTableOneToMany.lua')
-torch.include('dpnn', 'CAddTensorTable.lua')
-torch.include('dpnn', 'ReverseTable.lua')
-torch.include('dpnn', 'Dictionary.lua')
-torch.include('dpnn', 'Inception.lua')
-torch.include('dpnn', 'SoftMaxTree.lua')
-torch.include('dpnn', 'SoftMaxForest.lua')
-torch.include('dpnn', 'Clip.lua')
-torch.include('dpnn', 'SpatialUniformCrop.lua')
-torch.include('dpnn', 'SpatialGlimpse.lua')
-torch.include('dpnn', 'WhiteNoise.lua')
-torch.include('dpnn', 'ArgMax.lua')
-torch.include('dpnn', 'CategoricalEntropy.lua')
-torch.include('dpnn', 'TotalDropout.lua')
-torch.include('dpnn', 'Kmeans.lua')
-torch.include('dpnn', 'OneHot.lua')
-torch.include('dpnn', 'SpatialRegionDropout.lua')
-torch.include('dpnn', 'FireModule.lua')
-torch.include('dpnn', 'SpatialFeatNormalization.lua')
+require('dpnn.PrintSize')
+require('dpnn.Convert')
+require('dpnn.Constant')
+require('dpnn.Collapse')
+require('dpnn.ZipTable')
+require('dpnn.ZipTableOneToMany')
+require('dpnn.CAddTensorTable')
+require('dpnn.ReverseTable')
+require('dpnn.Dictionary')
+require('dpnn.Inception')
+require('dpnn.SoftMaxTree')
+require('dpnn.SoftMaxForest')
+require('dpnn.Clip')
+require('dpnn.SpatialUniformCrop')
+require('dpnn.SpatialGlimpse')
+require('dpnn.WhiteNoise')
+require('dpnn.ArgMax')
+require('dpnn.CategoricalEntropy')
+require('dpnn.TotalDropout')
+require('dpnn.Kmeans')
+require('dpnn.OneHot')
+require('dpnn.SpatialRegionDropout')
+require('dpnn.FireModule')
+require('dpnn.SpatialFeatNormalization')
 
 -- Noise Contrastive Estimation
-torch.include('dpnn', 'NCEModule.lua')
-torch.include('dpnn', 'NCECriterion.lua')
+require('dpnn.NCEModule')
+require('dpnn.NCECriterion')
 
 -- REINFORCE
-torch.include('dpnn', 'Reinforce.lua')
-torch.include('dpnn', 'ReinforceGamma.lua')
-torch.include('dpnn', 'ReinforceBernoulli.lua')
-torch.include('dpnn', 'ReinforceNormal.lua')
-torch.include('dpnn', 'ReinforceCategorical.lua')
-torch.include('dpnn', 'VRClassReward.lua')
+require('dpnn.Reinforce')
+require('dpnn.ReinforceGamma')
+require('dpnn.ReinforceBernoulli')
+require('dpnn.ReinforceNormal')
+require('dpnn.ReinforceCategorical')
+require('dpnn.VRClassReward')
 
 -- criterions
-torch.include('dpnn', 'ModuleCriterion.lua')
-torch.include('dpnn', 'BinaryLogisticRegression.lua')
-torch.include('dpnn', 'SpatialBinaryLogisticRegression.lua')
+require('dpnn.ModuleCriterion')
+require('dpnn.BinaryLogisticRegression')
+require('dpnn.SpatialBinaryLogisticRegression')
+
+return dpnn

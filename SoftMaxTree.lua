@@ -1,4 +1,5 @@
 local SoftMaxTree, parent = nn.SoftMaxTree, nn.Module
+local _ = require 'moses'
 
 function SoftMaxTree:momentumGradParameters()
    -- get dense view of momGradParams

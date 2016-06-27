@@ -1,4 +1,5 @@
 local SpatialConvolution, parent = nn.SpatialConvolution, nn.Module
+local _ = require 'moses'
 
 local empty = _.clone(parent.dpnn_mediumEmpty)
 table.insert(empty, 'finput')

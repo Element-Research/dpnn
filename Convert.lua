@@ -5,6 +5,7 @@
 -- Automatically converts input to same type as self.output
 -- Simplest use is for automatic input type converions : nn.Convert()
 ------------------------------------------------------------------------
+local _ = require 'moses'
 local Convert, parent = torch.class("nn.Convert", "nn.Container")
 
 function Convert:__init(inputShape, outputShape)
