@@ -1,6 +1,7 @@
-
-local dpnntest = {}
-local dpnnbigtest = {}
+local _ = require 'moses'
+require 'torch'
+local dpnntest = torch.TestSuite()
+local dpnnbigtest = torch.TestSuite()
 local precision = 1e-5
 local mytester
 

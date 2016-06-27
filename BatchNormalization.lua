@@ -1,3 +1,4 @@
+local _ = require 'moses'
 local BN, parent = nn.BatchNormalization, nn.Module
 
 local empty = _.clone(parent.dpnn_mediumEmpty)

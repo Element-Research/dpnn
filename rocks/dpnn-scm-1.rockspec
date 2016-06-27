@@ -15,6 +15,7 @@ description = {
 
 dependencies = {
    "torch >= 7.0",
+   "torchx",
    "nn >= 1.0",
    "nnx >= 0.1",
    "moses >= 1.3.1"

@@ -3,6 +3,7 @@
 -- Decorator that modifies the serialization/deserialization 
 -- behaviour of encapsulated module.
 ------------------------------------------------------------------------
+local _ = require 'moses'
 local Serial, parent = torch.class("nn.Serial", "nn.Decorator")
 
 function Serial:__init(module, tensortype)

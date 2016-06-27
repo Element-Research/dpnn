@@ -1,4 +1,5 @@
 local BN, parent = nn.SpatialBatchNormalization, nn.Module
+local _ = require 'moses'
 
 local empty = _.clone(parent.dpnn_mediumEmpty)
 table.insert(empty, 'buffer')

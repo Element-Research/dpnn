@@ -1,3 +1,5 @@
+local _ = require 'moses'
+
 local Module = nn.Module
 
 function Module:sparseParameters()
