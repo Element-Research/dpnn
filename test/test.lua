@@ -253,71 +253,6 @@ function dpnntest.Module_sharedClone()
    end
 end
 
-function dpnntest.Module_type()
-   local mlp = nn.Sequential()
-   mlp:add(nn.Linear(3,7))
-   mlp:add(nn.Tanh())
-   mlp:add(nn.Euclidean(7,4))
-   mlp:add(nn.LogSoftMax())
-   mlp:zeroGradParameters()
-   local mlp2 = mlp:sharedClone()
-   local concat = nn.ConcatTable()
-   concat:add(mlp):add(mlp2)
-   
-   concat:float()
-   
-   local input = torch.randn(2,3):float()
-   local gradOutput = torch.randn(2,4):float()
-   
-   local output = mlp:forward(input)
-   local gradInput = mlp:backwardUpdate(input, gradOutput, 0.1)
-   
-   local params, gradParams = mlp:parameters()
-   local params2, gradParams2 = mlp2:parameters()
-   
-   mytester:assert(#params == #params2, "num params err")
-   mytester:assert(#gradParams == #gradParams2, "num gradParams err")
-   
-   for i,param in ipairs(params) do
-      mytester:assertTensorEq(param, params2[i], 0.00001, " params err "..i)
-      mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.00001, " gradParams err "..i)
-   end
-   
-   local input = torch.randn(3,32,32)
-   local cnn = nn.Sequential()
-   cnn:add(nn.SpatialConvolution(3,8,5,5))
-   cnn:add(nn.ReLU())
-   cnn:add(nn.SpatialAveragePooling(2,2,2,2))
-   cnn:add(nn.SpatialConvolution(8,12,5,5))
-   cnn:add(nn.ReLU())
-   cnn:add(nn.SpatialAveragePooling(2,2,2,2))
-   local outsize = cnn:outside{1,3,32,32}
-   cnn:add(nn.Collapse(3))
-   cnn:add(nn.Linear(outsize[2]*outsize[3]*outsize[4],20))
-   cnn:add(nn.ReLU())
-   cnn:add(nn.Linear(20,10))
-   local output = cnn:forward(input):clone()
-   local gradOutput = output:clone()
-   local gradInput = cnn:backward(input, gradOutput):clone()
-   cnn:float()
-   local input3 = input:float()
-   local output3 = cnn:forward(input3):clone()
-   local gradOutput3 = output3:clone()
-   local gradInput3 = cnn:backward(input3, gradOutput3):clone()
-   local o1, o2 = output3:float(), output:float()
-   mytester:assertTensorEq(o1, o2, 0.000001)
-   mytester:assertTensorEq(gradInput3:float(), gradInput:float(), 0.00001, "type float bwd err") 
-   if pcall(function() require 'cunn' end) then
-      cnn:cuda()
-      local input2 = input3:cuda()
-      local gradOutput2 = gradOutput3:cuda()
-      local output2 = cnn:forward(input2)
-      local gradInput2 = cnn:backward(input2, gradOutput2)
-      mytester:assertTensorEq(output2:float(), output3, 0.000001)
-      mytester:assertTensorEq(gradInput2:float(), gradInput3, 0.00001, "type cuda bwd err") 
-   end
-end
-
 function dpnntest.Module_gradParamClip()
    local mlp = nn.Sequential()
    mlp:add(nn.Linear(10,10))
@@ -774,8 +709,9 @@ function dpnntest.ReinforceNormal()
 end
 
 function dpnntest.ReinforceGamma()
-   require 'randomkit'
-   require 'cephes'
+   if not pcall(function() require 'randomkit'; require 'cephes' end) then
+      return
+   end
    local input = torch.rand(500,1000):fill(250) -- shapes
    local gradOutput = torch.Tensor() -- will be ignored
    local reward = torch.randn(500)
@@ -2238,7 +2174,7 @@ function dpnntest.OneHot()
    end
 end
 
-function dpnntest.NCE()
+function dpnntest.NCE_main()
    local batchsize = 4
    local k = 10
    local inputsize = 3
@@ -2247,6 +2183,7 @@ function dpnntest.NCE()
    local noise = torch.Tensor(outputsize):random(1,100)
    
    local ncem = nn.NCEModule(inputsize, outputsize, k, noise)
+   ncem.batchnoise = false
    local ncec = nn.NCECriterion()
    
    local input = torch.randn(batchsize, inputsize)
@@ -2392,7 +2329,7 @@ function dpnntest.NCE()
       local linear = nn.Linear(inputsize, outputsize)
       linear.weight:copy(ncem.weight)
       linear.bias:copy(ncem.bias)
-      local mlp = nn.Sequential():add(linear):add(nn.Exp())
+      local mlp = nn.Sequential():add(linear):add(nn.Exp()):add(nn.MulConstant(1/ncem.Z[1]))
       mlp:cuda()
 
       local output2_ = mlp:forward(input)
@@ -2493,7 +2430,179 @@ function dpnntest.NCE_multinomial()
    mytester:assertTensorEq(probs, counts, 0.001)
 end
 
+function dpnntest.NCE_batchnoise()
+   local batchsize = 4
+   local k = 10
+   local inputsize = 3
+   local outputsize = 100
+   
+   local noise = torch.Tensor(outputsize):random(1,100)
+   
+   local ncem = nn.NCEModule(inputsize, outputsize, k, noise, 1)
+   assert(ncem.batchnoise)
+   local ncec = nn.NCECriterion()
+   
+   local ncem2 = ncem:clone()
+   ncem2.batchnoise = false
+   local ncec2 = ncec:clone()
+   
+   local input = torch.randn(batchsize, inputsize)
+   local target = torch.LongTensor(batchsize):random(1,outputsize)
+   local inputTable = {input, target}
+   
+   -- test training 
+   
+   -- NCEModule.forward
+   local output = ncem:forward(inputTable)
+   
+   mytester:assert(torch.type(output) == 'table')
+   mytester:assert(#output == 4)
+   
+   local Pmt, Pms, Pnt, Pns = unpack(output)
+   
+   mytester:assertTableEq(Pmt:size():totable(), {batchsize}, 0.0000001)
+   mytester:assertTableEq(Pms:size():totable(), {batchsize, k}, 0.0000001)
+   mytester:assertTableEq(Pnt:size():totable(), {batchsize}, 0.0000001)
+   mytester:assertTableEq(Pns:size():totable(), {batchsize, k}, 0.0000001)
+   
+   mytester:assert(ncem.sampleidx:min() >= 1 and ncem.sampleidx:max() <= outputsize)
+   
+   local sampleprob2 = noise:index(1, ncem.sampleidx:view(-1))
+   mytester:assertTensorEq(sampleprob2:narrow(1,k+1,batchsize), Pnt, 0.0000001)
+   mytester:assertTensorEq(sampleprob2:narrow(1,1,k):contiguous():view(1,k):expand(batchsize, k), Pns, 0.0000001)
+   
+   function ncem2.noiseSample(self, sampleidx, batchsize, k)
+      sampleidx:resize(batchsize, k):copy(ncem.sampleidx:narrow(1,1,k):view(1, k):expand(batchsize, k))
+      return sampleidx
+   end
+   
+   local output2 = ncem2:forward(inputTable)
+   local Pmt2, Pms2, Pnt2, Pns2 = unpack(output2)
+   
+   mytester:assertTensorEq(Pmt, Pmt2, 0.000001)
+   mytester:assertTensorEq(Pms, Pms2, 0.000001)
+   
+   -- NCECriterion.forward
+   local loss = ncec:forward(output, target)
+   local loss2 = ncec2:forward(output, target)
+   
+   mytester:assert(math.abs(loss - loss2) < 0.000001)
+      
+   -- NCECriterion.backward
+   local gradOutput = ncec:backward(output, target)
+   local gradOutput2 = ncec2:backward(output, target)
+   
+   mytester:assert(#gradOutput == 4)
+   mytester:assert(math.abs(gradOutput[3]:sum()) < 0.0000001)
+   mytester:assert(math.abs(gradOutput[4]:sum()) < 0.0000001)
+   
+   mytester:assertTensorEq(gradOutput[1], gradOutput2[1], 0.0000001)
+   mytester:assertTensorEq(gradOutput[2], gradOutput2[2], 0.0000001)
+   
+   -- NCEModule.backward
+   ncem:zeroGradParameters()
+   local gradInput = ncem:backward(inputTable, gradOutput)
+   
+   ncem2:zeroGradParameters()
+   local gradInput2 = ncem2:backward(inputTable, gradOutput2)
+   
+   -- updateGradInput
+   mytester:assertTensorEq(gradInput[1], gradInput2[1], 0.0000001)
+   
+   -- accGradParameters
+   local params, gradParams = ncem:parameters()
+   local params2, gradParams2 = ncem2:parameters()
+   
+   for i=1,#params do
+      mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.0000001, tostring(gradParams[i])..tostring(gradParams2[i]))
+   end
+   
+   
+   if pcall(function() require 'cunn' end) then
+      -- test training with cuda 
+   
+      ncem:cuda()
+      ncec:cuda()
+      
+      ncem2:cuda()
+      ncec2:cuda()
+      
+      local input = input:cuda()
+      local target = target:cuda()
+      local noise = noise:cuda()
+      
+      local inputTable = {input, target}
+      
+      -- NCEModule.forward
+      local output = ncem:forward(inputTable)
+      
+      mytester:assert(torch.type(output) == 'table')
+      mytester:assert(#output == 4)
+      
+      local Pmt, Pms, Pnt, Pns = unpack(output)
+      
+      mytester:assertTableEq(Pmt:size():totable(), {batchsize}, 0.0000001)
+      mytester:assertTableEq(Pms:size():totable(), {batchsize, k}, 0.0000001)
+      mytester:assertTableEq(Pnt:size():totable(), {batchsize}, 0.0000001)
+      mytester:assertTableEq(Pns:size():totable(), {batchsize, k}, 0.0000001)
+      
+      mytester:assert(ncem.sampleidx:min() >= 1 and ncem.sampleidx:max() <= outputsize)
+      
+      local sampleprob2 = noise:index(1, ncem.sampleidx:view(-1))
+      mytester:assertTensorEq(sampleprob2:narrow(1,k+1,batchsize), Pnt, 0.0000001)
+      mytester:assertTensorEq(sampleprob2:narrow(1,1,k):contiguous():view(1,k):expand(batchsize, k), Pns, 0.0000001)
+      
+      function ncem2.noiseSample(self, sampleidx, batchsize, k)
+         sampleidx:resize(batchsize, k):copy(ncem.sampleidx:narrow(1,1,k):view(1, k):expand(batchsize, k))
+         return sampleidx
+      end
+      
+      local output2 = ncem2:forward(inputTable)
+      local Pmt2, Pms2, Pnt2, Pns2 = unpack(output2)
+      
+      mytester:assertTensorEq(Pmt, Pmt2, 0.000001)
+      mytester:assertTensorEq(Pms, Pms2, 0.000001)
+      
+      -- NCECriterion.forward
+      local loss = ncec:forward(output, target)
+      local loss2 = ncec2:forward(output, target)
+      
+      mytester:assert(math.abs(loss - loss2) < 0.000001)
+         
+      -- NCECriterion.backward
+      local gradOutput = ncec:backward(output, target)
+      local gradOutput2 = ncec2:backward(output, target)
+      
+      mytester:assert(#gradOutput == 4)
+      mytester:assert(math.abs(gradOutput[3]:sum()) < 0.0000001)
+      mytester:assert(math.abs(gradOutput[4]:sum()) < 0.0000001)
+      
+      mytester:assertTensorEq(gradOutput[1], gradOutput2[1], 0.0000001)
+      mytester:assertTensorEq(gradOutput[2], gradOutput2[2], 0.0000001)
+      
+      -- NCEModule.backward
+      ncem:zeroGradParameters()
+      local gradInput = ncem:backward(inputTable, gradOutput)
+      
+      ncem2:zeroGradParameters()
+      local gradInput2 = ncem2:backward(inputTable, gradOutput2)
+      
+      -- updateGradInput
+      mytester:assertTensorEq(gradInput[1], gradInput2[1], 0.0000001)
+      
+      -- accGradParameters
+      local params, gradParams = ncem:parameters()
+      local params2, gradParams2 = ncem2:parameters()
+      
+      for i=1,#params do
+         mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.000001, tostring(gradParams[i])..tostring(gradParams2[i]))
+      end
+   end
+end
+
 function dpnnbigtest.NCE_benchmark()
+   pcall(function() require 'cunn' end) -- make sure to import cunn before initializing large tensors, else weird segfault...
+   
    local nclass = 1000000
    local hiddensize = 200
    local batchsize = 50
@@ -2522,8 +2631,6 @@ function dpnnbigtest.NCE_benchmark()
       sync = function() cutorch.synchronize() end
    end
    
-   print(torch.type(nce.unigrams))
-   
    local output = nce:forward{input, target}
    local loss = crit:forward(output, target)
    local gradOutput = crit:backward(output, target)
@@ -2533,8 +2640,8 @@ function dpnnbigtest.NCE_benchmark()
    local loss = nll:forward(output, target)
    local gradOutput = nll:backward(output, target)
    local gradInput = mlp:backward(input, gradOutput)
-   sync()
    
+   sync()
    local a = torch.Timer()
    for i=1,nloop do
       output = nce:forward{input, target}
@@ -2564,7 +2671,6 @@ function dpnnbigtest.NCE_benchmark()
    local ncebwd = a:time().real
    
    -- mlp nll
-   
    local a = torch.Timer()
    for i=1,nloop do
       output = mlp:forward(input)
@@ -2600,6 +2706,38 @@ function dpnnbigtest.NCE_benchmark()
    print("criterion:backward (nce vs nll)", critbwd, nllbwd)
    print("module:backward (nce vs linear)", ncebwd, mlpbwd)
    print("total (nce vs linear)", ncetotal, lintotal, lintotal/ncetotal)
+   
+   if not (cunn and cutorch.getDeviceCount() > 1) then
+      return
+   end
+   
+   nce:multicuda(1,2)
+   
+   local output = nce:forward{input, target}
+   local loss = crit:forward(output, target)
+   local gradOutput = crit:backward(output, target)
+   local gradInput = nce:backward({input, target}, gradOutput)
+   sync()
+   
+   local a = torch.Timer()
+   for i=1,nloop do
+      output = nce:forward{input, target}
+   end
+   sync()
+   local ncefwd2 = a:time().real
+   
+   a:reset()
+   for i=1,nloop do
+      gradInput = nce:backward({input, target}, gradOutput)
+   end
+   sync()
+   local ncebwd2 = a:time().real
+   
+   local total1 = ncefwd+ncebwd
+   local total2 = ncefwd2+ncebwd2
+   print("module:forward (1 vs 2 gpu)", ncefwd, ncefwd2)
+   print("module:backward (1 vs 2 gpu)", ncebwd, ncebwd2)
+   print("total (1 vs 2 gpu)", total1, total2, total2/total1)
 end
 
 function dpnntest.NaN()
@@ -2636,6 +2774,88 @@ function dpnntest.NaN()
    gradOutput:uniform(0,1)
    lin.gradBias:fill(sum)
    mytester:assert(not pcall(function() nan:backward(input, gradOutput) end))
+end
+
+function dpnntest.NCE_multicuda()
+   if not pcall(function() require 'torchx' end) then
+      return
+   end
+   if not pcall(function() require 'cunn' end) then
+      return
+   end
+   if cutorch.getDeviceCount() < 2 then 
+      return
+   end
+   assert(torchx.version and torchx.version >= 1, "Update torchx")
+   
+   local nclass = 1000
+   local hiddensize = 20
+   local batchsize = 5
+   local k = 25
+   local unigrams = torch.Tensor(nclass):uniform(0,1)
+   local noise = torch.LongTensor(batchsize, k):random(1,nclass)
+   
+   local crit = nn.NCECriterion():cuda()
+   local crit2 = nn.NCECriterion():cuda()
+   
+   local nce = nn.NCEModule(hiddensize, nclass, k, unigrams)
+   nce.batchnoise = math.random() < 0.5
+   
+   -- make it deterministic
+   nce.noiseSample = function(self, sampleidx, batchsize, k)
+      sampleidx:resize(batchsize, k)
+      sampleidx:copy(noise:narrow(1,1,batchsize))
+      return sampleidx
+   end
+   
+   local nce2 = nce:clone()
+   nce2:cuda()
+   
+   local input = torch.randn(batchsize, hiddensize):cuda()
+   local target = torch.LongTensor(batchsize):random(1,nclass):cuda()
+   
+   nce:multicuda(1, 2)
+   
+   local output = nce:forward{input, target}
+   local loss = crit:forward(output, target)
+   local gradOutput = crit:backward(output, target)
+   nce:zeroGradParameters()
+   local gradInput = nce:backward({input, target}, gradOutput)
+   
+   local output2 = nce2:forward{input, target}
+   local loss2 = crit2:forward(output2, target)
+   local gradOutput2 = crit2:backward(output2, target)
+   nce2:zeroGradParameters()
+   local gradInput2 = nce2:backward({input, target}, gradOutput2)
+   
+   mytester:assertTensorEq(output[1], output2[1], 0.00001)
+   mytester:assertTensorEq(output[2], output2[2], 0.00001)
+   mytester:assertTensorEq(output[3], output2[3], 0.00001)
+   mytester:assertTensorEq(output[4], output2[4], 0.00001)
+   
+   mytester:assertTensorEq(gradInput[1], gradInput2[1], 0.00001)
+   mytester:assertTensorEq(gradInput[2], gradInput2[2], 0.00001)
+   
+   
+   nce2:updateParameters(0.1)
+   nce:updateParameters(0.1)
+   
+   mytester:assertTensorEq(nce2.bias, nce.bias, 0.000001)
+   mytester:assertTensorEq(nce2.gradBias, nce.gradBias, 0.000001)
+   mytester:assertTensorEq(nce2.weight[{{},{1,hiddensize/2}}]:float(), nce.weight.tensors[1]:float(), 0.000001)
+   mytester:assertTensorEq(nce2.weight[{{},{1+(hiddensize/2), hiddensize}}]:float(), nce.weight.tensors[2]:float(), 0.000001)
+   mytester:assertTensorEq(nce2.gradWeight[{{},{1,hiddensize/2}}]:float(), nce.gradWeight.tensors[1]:float(), 0.000001)
+   mytester:assertTensorEq(nce2.gradWeight[{{},{1+(hiddensize/2), hiddensize}}]:float(), nce.gradWeight.tensors[2]:float(), 0.000001)
+   
+   -- test momentum
+   nce2:updateGradParameters(0.9)
+   nce:updateGradParameters(0.9)
+   
+   mytester:assertTensorEq(nce2.gradBias, nce.gradBias, 0.000001)
+   mytester:assertTensorEq(nce2.momGradParams[1][{{},{1,hiddensize/2}}]:float(), nce.momGradParams[1].tensors[1]:float(), 0.000001)
+   mytester:assertTensorEq(nce2.momGradParams[1][{{},{1+(hiddensize/2), hiddensize}}]:float(), nce.momGradParams[1].tensors[2]:float(), 0.000001)
+   mytester:assertTensorEq(nce2.gradWeight[{{},{1,hiddensize/2}}]:float(), nce.gradWeight.tensors[1]:float(), 0.000001)
+   mytester:assertTensorEq(nce2.gradWeight[{{},{1+(hiddensize/2), hiddensize}}]:float(), nce.gradWeight.tensors[2]:float(), 0.000001)
 end
 
 function dpnn.test(tests)
