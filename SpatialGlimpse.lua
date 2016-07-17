@@ -111,6 +111,9 @@ end
 
 function SpatialGlimpse:updateGradInput(inputTable, gradOutput)
    local input, location = unpack(inputTable)
+   if #self.gradInput ~= 2 then
+      self.gradInput = {input.new(), input.new()}
+   end
    local gradInput, gradLocation = unpack(self.gradInput)
    input, location = self:toBatch(input, 3), self:toBatch(location, 1)
    gradOutput = self:toBatch(gradOutput, 3)
