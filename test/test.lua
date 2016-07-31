@@ -2858,6 +2858,62 @@ function dpnntest.NCE_multicuda()
    mytester:assertTensorEq(nce2.gradWeight[{{},{1+(hiddensize/2), hiddensize}}]:float(), nce.gradWeight.tensors[2]:float(), 0.000001)
 end
 
+function dpnntest.LSRC()
+   local inputsize = 4
+   local outputsize = 10
+   local noutputindex = 3
+   local batchsize = 2
+   
+   local inputval = torch.randn(batchsize, inputsize)
+   local outputid = torch.LongTensor(batchsize, noutputindex):random(1,outputsize)
+   local input = {inputval, outputid}
+   local gradOutput = torch.randn(batchsize)
+   
+   local lsrc = nn.LSRC(inputsize, outputsize)
+   local linear = nn.Linear(inputsize, outputsize)
+   linear.weight:copy(lsrc.weight)
+   linear.bias:copy(lsrc.bias)
+   
+   local output = lsrc:forward(input)
+   for i=1,batchsize do
+      local y = output[i]
+      local found = false
+      outputid[i]:apply(function(x) if y == x then found = true end end)
+      mytester:assert(found)
+   end
+   
+   local l_output = linear:forward(inputval)
+   local sl_output = l_output:gather(2, outputid)
+   mytester:assertTensorEq(sl_output, lsrc._linearoutput)
+   
+   local reward = torch.randn(batchsize)
+   lsrc:reinforce(reward)
+   
+   local gradInput = lsrc:backward(input, gradOutput)
+   
+   local rc = nn.ReinforceCategorical()
+   rc:reinforce(reward)
+   
+   rc.output = lsrc._softmaxoutput:clone():zero()
+   
+   rc.output:scatter(2, lsrc._index:view(batchsize, 1), 1)
+   local r_gradOutput = rc:updateGradInput(lsrc._softmaxoutput, lsrc._softmaxoutput)
+   mytester:assertTensorEq(r_gradOutput, lsrc._gradReinforce, 0.00001)
+   
+   local l_gradOutput = torch.zeros(batchsize, outputsize)
+   for i=1,batchsize do
+      for j=1,noutputindex do
+         local k = outputid[{i,j}]
+         l_gradOutput[{i,k}] = lsrc._gradSoftmax[{i,j}][1]
+      end
+   end
+   
+   linear:zeroGradParameters()
+   local l_gradInput = linear:backward(inputval, l_gradOutput)
+   
+   mytester:assertTensorEq(l_gradInput, gradInput[1], 0.000001) 
+end
+
 function dpnn.test(tests)
    mytester = torch.Tester()
    mytester:add(dpnntest)

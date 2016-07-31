@@ -74,6 +74,7 @@ require('dpnn.ReinforceGamma')
 require('dpnn.ReinforceBernoulli')
 require('dpnn.ReinforceNormal')
 require('dpnn.ReinforceCategorical')
+require('dpnn.LSRC')
 require('dpnn.VRClassReward')
 
 -- criterions
