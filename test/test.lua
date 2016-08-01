@@ -2865,7 +2865,7 @@ function dpnntest.LSRC()
    local batchsize = 2
    
    local inputval = torch.randn(batchsize, inputsize)
-   local outputid = torch.LongTensor(batchsize, noutputindex):random(1,outputsize)
+   local outputid = torch.LongTensor({{3,2,1},{4,3,7}})
    local input = {inputval, outputid}
    local gradOutput = torch.randn(batchsize)
    
@@ -2889,6 +2889,7 @@ function dpnntest.LSRC()
    local reward = torch.randn(batchsize)
    lsrc:reinforce(reward)
    
+   lsrc:zeroGradParameters()
    local gradInput = lsrc:backward(input, gradOutput)
    
    local rc = nn.ReinforceCategorical()
@@ -2908,10 +2909,15 @@ function dpnntest.LSRC()
       end
    end
    
+   mytester:assertTensorEq(lsrc._gradSoftmax:sum(2):view(-1), l_gradOutput:sum(2):view(-1), 0.000001)
+   
    linear:zeroGradParameters()
    local l_gradInput = linear:backward(inputval, l_gradOutput)
    
    mytester:assertTensorEq(l_gradInput, gradInput[1], 0.000001) 
+   
+   mytester:assertTensorEq(lsrc.gradWeight, linear.gradWeight, 0.000001)
+   mytester:assertTensorEq(lsrc.gradBias, linear.gradBias, 0.000001)
 end
 
 function dpnn.test(tests)
