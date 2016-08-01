@@ -2897,13 +2897,26 @@ function dpnntest.LSRC()
    
    local inputval = torch.randn(batchsize, inputsize)
    local outputid = torch.LongTensor({{3,2,1},{4,3,7}})
-   local input = {inputval, outputid}
    local gradOutput = torch.randn(batchsize)
+   local reward = torch.randn(batchsize)
    
    local lsrc = nn.LSRC(inputsize, outputsize)
    local linear = nn.Linear(inputsize, outputsize)
+   local rc = nn.ReinforceCategorical()
    linear.weight:copy(lsrc.weight)
    linear.bias:copy(lsrc.bias)
+   
+   if pcall(function() require 'cunn'  end) then
+      inputval = inputval:cuda()
+      outputid = outputid:cuda()
+      gradOutput = gradOutput:cuda()
+      lsrc:cuda()
+      linear:cuda()
+      reward = reward:cuda()
+      rc:cuda()
+   end
+   
+   local input = {inputval, outputid}
    
    local output = lsrc:forward(input)
    for i=1,batchsize do
@@ -2913,17 +2926,16 @@ function dpnntest.LSRC()
       mytester:assert(found)
    end
    
+   
    local l_output = linear:forward(inputval)
    local sl_output = l_output:gather(2, outputid)
    mytester:assertTensorEq(sl_output, lsrc._linearoutput)
    
-   local reward = torch.randn(batchsize)
    lsrc:reinforce(reward)
    
    lsrc:zeroGradParameters()
    local gradInput = lsrc:backward(input, gradOutput)
    
-   local rc = nn.ReinforceCategorical()
    rc:reinforce(reward)
    
    rc.output = lsrc._softmaxoutput:clone():zero()
@@ -2932,7 +2944,7 @@ function dpnntest.LSRC()
    local r_gradOutput = rc:updateGradInput(lsrc._softmaxoutput, lsrc._softmaxoutput)
    mytester:assertTensorEq(r_gradOutput, lsrc._gradReinforce, 0.00001)
    
-   local l_gradOutput = torch.zeros(batchsize, outputsize)
+   local l_gradOutput = inputval.new(batchsize, outputsize):zero()
    for i=1,batchsize do
       for j=1,noutputindex do
          local k = outputid[{i,j}]
