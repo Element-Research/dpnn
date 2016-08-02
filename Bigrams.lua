@@ -112,6 +112,7 @@ function Bigrams:updateOutput(input)
 
    for i = 1, batchSize do
      self.batchdraw(self, self.output[i], self.J[input[i]], self.q[input[i]])
+     self.output[i]:apply(function(x) return self.bigrams[input[i]]['index'][x] end)
    end
    
    return self.output   
