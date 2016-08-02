@@ -63,6 +63,7 @@ require('dpnn.OneHot')
 require('dpnn.SpatialRegionDropout')
 require('dpnn.FireModule')
 require('dpnn.SpatialFeatNormalization')
+require('dpnn.Bigrams')
 
 -- Noise Contrastive Estimation
 require('dpnn.NCEModule')
