@@ -1,6 +1,6 @@
 local Bigrams, parent = torch.class("nn.Bigrams", "nn.Module")
 
---Function taken by torchx Aliasmultinomail.lua 
+--Function taken by torchx Aliasmultinomial.lua 
 function Bigrams:setup(probs)
    assert(probs:dim() == 1)
    local K = probs:nElement()
@@ -91,34 +91,44 @@ function Bigrams:batchdraw(output, J, q)
 end
 
 
-function Bigrams:__init(bigrams, sample)
-  self.Nsample = sample
-  self.bigrams = bigrams
-  self.q = {}
-  self.J = {}
-  for uniI, map in pairs(bigrams) do 
-     local J, q = self.setup(self, map['prob'])
-     self.J[uniI] = J
-     self.q[uniI] = q
-  end   
+function Bigrams:__init(bigrams, nsample)
+   self.nsample = nsample
+   self.bigrams = bigrams
+   self.q = {}
+   self.J = {}
+   for uniI, map in pairs(bigrams) do 
+      local J, q = self.setup(self, map.prob)
+      self.J[uniI] = J
+      self.q[uniI] = q
+   end   
 end
 
 
 function Bigrams:updateOutput(input)
    assert(torch.type(input) == 'torch.LongTensor')
    local batchSize = input:size(1)
-   self.output = torch.LongTensor(batchSize, self.Nsample) 
+   self.output = torch.type(self.output) == 'torch.LongTensor' and self.output or torch.LongTensor()
+   self.output:resize(batchSize, self.nsample) 
 
    for i = 1, batchSize do
      self.batchdraw(self, self.output[i], self.J[input[i]], self.q[input[i]])
-     --self.output[i]:apply(function(x) return self.bigrams[input[i]]['index'][x] end)
    end
    
    return self.output   
 end
 
 function Bigrams:updateGradInput(input, gradOutput)
-      return torch.LongTensor(input:size()):fill(0) 
+   self.gradInput = torch.type(self.gradInput) == 'torch.LongTensor' or torch.LongTensor()
+   self.gradInput:resizeAs(input):fill(0) 
+   return self.gradInput
 end
 
-
+function Bigrams:statistics()
+   local sum, count = 0, 0
+   for uniI, map in pairs(self.bigrams) do 
+      sum = sum + map.prob:nElement()
+      count = count + 1
+   end
+   local meansize = sum/count
+   return meansize
+end
