@@ -2963,6 +2963,44 @@ function dpnntest.LSRC()
    mytester:assertTensorEq(lsrc.gradBias, linear.gradBias, 0.000001)
 end
 
+function dpnntest.Bigrams()
+   local nindex = 20
+   local nsample = 3
+   local batchsize = 4
+   local bigrams = {}
+   
+   for i=1,nindex do
+      local n = math.random(1,nindex)
+      bigrams[i] = {index=torch.LongTensor(n):random(1,nindex), prob=torch.DoubleTensor(n):uniform(0,20)}
+   end
+    
+   local bg = nn.Bigrams(bigrams, nsample)
+   
+   local input = torch.LongTensor(batchsize):random(1,nindex)
+   local gradOutput = torch.LongTensor(batchsize, nsample):zero()
+   
+   local output = bg:forward(input)
+   
+   mytester:assertTableEq(output:size():totable(), {batchsize, nsample}, 0.000001)
+   for i=1,batchsize do
+      local index = bigrams[input[i]].index
+      local nfound = 0
+      for j=1,nsample do
+         local wid = output[i][j]
+         local found = false
+         index:apply(function(idx) if idx == wid then found = true end end)
+         if found then
+            nfound = nfound + 1
+         end
+      end
+      mytester:assert(nfound == nsample)
+   end
+   
+   local gradInput = bg:backward(input, gradOutput)
+   
+   mytester:assertTensorEq(gradInput, torch.zeros(batchsize):long(), 0.000001)
+end
+
 function dpnn.test(tests)
    mytester = torch.Tester()
    mytester:add(dpnntest)
