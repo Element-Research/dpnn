@@ -30,6 +30,9 @@ function Bigrams:updateOutput(input)
    
    for i=1,batchsize do
       local am = self.bigrams[input[i]]
+      if not am then
+         error("Missing index "..input[i]..". Only have bigrams for "..#self.bigrams.." words")
+      end
       am:batchdraw(self._output[i])
       self.output[i]:index(am.index, 1, self._output[i])
    end
@@ -38,7 +41,7 @@ function Bigrams:updateOutput(input)
 end
 
 function Bigrams:updateGradInput(input, gradOutput)
-   self.gradInput = torch.type(self.gradInput) == 'torch.LongTensor' or torch.LongTensor()
+   self.gradInput = torch.type(self.gradInput) == 'torch.LongTensor' and self.gradInput or torch.LongTensor()
    self.gradInput:resizeAs(input):fill(0) 
    return self.gradInput
 end
