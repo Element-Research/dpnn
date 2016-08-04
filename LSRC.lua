@@ -17,11 +17,12 @@ for i,method in ipairs{'reinforce', 'rewardAs'} do
    LSRC[method] = nn.Reinforce[method]
 end
 
-function LSRC:__init(inputsize, outputsize)
+function LSRC:__init(inputsize, outputsize, epsilon)
    parent.__init(self, inputsize, outputsize)
 
    self.gradInput = {torch.Tensor(), torch.LongTensor()}
    self.output = torch.LongTensor()
+   self.epsilon = epsilon or 0.1
 end
 
 function LSRC:reset(stdv)
@@ -76,7 +77,18 @@ function LSRC:updateOutput(inputTable)
    self._index = self._index or ((torch.type(input) == 'torch.CudaTensor') and torch.CudaTensor() or torch.LongTensor())
    -- prevent division by zero error
    self._softmaxoutput:add(0.00000001) 
-   input.multinomial(self._index, self._softmaxoutput, 1)
+   if self.train~=false and self.epsilon > 0 then
+      -- epsilon-greedy allows for more exploration
+      self._softmaxoutput:mul(1-self.epsilon)
+      self._softmaxoutput:add(self.epsilon/nindex)
+      input.multinomial(self._index, self._softmaxoutput, 1)
+      -- as far as the REINFORCE nows, the more uniform sampling was just "lucky"
+      self._softmaxoutput:add(-self.epsilon/nindex)
+      self._softmaxoutput:div(1-self.epsilon)
+   else
+      input.multinomial(self._index, self._softmaxoutput, 1)
+   end
+   
    assert(self._index:dim() == 2)
    self.output:resizeAs(self._index)
    self.output:gather(indices, 2, self._index)
@@ -115,7 +127,6 @@ function LSRC:updateGradInput(inputTable, gradOutput)
    self._gradReinforce:cmul(self:rewardAs(self._softmaxoutput))
    -- multiply by -1 ( gradient descent on input )
    self._gradReinforce:mul(-1)
-   
    
    self._gradSoftmax = self._gradSoftmax or input.new()
    input.THNN.SoftMax_updateGradInput(

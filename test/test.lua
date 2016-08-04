@@ -2941,6 +2941,7 @@ function dpnntest.LSRC()
    rc.output = lsrc._softmaxoutput:clone():zero()
    
    rc.output:scatter(2, lsrc._index:view(batchsize, 1), 1)
+   
    local r_gradOutput = rc:updateGradInput(lsrc._softmaxoutput, lsrc._softmaxoutput)
    mytester:assertTensorEq(r_gradOutput, lsrc._gradReinforce, 0.00001)
    
