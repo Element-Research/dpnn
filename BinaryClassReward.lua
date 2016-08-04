@@ -35,7 +35,7 @@ function BinaryClassReward:updateOutput(input, target)
    end
    
    -- reward = scale when correctly classified
-   self._reward = input.new()
+   self._reward = self._reward or input.new()
    self._reward:eq(self._binary, target)
    self.reward = self.reward or input.new()
    self.reward:resize(self._reward:size(1)):copy(self._reward)
@@ -64,11 +64,9 @@ function BinaryClassReward:updateGradInput(inputTable, target)
    
    -- zero gradInput (this criterion has no gradInput for class pred)
    self.gradInput[1]:resizeAs(input):zero()
-   self.gradInput[1] = self.gradInput[1]
    
    -- learn the baseline reward
    self.gradInput[2] = self.criterion:backward(baseline, self.reward)
-   self.gradInput[2] = self.gradInput[2]
    
    return self.gradInput
 end

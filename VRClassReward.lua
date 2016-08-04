@@ -33,7 +33,7 @@ function VRClassReward:updateOutput(input, target)
    end
    
    -- reward = scale when correctly classified
-   self._reward = self._maxIdx.new()
+   self._reward = self._reward or self._maxIdx.new()
    self._reward:eq(self._maxIdx, target)
    self.reward = self.reward or input.new()
    self.reward:resize(self._reward:size(1)):copy(self._reward)
