@@ -82,7 +82,7 @@ function LSRC:updateOutput(inputTable)
       self._softmaxoutput:mul(1-self.epsilon)
       self._softmaxoutput:add(self.epsilon/nindex)
       input.multinomial(self._index, self._softmaxoutput, 1)
-      -- as far as the REINFORCE nows, the more uniform sampling was just "lucky"
+      -- as far as the REINFORCE knows, the more uniform sampling was just "lucky"
       self._softmaxoutput:add(-self.epsilon/nindex)
       self._softmaxoutput:div(1-self.epsilon)
    else
