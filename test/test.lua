@@ -2965,17 +2965,30 @@ function dpnntest.LSRC()
 end
 
 function dpnntest.Bigrams()
-   local nindex = 20
-   local nsample = 3
+   local nindex = 40
+   local nsample = 5
    local batchsize = 4
    local bigrams = {}
    
+   local multiratio = 0.1
+   local multimax = 0
+   
+   local bigrams2 = {}
    for i=1,nindex do
-      local n = math.random(1,nindex)
-      bigrams[i] = {index=torch.LongTensor(n):random(1,nindex), prob=torch.DoubleTensor(n):uniform(0,20)}
+      local n = i == 1 and 3 or math.random(3,nindex)
+      multimax = math.max(n, multimax)
+      local prob = torch.DoubleTensor(n):uniform(0,20)
+      prob:div(prob:sum())
+      bigrams[i] = {index=torch.LongTensor(n):range(1,n), prob=prob}
+      assert(prob:size(1) == bigrams[i].index:size(1))
+      bigrams2[i] = {index=bigrams[i].index:clone()}
    end
+   
+   multimax = multimax - math.random(1,3)
     
-   local bg = nn.Bigrams(bigrams, nsample)
+   -- test that is returns indices sampled from the correct bigram dist
+   local bg = nn.Bigrams(bigrams, nsample, multiratio, multimax)
+   mytester:assert(bg.bigrams[1].all ~= nil)
    
    local input = torch.LongTensor(batchsize):random(1,nindex)
    local gradOutput = torch.LongTensor(batchsize, nsample):zero()
@@ -2984,17 +2997,25 @@ function dpnntest.Bigrams()
    
    mytester:assertTableEq(output:size():totable(), {batchsize, nsample}, 0.000001)
    for i=1,batchsize do
-      local index = bigrams[input[i]].index
+      local index = bigrams2[input[i]].index
+      local bg2 = bg.bigrams[input[i]]
+      local nmulti = bg2.nmulti or bg2.all:size(1) 
       local nfound = 0
-      for j=1,nsample do
+      for j=1,nmulti do
          local wid = output[i][j]
-         local found = false
          index:apply(function(idx) if idx == wid then found = true end end)
          if found then
             nfound = nfound + 1
          end
       end
-      mytester:assert(nfound == nsample)
+      mytester:assert(nfound == nmulti)
+      
+      local replace = {}
+      
+      output[i]:sub(1,nmulti):apply(function(x)
+         mytester:assert(not replace[x])
+         replace[x] = true
+      end)
    end
    
    local gradInput = bg:backward(input, gradOutput)
