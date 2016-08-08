@@ -82,9 +82,6 @@ function LSRC:updateOutput(inputTable)
       self._softmaxoutput:mul(1-self.epsilon)
       self._softmaxoutput:add(self.epsilon/nindex)
       input.multinomial(self._index, self._softmaxoutput, 1)
-      -- as far as the REINFORCE knows, the more uniform sampling was just "lucky"
-      self._softmaxoutput:add(-self.epsilon/nindex)
-      self._softmaxoutput:div(1-self.epsilon)
    else
       input.multinomial(self._index, self._softmaxoutput, 1)
    end
@@ -127,6 +124,10 @@ function LSRC:updateGradInput(inputTable, gradOutput)
    self._gradReinforce:cmul(self:rewardAs(self._softmaxoutput))
    -- multiply by -1 ( gradient descent on input )
    self._gradReinforce:mul(-1)
+   
+   if self.epsilon > 0 then
+      self._gradReinforce:mul(1-self.epsilon)
+   end
    
    self._gradSoftmax = self._gradSoftmax or input.new()
    input.THNN.SoftMax_updateGradInput(

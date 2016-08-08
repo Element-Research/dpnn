@@ -2900,7 +2900,7 @@ function dpnntest.LSRC()
    local gradOutput = torch.randn(batchsize)
    local reward = torch.randn(batchsize)
    
-   local lsrc = nn.LSRC(inputsize, outputsize)
+   local lsrc = nn.LSRC(inputsize, outputsize, 0)
    local linear = nn.Linear(inputsize, outputsize)
    local rc = nn.ReinforceCategorical()
    linear.weight:copy(lsrc.weight)
