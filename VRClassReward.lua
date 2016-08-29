@@ -22,19 +22,27 @@ function VRClassReward:updateOutput(input, target)
    assert(torch.type(input) == 'table')
    local input = self:toBatch(input[1], 1)
    self._maxVal = self._maxVal or input.new()
-   self._maxIdx = self._maxIdx or torch.type(input) == 'torch.CudaTensor' and input.new() or torch.LongTensor()
+   self._maxIdx = self._maxIdx or torch.type(input) == 'torch.CudaTensor' and torch.CudaLongTensor() or torch.LongTensor()
    
    -- max class value is class prediction
    self._maxVal:max(self._maxIdx, input, 2)
-   if torch.type(self._maxIdx) ~= torch.type(target) then
-      self._target = self._target or self._maxIdx.new()
+   
+   -- reward = scale when correctly classified
+   local maxIdx = self._maxIdx
+   if torch.type(self._maxIdx) == 'torch.CudaLongTensor' then
+      self.__maxIdx = self.__maxIdx or torch.CudaTensor()
+      self.__maxIdx:resize(maxIdx:size()):copy(maxIdx)
+      maxIdx = self.__maxIdx
+   end
+   
+   if torch.type(maxIdx) ~= torch.type(target) then
+      self._target = self._target or maxIdx.new()
       self._target:resize(target:size()):copy(target)
       target = self._target
    end
    
-   -- reward = scale when correctly classified
-   self._reward = self._maxIdx.new()
-   self._reward:eq(self._maxIdx, target)
+   self._reward = self._reward or maxIdx.new()
+   self._reward:eq(maxIdx, target)
    self.reward = self.reward or input.new()
    self.reward:resize(self._reward:size(1)):copy(self._reward)
    self.reward:mul(self.scale)
@@ -66,6 +74,7 @@ function VRClassReward:updateGradInput(inputTable, target)
    self.gradInput[1] = self:fromBatch(self.gradInput[1], 1)
    
    -- learn the baseline reward
+   self.criterion:forward(baseline, self.reward)
    self.gradInput[2] = self.criterion:backward(baseline, self.reward)
    self.gradInput[2] = self:fromBatch(self.gradInput[2], 1)
    return self.gradInput
@@ -74,6 +83,7 @@ end
 function VRClassReward:type(type)
    self._maxVal = nil
    self._maxIdx = nil
+   self.__maxIdx = nil
    self._target = nil
    local module = self.module
    self.module = nil
