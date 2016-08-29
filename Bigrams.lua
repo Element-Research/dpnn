@@ -79,28 +79,33 @@ function Bigrams:updateOutput(input)
    
    for i=1,batchsize do
       local bg = self.bigrams[input[i]]
-      if not bg then
-         error("Missing index "..input[i]..". Only have bigrams for "..#self.bigrams.." words")
-      end
       
       local output = self.output[i]
-      if bg.nmulti then
-         local moutput = self._output:sub(1,bg.nmulti)
-         bg.mprob.multinomial(moutput, bg.mprob, bg.nmulti, false) -- sample without replacement
-         assert(moutput:size(1) == bg.nmulti)
-         output:sub(1,bg.nmulti):index(bg.mindex, 1, moutput)
-         
-         if bg.alias then
-            local aoutput = self._output:sub(bg.nmulti+1, self.nsample)
-            bg.alias:batchdraw(aoutput)
-            output:sub(bg.nmulti+1, self.nsample):index(bg.aindex, 1, aoutput)
+      
+      if bg then
+         if bg.nmulti then
+            local moutput = self._output:sub(1,bg.nmulti)
+            bg.mprob.multinomial(moutput, bg.mprob, bg.nmulti, false) -- sample without replacement
+            assert(moutput:size(1) == bg.nmulti)
+            output:sub(1,bg.nmulti):index(bg.mindex, 1, moutput)
+            
+            if bg.alias then
+               local aoutput = self._output:sub(bg.nmulti+1, self.nsample)
+               bg.alias:batchdraw(aoutput)
+               output:sub(bg.nmulti+1, self.nsample):index(bg.aindex, 1, aoutput)
+            end
+         else
+            local nbg = bg.all:size(1)
+            output:sub(1, nbg):copy(bg.all)
+            if nbg < self.nsample then -- fill the rest with random negative samples (TODO use unigrams instead)
+               output:sub(nbg+1,self.nsample):random(1,#self.bigrams)
+            end
          end
-         
       else
-         local nbg = bg.all:size(1)
-         output:sub(1, nbg):copy(bg.all)
-         if nbg < self.nsample then -- fill the rest with random negative samples (TODO use unigrams instead)
-            output:sub(nbg+1,self.nsample):random(1,#self.bigrams)
+         if self.maskzero then
+            output:random(1,#self.bigrams)
+         else
+            error("Missing index "..input[i]..". Only have bigrams for "..#self.bigrams.." words")
          end
       end
       
