@@ -63,7 +63,6 @@ require('dpnn.OneHot')
 require('dpnn.SpatialRegionDropout')
 require('dpnn.FireModule')
 require('dpnn.SpatialFeatNormalization')
-require('dpnn.Bigrams')
 
 -- Noise Contrastive Estimation
 require('dpnn.NCEModule')
@@ -75,7 +74,6 @@ require('dpnn.ReinforceGamma')
 require('dpnn.ReinforceBernoulli')
 require('dpnn.ReinforceNormal')
 require('dpnn.ReinforceCategorical')
-require('dpnn.LSRC')
 
 -- REINFORCE criterions
 require('dpnn.VRClassReward')
