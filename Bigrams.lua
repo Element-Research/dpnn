@@ -69,7 +69,7 @@ end
 
 function Bigrams:updateOutput(input)
    assert(torch.type(input) == 'torch.LongTensor')
-   assert(input:dim() == 1)
+   assert(input:dim() == 1, tostring(input:size()))
    local batchsize = input:size(1)
    self.output = torch.type(self.output) == 'torch.LongTensor' and self.output or torch.LongTensor()
    self.output:resize(batchsize, self.nsample):zero()

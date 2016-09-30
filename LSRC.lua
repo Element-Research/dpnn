@@ -4,24 +4,38 @@
 -- inputvalues is batchsize x inputsize and
 -- indices is batchsize x nindices
 -- Output is a batchsize x nindices tensor of sampled indices
--- each output[i] is sampled from indices is indices[i]
+-- each output[i] is sampled from indices[i]
 -- This module uses the REINFORCE learning rule.
 -- The linear is sparse in that each row need only compute 
 -- nindices dot products.
+-- This module is used by a text generator to draw a sample of the next word, given sequence. 
+-- For training, sequences are typically presented as batches of sequences.
+-- This module is convolved over time, i.e. applied to each time-step.
+-- It is used in the output layers of the generator.
+-- It is conditioned on a recurrent neural network the reads and receives
+-- the previous sampled states as current inputs to the generator.
+-- The stochastic recursive process is recursive and stochastic.
+-- This layer is an optimization of :
+-- Linear-> SoftMax -> epsilon-greedy -> ReinforceCategorical -> ArgMax
+-- The epsilon-greedy is used to control training exploration versus exploitation.
+-- It could be interesting to have the epsilon parameter learn.
 ------------------------------------------------------------------------
 local _ = require 'moses'
 local LSRC, parent = torch.class("nn.LSRC", "nn.Linear")
 LSRC.version = 1
 
+-- sub-class reinforce (pseudo)
 for i,method in ipairs{'reinforce', 'rewardAs'} do
    LSRC[method] = nn.Reinforce[method]
 end
 
+-- sub-classes nn.Linear (see above). Same constructor for first two args.
 function LSRC:__init(inputsize, outputsize, epsilon)
    parent.__init(self, inputsize, outputsize)
 
    self.gradInput = {torch.Tensor(), torch.LongTensor()}
    self.output = torch.LongTensor()
+   -- third arg is epsilon greedy ratio
    self.epsilon = epsilon or 0.1
 end
 
@@ -32,6 +46,7 @@ function LSRC:reset(stdv)
    else
       stdv = stdv or 1./math.sqrt(self.weight:size(2))
       self.weight:uniform(-stdv, stdv)
+      -- bias uses same init as NCE
       self.bias:fill(-math.log(self.bias:size(1)))
    end
    return self
@@ -81,13 +96,14 @@ function LSRC:updateOutput(inputTable)
       -- epsilon-greedy allows for more exploration
       self._softmaxoutput:mul(1-self.epsilon)
       self._softmaxoutput:add(self.epsilon/nindex)
-      input.multinomial(self._index, self._softmaxoutput, 1)
+      input.multinomial(self._index, self._softmaxoutput, 1) -- sample happens here
    else
-      input.multinomial(self._index, self._softmaxoutput, 1)
+      input.multinomial(self._index, self._softmaxoutput, 1) -- or here
    end
    
    assert(self._index:dim() == 2)
    self.output:resizeAs(self._index)
+   -- translate back from batch to original indexing
    self.output:gather(indices, 2, self._index)
    assert(self.output:nElement() == batchsize)
    self.output:resize(batchsize)
@@ -95,6 +111,8 @@ function LSRC:updateOutput(inputTable)
    return self.output
 end
 
+-- expects module:reinforce(reward) to have been called beforehand.
+-- backpropagates reward through stochastic units using REINFORCE learning rule.
 function LSRC:updateGradInput(inputTable, gradOutput)
    local input, indices = unpack(inputTable)
    assert(input:dim() == 2)
@@ -107,7 +125,7 @@ function LSRC:updateGradInput(inputTable, gradOutput)
    assert(input:size(2) == inputsize)
    assert(torch.type(indices) == torch.type(self.output), 'Expecting input[2] to be '..torch.type(self.output))
    
-   -- Note that gradOutput is ignored
+   -- Note that gradOutput is ignored as it uses REINFORCE
    -- f : categorical probability mass function
    -- x : the sampled indices (one per sample) (self.output)
    -- p : probability vector (p[1], p[2], ..., p[k]) 
@@ -126,9 +144,12 @@ function LSRC:updateGradInput(inputTable, gradOutput)
    self._gradReinforce:mul(-1)
    
    if self.epsilon > 0 then
+      -- important: backpropagate through epsilon-greedy. 
       self._gradReinforce:mul(1-self.epsilon)
    end
    
+   -- softmax was used to bind input into batch-wise categorical distributions. 
+   -- backpropagate back through it.
    self._gradSoftmax = self._gradSoftmax or input.new()
    input.THNN.SoftMax_updateGradInput(
       self._linearoutput:cdata(), 
@@ -137,7 +158,7 @@ function LSRC:updateGradInput(inputTable, gradOutput)
       self._softmaxoutput:cdata()
    )
    
-   -- gradient of linear
+   -- sparse gradient of linear
    self.gradInput[1] = self.gradInput[1] or input.new()
    self.gradInput[1]:resize(batchsize, 1, inputsize):zero()
    assert(self._gradSoftmax:nElement() == batchsize*nindex)
@@ -153,6 +174,7 @@ function LSRC:updateGradInput(inputTable, gradOutput)
    return self.gradInput
 end
 
+-- sparse parameter accumulation using baddbmm and indexAdd.
 function LSRC:accGradParameters(inputTable, gradOutput, scale)
    local input, indices = unpack(inputTable)
    assert(input:dim() == 2)
@@ -165,6 +187,7 @@ function LSRC:accGradParameters(inputTable, gradOutput, scale)
    assert(input:size(2) == inputsize)
    assert(torch.type(indices) == torch.type(self.output), 'Expecting input[2] to be '..torch.type(self.output))
    
+   
    self._gradWeight = self._gradWeight or self.bias.new()
    self._gradWeight:resizeAs(self._weight):zero() -- batchsize x nindex x inputsize
    self._gradSoftmax:resize(batchsize, nindex, 1)
@@ -172,6 +195,7 @@ function LSRC:accGradParameters(inputTable, gradOutput, scale)
    local _input = input:view(batchsize, 1, inputsize)
    self._gradWeight:baddbmm(0, self._gradWeight, 1, self._gradSoftmax, _input)
    
+   -- only affects indexed weight vectors (indices)
    local _indices = indices:view(batchsize * nindex)
    local _gradWeight = self._gradWeight:view(batchsize * nindex, inputsize)
    self.gradWeight:indexAdd(1, _indices, _gradWeight)
@@ -194,6 +218,7 @@ function LSRC:type(type, cache)
   
    local rtn
    if type and torch.type(self.weight) == 'torch.MultiCudaTensor' then
+      -- was useful for scaling NCE to large models. Shelved for now.
       assert(type == 'torch.CudaTensor', "Cannot convert a multicuda LSRC to anything other than cuda")
       local weight = self.weight
       local gradWeight = self.gradWeight
@@ -212,11 +237,10 @@ function LSRC:type(type, cache)
    if type then
       if type == 'torch.CudaTensor' then
          self.output = torch.CudaTensor()
-         self.gradInput[2] = torch.CudaTensor()
       else
          self.output = torch.LongTensor()
-         self.gradInput[2] = torch.CudaTensor()
       end
+      self.gradInput[2] = self.gradInput[2]:type(type)
    end
    
    return rtn
@@ -236,7 +260,8 @@ function LSRC:clearState()
    self.gradInput[2]:set()
 end
 
--- use a Linear instance to initialize LSRC
+-- use a Linear instance to initialize LSRC.
+-- useful for initializing from a pre-trained language model.
 function LSRC:fromLinear(linear)
    self.weight = linear.weight
    self.gradWeight = linear.gradWeight
