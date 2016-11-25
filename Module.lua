@@ -59,6 +59,11 @@ function Module:sharedClone(shareParams, shareGradParams, stepClone)
             moduleTree = obj
             obj = nil
             isTable = false
+         elseif obj.dpnn_sharedClone then
+            -- allow to use a custom sharedClone method on one module
+            moduleTree = obj
+            obj = nil
+            isTable = false
          elseif scdone[torch.pointer(obj)] then
             moduleTree = scdone[torch.pointer(obj)]
          else
@@ -142,8 +147,13 @@ function Module:sharedClone(shareParams, shareGradParams, stepClone)
       if scdone[torch.pointer(original)] then
          for k,param in pairs(moduleTree) do
             if torch.isTypeOf(param,'nn.Module') then
-               -- AbstractRecurrent instances branch here with stepClone = true
-               clone[k] = param
+               if param.dpnn_sharedClone then
+                  -- Call the custom sharedClone
+                  clone[k] = param:dpnn_sharedClone()
+               else
+                  -- AbstractRecurrent instances branch here with stepClone = true
+                  clone[k] = param
+               end
                original[k] = param
             elseif torch.isTensor(param) then
                if param.storage then

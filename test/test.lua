@@ -806,19 +806,34 @@ function dpnntest.ReinforceCategorical()
 end
 
 function dpnntest.VRClassReward()
-   local input = {torch.randn(13,10), torch.randn(13,1)}
+   local input = {torch.randn(13,10):float(), torch.randn(13,1):float()}
    local target = torch.IntTensor(13):random(1,10)
-   local rf = nn.Reinforce()
-   local vrc = nn.VRClassReward(rf)
+   local rf = nn.Reinforce():float()
+   local vrc = nn.VRClassReward(rf):float()
    local err = vrc:forward(input, target)
    local gradInput = vrc:backward(input, target)
    local val, idx = input[1]:max(2)
-   local reward = torch.eq(idx:select(2,1):int(), target):double()
+   local reward = torch.eq(idx:select(2,1):int(), target):float()
    local err2 = -reward:mean()
    mytester:assert(err == err2, "VRClassReward forward err")
-   local gradInput2 = nn.MSECriterion():backward(input[2], reward)
+   local gradInput2 = nn.MSECriterion():float():backward(input[2], reward)
    mytester:assertTensorEq(gradInput[2], gradInput2, 0.000001, "VRClassReward backward baseline err")
-   mytester:assertTensorEq(gradInput[1], input[1]:zero(), 0.000001, "VRClassReward backward class err")
+   mytester:assert(math.abs(gradInput[1]:sum()) < 0.000001, "VRClassReward backward class err")
+   
+   if pcall(function() require 'cunn' end) then
+      local gradInput = {gradInput[1], gradInput[2]}
+      input[1], input[2] = input[1]:cuda(), input[2]:cuda()
+      target = target:cuda()
+      rf:cuda()
+      vrc:cuda()
+      
+      local err2 = vrc:forward(input, target)
+      local gradInput2 = vrc:backward(input, target)
+      
+      mytester:assert(math.abs(err - err2) < 0.000001, "VRClassReward forward cuda err")
+      mytester:assertTensorEq(gradInput[2], gradInput2[2]:float(), 0.000001, "VRClassReward backward baseline cuda err")
+      mytester:assertTensorEq(gradInput[1], gradInput2[1]:float(), 0.000001, "VRClassReward backward class cuda err")
+   end
 end
 
 function dpnntest.BinaryClassReward()
