@@ -836,6 +836,37 @@ function dpnntest.VRClassReward()
    end
 end
 
+function dpnntest.BinaryClassReward()
+   local input = {torch.Tensor(10), torch.randn(10,1)}
+   input[1]:uniform(0,1)
+   local target = torch.LongTensor(10):random(0,1)
+   local rf = nn.Reinforce()
+   local bcr = nn.BinaryClassReward(rf)
+   local err = bcr:forward(input, target)
+   local gradInput = bcr:backward(input, target)
+   local idx = input[1].new():gt(input[1], 0.5)
+   local reward = torch.eq(idx:long(), target):double()
+   local err2 = -reward:mean()
+   mytester:assert(err == err2, "BinaryClassReward forward err")
+   local gradInput2 = nn.MSECriterion():backward(input[2], reward)
+   mytester:assertTensorEq(gradInput[2], gradInput2, 0.000001, "BinaryClassReward backward baseline err")
+   mytester:assertTensorEq(gradInput[1], torch.zeros(input[1]:size()), 0.000001, "BinaryClassReward backward class err")
+   
+   -- test agains VRClassReward
+   local input2 = {torch.Tensor(10,2):zero(), input[2]}
+   local target2 = torch.add(target, 1)
+   for i=1,10 do
+      input2[1][i][input[1][i] > 0.5 and 2 or 1] = 1
+   end
+   local rf2 = nn.Reinforce()
+   local vrc = nn.VRClassReward(rf2)
+   local err2 = vrc:forward(input2, target2)
+   mytester:assert(math.abs(err - err2) < 0.0000001)
+   local gradInput2 = vrc:backward(input2, target2)
+   mytester:assertTensorEq(gradInput[2], gradInput2[2], 0.0000001)
+   mytester:assertTensorEq(rf2.reward, rf.reward, 0.0000001)
+end
+
 function dpnntest.Clip()
    local input = torch.randn(200,300)
    local gradOutput = torch.randn(200,300)

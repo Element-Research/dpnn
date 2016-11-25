@@ -1,15 +1,16 @@
 ------------------------------------------------------------------------
---[[ VRClassReward ]]--
--- Variance reduced classification reinforcement criterion.
+--[[ BinaryClassReward ]]--
+-- Variance reduced binary classification reinforcement criterion.
+-- The binary class version of VRClassReward.
 -- input : {class prediction, baseline reward}
 -- Reward is 1 for success, Reward is 0 otherwise.
 -- reward = scale*(Reward - baseline) where baseline is 2nd input element
 -- Note : for RNNs with R = 1 for last step in sequence, encapsulate it
--- in nn.ModuleCriterion(VRClassReward, nn.SelectTable(-1))
+-- in nn.ModuleCriterion(BinaryClassReward, nn.SelectTable(-1))
 ------------------------------------------------------------------------
-local VRClassReward, parent = torch.class("nn.VRClassReward", "nn.Criterion")
+local BinaryClassReward, parent = torch.class("nn.BinaryClassReward", "nn.Criterion")
 
-function VRClassReward:__init(module, scale, criterion)
+function BinaryClassReward:__init(module, scale, criterion)
    parent.__init(self)
    self.module = module -- so it can call module:reinforce(reward)
    self.scale = scale or 1 -- scale of reward
@@ -18,32 +19,24 @@ function VRClassReward:__init(module, scale, criterion)
    self.gradInput = {torch.Tensor()}
 end
 
-function VRClassReward:updateOutput(input, target)
+function BinaryClassReward:updateOutput(input, target)
    assert(torch.type(input) == 'table')
-   local input = self:toBatch(input[1], 1)
-   self._maxVal = self._maxVal or input.new()
-   self._maxIdx = self._maxIdx or torch.type(input) == 'torch.CudaTensor' and torch.CudaLongTensor() or torch.LongTensor()
+   local input = input[1]
+   assert(input:dim() == 1)
+   assert(target:dim() == 1)
+   self._binary = self._binary or input.new()
+   self._binary:gt(input, 0.5)
    
    -- max class value is class prediction
-   self._maxVal:max(self._maxIdx, input, 2)
-   
-   -- reward = scale when correctly classified
-   local maxIdx = self._maxIdx
-   if torch.type(self._maxIdx) == 'torch.CudaLongTensor' then
-      self.__maxIdx = self.__maxIdx or torch.CudaTensor()
-      self.__maxIdx:resize(maxIdx:size()):copy(maxIdx)
-      maxIdx = self.__maxIdx
-   end
-   
-   if torch.type(maxIdx) ~= torch.type(target) then
-      self._target = self._target or maxIdx.new()
+   if torch.type(self._binary) ~= torch.type(target) then
+      self._target = self._target or self._binary.new()
       self._target:resize(target:size()):copy(target)
       target = self._target
    end
    
    -- reward = scale when correctly classified
-   self._reward = self._reward or maxIdx.new()
-   self._reward:eq(maxIdx, target)
+   self._reward = self._reward or input.new()
+   self._reward:eq(self._binary, target)
    self.reward = self.reward or input.new()
    self.reward:resize(self._reward:size(1)):copy(self._reward)
    self.reward:mul(self.scale)
@@ -56,9 +49,8 @@ function VRClassReward:updateOutput(input, target)
    return self.output
 end
 
-function VRClassReward:updateGradInput(inputTable, target)
-   local input = self:toBatch(inputTable[1], 1)
-   local baseline = self:toBatch(inputTable[2], 1)
+function BinaryClassReward:updateGradInput(inputTable, target)
+   local input, baseline = unpack(inputTable)
    
    -- reduce variance of reward using baseline
    self.vrReward = self.vrReward or self.reward.new()
@@ -72,19 +64,15 @@ function VRClassReward:updateGradInput(inputTable, target)
    
    -- zero gradInput (this criterion has no gradInput for class pred)
    self.gradInput[1]:resizeAs(input):zero()
-   self.gradInput[1] = self:fromBatch(self.gradInput[1], 1)
    
    -- learn the baseline reward
-   self.criterion:forward(baseline, self.reward)
    self.gradInput[2] = self.criterion:backward(baseline, self.reward)
-   self.gradInput[2] = self:fromBatch(self.gradInput[2], 1)
+   
    return self.gradInput
 end
 
-function VRClassReward:type(type)
-   self._maxVal = nil
-   self._maxIdx = nil
-   self.__maxIdx = nil
+function BinaryClassReward:type(type)
+   self._binary = nil
    self._target = nil
    local module = self.module
    self.module = nil

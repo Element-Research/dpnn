@@ -545,6 +545,7 @@ function Module:checkParameters()
 end
 
 function Module:dontBackward()
+   self.backward = function() end
    self.updateGradInput = function() end
    self.accGradParameters = function() end
    self.accUpdateGradParameters = function() end

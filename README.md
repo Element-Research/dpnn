@@ -42,6 +42,7 @@ The following modules and criterions can be used to implement the REINFORCE algo
  * [ReinforceGamma](#nn.ReinforceGamma) : samples from Gamma distribution;
  * [ReinforceCategorical](#nn.ReinforceCategorical) : samples from Categorical (Multinomial with one sample) distribution;
  * [VRClassReward](#nn.VRClassReward) : criterion for variance-reduced classification-based reward;
+ * [BinaryClassReward](#nn.BinaryClassReward) : criterion for variance-reduced binary classification reward (like `VRClassReward`, but for binary classes);
 
 Additional differentiable criterions
  * [BinaryLogisticRegression](#nn.BLR) : criterion for binary logistic regression;
@@ -1044,6 +1045,19 @@ in `nn.ModuleCriterion(VRClassReward, nn.SelectTable(-1))`.
 
 For an example, this criterion is used along with the [RecurrentAttention](https://github.com/Element-Research/rnn#rnn.RecurrentAttention) 
 module to [train a recurrent model for visual attention](https://github.com/Element-Research/rnn/blob/master/examples/recurrent-visual-attention.lua).
+
+<a name='nn.BinaryClassReward'></a>
+## BinaryClassReward ##
+
+```lua
+bcr = nn.BinaryClassReward(module [, scale, criterion])
+``` 
+
+This module implements [VRClassReward](#nn.VRClassReward) for binary classification problems.
+So basically, the `input` is still a table of two tensors. 
+The first input tensor is of size `batchsize` containing Bernoulli probabilities.
+The second input tensor is the baseline prediction described in `VRClassReward`.
+The targets contain zeros and ones.
 
 <a name='nn.BLR'></a>
 ## BinaryLogisticRegression ##
