@@ -6,33 +6,33 @@ local precision = 1e-5
 local mytester
 
 function dpnntest.Module_sharedClone()
-   
+
    local function testrnn(mlp, name)
       mlp:zeroGradParameters()
       local mlp = mlp:clone()
       local clone = mlp:clone():sharedClone(true, true)
-      
+
       for i=1,2 do
          local input = torch.randn(2,3)
          local gradOutput = torch.randn(2,4)
-         
+
          local output = mlp:forward(input)
          local gradInput = mlp:backward(input, gradOutput)
          local output4 = clone:forward(input)
          local gradInput4 = clone:backward(input, gradOutput)
-         
+
          mytester:assertTensorEq(output, output4, 0.00001, name.." updateOutput")
          mytester:assertTensorEq(gradInput, gradInput4, 0.00001, name.." updateGradInput")
-         
+
          mlp:updateParameters(0.1)
          clone:updateParameters(0.1)
-         
+
          local params, gradParams = mlp:parameters()
          local params2, gradParams2 = clone:parameters()
-         
+
          mytester:assert(#params == #params2, name.." num params err")
          mytester:assert(#gradParams == #gradParams2, name.." num gradParams err")
-         
+
          for i,param in ipairs(params) do
             mytester:assertTensorEq(param, params2[i], 0.00001, name.." params2 err "..i)
             mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.00001, name.." gradParams2 err "..i)
@@ -44,138 +44,138 @@ function dpnntest.Module_sharedClone()
       mlp:zeroGradParameters()
       local clone = mlp:clone()
       clone:share(mlp,"weight","bias","gradWeight","gradBias") -- this actually won't work for nn.Recurrent
-      
+
       local mlp2 = mlp:clone() -- not shared with mlp
       local clone2 = mlp2:sharedClone(true, true)
       mlp2.__test = 1
       clone2.__test = 2
       mytester:assert(mlp2.__test ~= clone2.__test)
-      
+
       local params, gradParams = mlp:parameters()
       local params4, gradParams4 = clone:parameters()
       local params2, gradParams2 = clone2:parameters()
       local params3, gradParams3 = mlp2:parameters()
-      
+
       mytester:assert(#params == #params2, name.." num params err")
       mytester:assert(#params3 == #params2, name.." num params err")
       mytester:assert(#gradParams == #gradParams2, name.." num gradParams err")
       mytester:assert(#gradParams == #gradParams3, name.." num gradParams err")
-      
+
       local input = torch.randn(2,3)
       local gradOutput = torch.randn(2,4)
-      
+
       local output = mlp:forward(input)
       local gradInput = mlp:backward(input, gradOutput)
-      
+
       for i,param in ipairs(params) do
-         mytester:assertTensorEq(param, params4[i], 0.00001, name.." params4  err "..i) 
+         mytester:assertTensorEq(param, params4[i], 0.00001, name.." params4  err "..i)
          mytester:assertTensorEq(gradParams[i], gradParams4[i], 0.00001, name.." gradParams4 err "..i)
       end
-      
+
       local output4 = clone:forward(input)
       local gradInput4 = clone:backward(input, gradOutput)
-      
+
       mytester:assertTensorEq(output, output4, 0.00001, name.." updateOutput")
       mytester:assertTensorEq(gradInput, gradInput4, 0.00001, name.." updateGradInput")
-      
+
       for i,param in ipairs(params) do
-         mytester:assertTensorEq(param, params4[i], 0.00001, name.." params4  err "..i) 
+         mytester:assertTensorEq(param, params4[i], 0.00001, name.." params4  err "..i)
          mytester:assertTensorEq(gradParams[i], gradParams4[i], 0.00001, name.." gradParams4 err "..i)
       end
-      
+
       local output2 = clone2:forward(input)
       local gradInput2 = clone2:backward(input, gradOutput)
-      
+
       mytester:assertTensorEq(output, output2, 0.00001, name.." updateOutput")
       mytester:assertTensorEq(gradInput, gradInput2, 0.00001, name.." updateGradInput")
-      
+
       for i,param in ipairs(params) do
-         mytester:assertTensorEq(params2[i], params3[i], 0.00001, name.." params 2 3  err "..i) 
+         mytester:assertTensorEq(params2[i], params3[i], 0.00001, name.." params 2 3  err "..i)
          mytester:assertTensorEq(gradParams2[i], gradParams3[i], 0.00001, name.." gradParams 2 3 err "..i)
       end
-      
+
       local output3 = mlp2:forward(input)
       local gradInput3 = mlp2:backward(input, gradOutput)
-      
+
       mytester:assertTensorEq(output3, output2, 0.00001, name.." updateOutput")
       mytester:assertTensorEq(gradInput3, gradInput2, 0.00001, name.." updateGradInput")
-      
+
       for i,param in ipairs(params) do
-         mytester:assertTensorEq(params2[i], params3[i], 0.00001, name.." params 2 3  err "..i) 
+         mytester:assertTensorEq(params2[i], params3[i], 0.00001, name.." params 2 3  err "..i)
          mytester:assertTensorEq(gradParams2[i], gradParams3[i], 0.00001, name.." gradParams 2 3 err "..i)
       end
-      
+
       mlp:updateParameters(0.1)
-      mlp2:updateParameters(0.1)  
-      
+      mlp2:updateParameters(0.1)
+
       for i,param in ipairs(params) do
          mytester:assertTensorEq(param, params3[i], 0.00001, name.." params3 (mlp vs mlp:clone()) err "..i) -- fail
          mytester:assertTensorEq(gradParams[i], gradParams3[i], 0.00001, name.." gradParams3 err "..i) -- fail
       end
    end
-   
+
    test(nn.Linear(3,4), 'linear')
-   
+
    local mlp = nn.Sequential()
    mlp:add(nn.Linear(3,7))
    mlp:add(nn.Tanh())
    mlp:add(nn.Euclidean(7,4))
    mlp:add(nn.LogSoftMax())
    test(mlp, 'sequential')
-   
-   
+
+
    local function test2(rnn, name)
       rnn:zeroGradParameters()
       local clone = rnn:sharedClone()
-      
+
       local input = torch.randn(2,3)
       local gradOutput = torch.randn(2,4)
-      
+
       local output = rnn:forward(input)
       local gradInput = rnn:backward(input, gradOutput)
       local output2 = clone:forward(input)
       local gradInput2 = clone:backward(input, gradOutput)
-      
+
       mytester:assertTensorEq(output, output2, 0.00001, name.." updateOutput")
       mytester:assertTensorEq(gradInput, gradInput2, 0.00001, name.." updateGradInput")
-      
+
       rnn:updateParameters(0.1)
       clone:updateParameters(0.1)
-      
+
       local params, gradParams = rnn:parameters()
       local params2, gradParams2 = clone:parameters()
-      
+
       mytester:assert(#params == #params2, name.." num params err")
       mytester:assert(#gradParams == #gradParams2, name.." num gradParams err")
-      
+
       for i,param in ipairs(params) do
          mytester:assertTensorEq(param, params2[i], 0.00001, name.." params (rnn vs rnn:sharedClone()) err "..i)
          mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.00001, name.." gradParams (rnn vs rnn:sharedClone()) err "..i)
       end
-      
+
       local output = rnn:forward(input)
       local gradInput = rnn:backward(input, gradOutput)
       local output2 = clone:forward(input)
       local gradInput2 = clone:backward(input, gradOutput)
-      
+
       mytester:assertTensorEq(output, output2, 0.00001, name.." updateOutput")
       mytester:assertTensorEq(gradInput, gradInput2, 0.00001, name.." updateGradInput")
-      
+
       rnn:updateParameters(0.1)
       clone:updateParameters(0.1)
-      
+
       local params, gradParams = rnn:parameters()
       local params2, gradParams2 = clone:parameters()
-      
+
       mytester:assert(#params == #params2, name.." num params err")
       mytester:assert(#gradParams == #gradParams2, name.." num gradParams err")
-      
+
       for i,param in ipairs(params) do
          mytester:assertTensorEq(param, params2[i], 0.00001, name.." params (rnn vs rnn:sharedClone()) err "..i)
          mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.00001, name.." gradParams (rnn vs rnn:sharedClone()) err "..i)
       end
    end
-   
+
    if pcall(function() require 'rnn' end) then
       local rnn = nn.Recurrent(4,nn.Linear(3,4),nn.Linear(4,4), nn.Sigmoid(), 999)
       testrnn(rnn, 'rnn1')
@@ -186,70 +186,70 @@ function dpnntest.Module_sharedClone()
       test2(seq, 'rnn2')
       test2(seq, 'rnn3')
    end
-   
+
    if pcall(function() require 'nngraph' end) then
       local lin1 = nn.Linear(10, 10)
-      local p1, gp1 = lin1:getParameters() 
-      
+      local p1, gp1 = lin1:getParameters()
+
       local lin2_ = lin1:clone()
-      
+
       local x = nn.Identity()()
       local y = lin2_(x)
-      
+
       local lin2 = nn.gModule({x}, {y})
-      
+
       local lin3 = lin2:sharedClone()
-      
+
       local input = torch.randn(4, 10)
       local gradOutput = torch.randn(4, 10)
-      
+
       lin1:zeroGradParameters()
       lin2:zeroGradParameters()
-      
+
       local params1, gradParams1 = lin1:parameters()
       local params2, gradParams2 = lin2:parameters()
       local params3, gradParams3 = lin3:parameters()
-      
+
       local output1 = lin1:forward(input)
       local gradInput1 = lin1:backward(input, gradOutput)
       lin1:updateParameters(0.1)
-      
+
       local output2 = lin2:forward(input)
       local gradInput2 = lin2:backward(input, gradOutput)
       lin2:updateParameters(0.1)
-      
+
       mytester:assertTensorEq(output1, output2, 0.000001)
       mytester:assertTensorEq(gradInput1, gradInput2, 0.000001)
-      
+
       for i=1,#params2 do
          mytester:assertTensorEq(params2[i], params3[i], 0.000001, "sharedClone nngraph param err "..i)
          mytester:assertTensorEq(gradParams2[i], gradParams3[i], 0.000001, "sharedClone nngraph gradParam err "..i)
          mytester:assertTensorEq(params1[i], params3[i], 0.000001, "sharedClone nngraph param err "..i)
          mytester:assertTensorEq(gradParams1[i], gradParams3[i], 0.000001, "sharedClone nngraph gradParam err "..i)
       end
-      
+
       -- ok now lets forward/backward/update lin1 and lin3 to test sharedClone
-      
+
       local output1 = lin1:forward(input)
       local gradInput1 = lin1:backward(input, gradOutput)
-      
+
       local output3 = lin3:forward(input)
       local gradInput3 = lin3:backward(input, gradOutput)
-      
+
       for i=1,#params2 do
          mytester:assertTensorEq(params2[i], params3[i], 0.000001, "sharedClone nngraph param err "..i)
          mytester:assertTensorEq(gradParams2[i], gradParams3[i], 0.000001, "sharedClone nngraph gradParam err "..i)
          mytester:assertTensorEq(params1[i], params3[i], 0.000001, "sharedClone nngraph param err "..i)
          mytester:assertTensorEq(gradParams1[i], gradParams3[i], 0.000001, "sharedClone nngraph gradParam err "..i)
       end
-      
+
       mytester:assertTensorEq(output1, output3, 0.000001)
       mytester:assertTensorEq(gradInput1, gradInput3, 0.000001)
-      
+
       for i=1,#params2 do
          mytester:assertTensorEq(gradParams1[i], gradParams3[i], 0.000001, "sharedClone nngraph gradParam err "..i)
       end
-      
+
    end
 end
 
@@ -270,7 +270,7 @@ function dpnntest.Module_gradParamClip()
    gradParam:mul(shrink_factor)
    local param2, gradParam2 = mlp2:getParameters()
    mytester:assertTensorEq(gradParam, gradParam2, 0.000001, "Module:gradParamClip clip err")
-   
+
    local norm = gradParam:norm()
    local cutoff = norm*2
    local norm2 = mlp2:gradParamClip(cutoff)
@@ -286,10 +286,10 @@ function dpnntest.Module_getParameters()
    local params, gradParams = lin:getParameters()
    params:add(-1)
    gradParams:fill(-1)
-   
+
    local params1, gradParams1 = lin:parameters()
    local params2, gradParams2 = lin2:parameters()
-   
+
    for i=1,#params1 do
       mytester:assertTensorEq(params1[i], params2[i], 0.000001, "getParameters param err "..i)
       mytester:assertTensorEq(gradParams1[i], gradParams2[i], 0.000001, "getParameters gradParam err "..i)
@@ -301,23 +301,23 @@ function dpnntest.Serial()
       local input = torch.randn(4,3)
       local gradOutput = torch.randn(4,7)
       local mlp2 = mlp:clone():Serial()
-      
+
       local output = mlp:forward(input):clone()
       local gradInput = mlp:backward(input, gradOutput):clone()
-      
+
       local output2 = mlp2:forward(input)
       local gradInput2 = mlp2:backward(input, gradOutput)
-      
+
       mytester:assertTensorEq(output, output2, 0.000001, name.." serial forward error")
       mytester:assertTensorEq(gradInput, gradInput2, 0.00001, name.." serial backward error")
-      
+
       mlp2:mediumSerial()
       mlp2.tensortype = 'torch.FloatTensor'
       local mlp3 = mlp2:clone()
-      
+
       mytester:assert(mlp3.module.output:nElement() == 0, name.." serial medium empty err")
       mytester:assert(torch.type(mlp3.module.output) == 'torch.FloatTensor', name.." serial medium type err")
-      
+
       mlp:zeroGradParameters()
       local output = mlp:forward(input)
       local gradInput = mlp:backward(input, gradOutput)
@@ -325,10 +325,10 @@ function dpnntest.Serial()
       mlp3:zeroGradParameters()
       local output2 = mlp3:forward(input:float())
       local gradInput2 = mlp3:backward(input:float(), gradOutput:float())
-      
+
       mytester:assertTensorEq(output:float(), output2, 0.000001, name.." serial forward error")
       mytester:assertTensorEq(gradInput:float(), gradInput2, 0.00001, name.." serial backward error")
-      
+
       local params, gradParams = mlp:parameters()
       local params2, gradParams2 = mlp3:parameters()
       mytester:assert(#params == #params2)
@@ -337,7 +337,7 @@ function dpnntest.Serial()
          mytester:assertTensorEq(gradParams[i]:float(), gradParams2[i], 0.00001, name.." gradParams err "..i)
       end
    end
-   
+
    local mlp = nn.Sequential():extend(
       nn.Linear(3,4),
       nn.Tanh(),
@@ -348,9 +348,9 @@ function dpnntest.Serial()
          nn.Linear(6,7)
       )
    )
-   
+
    test(mlp, 'mlp')
-   
+
    if pcall(function() require 'rnn' end) then
       local seq = nn.Sequential()
       seq:add(nn.Repeater(nn.Recurrent(2,nn.Linear(3,2),nn.Linear(2,2), nn.Sigmoid(), 999), 3))
@@ -486,14 +486,14 @@ function dpnntest.ReverseTable()
    local r = nn.ReverseTable()
    local input = {torch.randn(3,4), torch.randn(3,4), torch.randn(3,4), torch.randn(3,4)}
    local output = r:forward(input)
-   
+
    mytester:assert(#output == 4, "ReverseTable #output")
    local k = 1
    for i=#input,1,-1 do
       mytester:assertTensorEq(input[i], output[k], 0.00001, "ReverseTable output err "..k)
       k = k + 1
    end
-   
+
    local gradInput = r:backward(input, output)
    mytester:assert(#gradInput == 4, "ReverseTable #gradInput")
    for i=1,#input do
@@ -592,7 +592,7 @@ function dpnntest.DontCast()
    mytester:assert(torch.type(gradInput4) == 'torch.FloatTensor')
    mytester:assertTensorEq(output3, output:float(), 0.000001)
    mytester:assertTensorEq(gradInput3, gradInput:float(), 0.000001)
-   
+
    -- test table inputs/outputs
    local input = {torch.randn(3,4), torch.randn(3,4)}
    local gradOutput = {torch.randn(3,2), torch.randn(3,2)}
@@ -655,10 +655,10 @@ function dpnntest.ModuleCriterion()
    local inputModule = nn.Tanh()
    local criterion = nn.MSECriterion()
    local mc = nn.ModuleCriterion(criterion, inputModule)
-   
+
    local err = mc:forward(input, target)
    local gradInput = mc:backward(input, target)
-   
+
    local output = inputModule:forward(input)
    local err2 = criterion:forward(output, target)
    local gradOutput = criterion:backward(output, target)
@@ -751,7 +751,7 @@ function dpnntest.ReinforceGamma()
 end
 
 function dpnntest.ReinforceBernoulli()
-   local input = torch.Tensor(1000,10) 
+   local input = torch.Tensor(1000,10)
    local p = torch.rand(1,10) -- probability of sampling a 1
    input:copy(p:expandAs(input))
    local gradOutput = torch.Tensor() -- will be ignored
@@ -778,7 +778,7 @@ function dpnntest.ReinforceBernoulli()
 end
 
 function dpnntest.ReinforceCategorical()
-   local input = torch.Tensor(1000,10) 
+   local input = torch.Tensor(1000,10)
    local p = torch.rand(1,10)
    p:div(p:sum())
    input:copy(p:expandAs(input))
@@ -819,17 +819,17 @@ function dpnntest.VRClassReward()
    local gradInput2 = nn.MSECriterion():float():backward(input[2], reward)
    mytester:assertTensorEq(gradInput[2], gradInput2, 0.000001, "VRClassReward backward baseline err")
    mytester:assert(math.abs(gradInput[1]:sum()) < 0.000001, "VRClassReward backward class err")
-   
+
    if pcall(function() require 'cunn' end) then
       local gradInput = {gradInput[1], gradInput[2]}
       input[1], input[2] = input[1]:cuda(), input[2]:cuda()
       target = target:cuda()
       rf:cuda()
       vrc:cuda()
-      
+
       local err2 = vrc:forward(input, target)
       local gradInput2 = vrc:backward(input, target)
-      
+
       mytester:assert(math.abs(err - err2) < 0.000001, "VRClassReward forward cuda err")
       mytester:assertTensorEq(gradInput[2], gradInput2[2]:float(), 0.000001, "VRClassReward backward baseline cuda err")
       mytester:assertTensorEq(gradInput[1], gradInput2[1]:float(), 0.000001, "VRClassReward backward class cuda err")
@@ -851,7 +851,7 @@ function dpnntest.BinaryClassReward()
    local gradInput2 = nn.MSECriterion():backward(input[2], reward)
    mytester:assertTensorEq(gradInput[2], gradInput2, 0.000001, "BinaryClassReward backward baseline err")
    mytester:assertTensorEq(gradInput[1], torch.zeros(input[1]:size()), 0.000001, "BinaryClassReward backward class err")
-   
+
    -- test agains VRClassReward
    local input2 = {torch.Tensor(10,2):zero(), input[2]}
    local target2 = torch.add(target, 1)
@@ -878,7 +878,7 @@ function dpnntest.Clip()
    mask:gt(input, maxval)
    output2[mask:type("torch.ByteTensor")] = maxval
    mask:lt(input, minval)
-   output2[mask:type("torch.ByteTensor")] = minval   
+   output2[mask:type("torch.ByteTensor")] = minval
    mytester:assertTensorEq(output, output2, 0.00001, "Clip forward err")
    local gradInput = clip:backward(input, gradOutput)
    mytester:assertTensorEq(gradInput, gradOutput, 0.00001, "Clip backward err")
@@ -912,7 +912,7 @@ function dpnntest.SpatialGlimpse()
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse center 4 output depth=1 err")
    local outputSize = {batchSize, inputSize[1]*3, glimpseSize, glimpseSize}
    mytester:assertTableEq(output:size():totable(), outputSize, 0.000001, "SpatialGlimpse output size err")
-   
+
    local input2 = torch.Tensor(unpack(inputSize))
    input2:range(1,input2:nElement())
    input2:resize(unpack(inputSize))
@@ -920,7 +920,7 @@ function dpnntest.SpatialGlimpse()
    local location2 = torch.Tensor(2):fill(0) -- center patch
    local output2 = sg:forward{input2,location2}
    mytester:assertTensorEq(output2, output[1], 0.00001, "SpatialGlimpse online output depth=1 err")
-   
+
    local glimpseSize = 5
    local sg = nn.SpatialGlimpse(glimpseSize)
    local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
@@ -928,7 +928,7 @@ function dpnntest.SpatialGlimpse()
    local output_ = output:view(batchSize, 3, inputSize[1], glimpseSize, glimpseSize)
    local output2 = input:narrow(3,2,glimpseSize):narrow(4,2,glimpseSize)
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse center 5 output depth=1 err")
-   
+
    local glimpseSize = 4
    local sg = nn.SpatialGlimpse(glimpseSize)
    local location = torch.Tensor(batchSize, 2):fill(-1) -- top left corner patch
@@ -939,7 +939,7 @@ function dpnntest.SpatialGlimpse()
    pad:narrow(3, padSize + 1, inputSize[2]):narrow(4, padSize + 1, inputSize[3]):copy(input)
    local output2 = pad:narrow(3,1,glimpseSize):narrow(4,1,glimpseSize)
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse top-left 4 output depth=1 err")
-   
+
    local glimpseSize = 5
    local sg = nn.SpatialGlimpse(glimpseSize)
    local location = torch.Tensor(batchSize, 2):fill(-1) -- top left corner patch
@@ -949,18 +949,18 @@ function dpnntest.SpatialGlimpse()
    pad:narrow(3, (glimpseSize-1)/2 + 1, inputSize[2]):narrow(4, (glimpseSize-1)/2 + 1, inputSize[3]):copy(input)
    local output2 = pad:narrow(3,1,glimpseSize):narrow(4,1,glimpseSize)
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse top-left 5 output depth=1 err")
-  
+
    local glimpseSize = 4
    local sg = nn.SpatialGlimpse(glimpseSize)
    local location = torch.Tensor(batchSize, 2):fill(1) -- bottom-right corner patch
    local output = sg:forward{input,location}
    local output_ = output:view(batchSize, 3, inputSize[1], glimpseSize, glimpseSize)
    local pad = torch.Tensor(batchSize, inputSize[1], inputSize[2]+glimpseSize, inputSize[3]+glimpseSize):zero()
-   pad:narrow(3, (glimpseSize-1)/2 + 1, inputSize[2]):narrow(4, (glimpseSize-1)/2 + 1, inputSize[3]):copy(input)
+   pad:narrow(3, math.floor((glimpseSize-1)/2 + 1), inputSize[2]):narrow(4, math.floor((glimpseSize-1)/2 + 1), inputSize[3]):copy(input)
    local output2 = pad:narrow(3,inputSize[2]-1,glimpseSize):narrow(4,inputSize[3]-1,glimpseSize)
    --print('bottom-right', output2, output_:select(2, 1))
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse bottom-right 4 output depth=1 err")
-   
+
    local glimpseSize = 5
    local sg = nn.SpatialGlimpse(glimpseSize)
    local location = torch.Tensor(batchSize, 2):fill(1) -- bottom-right corner patch
@@ -971,7 +971,7 @@ function dpnntest.SpatialGlimpse()
    local output2 = pad:narrow(3,inputSize[2]-1,glimpseSize):narrow(4,inputSize[3]-1,glimpseSize)
    --print('bottom-right', output2, output_:select(2, 1))
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpse bottom-right 5 output depth=1 err")
-   
+
    local glimpseSize = 4
    local sg = nn.SpatialGlimpse(glimpseSize, 1)
    local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
@@ -983,7 +983,7 @@ function dpnntest.SpatialGlimpse()
    local gradInput2 = input:clone():zero()
    gradInput2:narrow(3,3,glimpseSize):narrow(4,3,glimpseSize):copy(output_:select(2,1))
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse backward 4 depth 1 error")
-   
+
    -- test with spatial resampling
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
    sg.module = nn.SpatialReSampling{owidth=glimpseSize,oheight=glimpseSize}
@@ -998,7 +998,7 @@ function dpnntest.SpatialGlimpse()
    local srs = nn.SpatialReSampling{oheight=glimpseSize*2,owidth=glimpseSize*2}
    local gradInput2 = srs:updateGradInput(gradInput[1], output_:select(2,2))
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse backward 4 depth 2 error")
-   
+
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
    sg.module = nn.SpatialReSampling{owidth=glimpseSize,oheight=glimpseSize}
    local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
@@ -1012,14 +1012,14 @@ function dpnntest.SpatialGlimpse()
    gradInput2:narrow(3,3,glimpseSize):narrow(4,3,glimpseSize):copy(output_:select(2,1))
    gradInput2:add(srs:updateGradInput(gradInput[1], output_:select(2,2)))
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse backward 4 depth 2 full error")
-   
+
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
    sg.module = nn.SpatialReSampling{owidth=glimpseSize,oheight=glimpseSize}
    local output2 = sg:forward{input[1], location[1]}
    local gradInput2 = sg:backward({input[1], location[1]}, gradOutput[1])
    mytester:assertTensorEq(gradInput[1][1], gradInput2[1], 0.000001, "SpatialGlimpse backward online img err")
    mytester:assertTensorEq(gradInput[2][1], gradInput2[2], 0.000001, "SpatialGlimpse backward online loc err")
-   
+
    -- test with spatial avg pool
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
    local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
@@ -1033,7 +1033,7 @@ function dpnntest.SpatialGlimpse()
    local srs = nn.SpatialAveragePooling(2,2,2,2)
    local gradInput2 = srs:updateGradInput(gradInput[1], output_:select(2,2))
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse avgpool backward 4 depth 2 error")
-   
+
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
    local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
    local output = sg:forward{input,location}
@@ -1046,17 +1046,17 @@ function dpnntest.SpatialGlimpse()
    gradInput2:narrow(3,3,glimpseSize):narrow(4,3,glimpseSize):copy(output_:select(2,1))
    gradInput2:add(srs:updateGradInput(gradInput[1], output_:select(2,2)))
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse avgpool backward 4 depth 2 full error")
-   
+
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
    local output2 = sg:forward{input[1], location[1]}
    local gradInput2 = sg:backward({input[1], location[1]}, gradOutput[1])
    mytester:assertTensorEq(gradInput[1][1], gradInput2[1], 0.000001, "SpatialGlimpse avgpool backward online img err")
    mytester:assertTensorEq(gradInput[2][1], gradInput2[2], 0.000001, "SpatialGlimpse avgpool backward online loc err")
-   
+
    -- test avg pool with cuda
    if not pcall(function() require "cunn" end) then return end -- needs the cunn package
    local input = input:cuda()
-   
+
    local sg = nn.SpatialGlimpse(glimpseSize, 2):cuda()
    local location = torch.CudaTensor(batchSize, 2):fill(0) -- center patch
    local output = sg:forward{input,location}
@@ -1069,7 +1069,7 @@ function dpnntest.SpatialGlimpse()
    local srs = nn.SpatialAveragePooling(2,2,2,2):cuda()
    local gradInput2 = srs:updateGradInput(gradInput[1], output_:select(2,2))
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse avgpool backward 4 depth 2 error")
-   
+
    local sg = nn.SpatialGlimpse(glimpseSize, 2):cuda()
    local location = torch.CudaTensor(batchSize, 2):fill(0) -- center patch
    local output = sg:forward{input,location}
@@ -1082,13 +1082,13 @@ function dpnntest.SpatialGlimpse()
    gradInput2:narrow(3,3,glimpseSize):narrow(4,3,glimpseSize):copy(output_:select(2,1))
    gradInput2:add(srs:updateGradInput(gradInput[1], output_:select(2,2)))
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpse avgpool backward 4 depth 2 full error")
-   
+
    local sg = nn.SpatialGlimpse(glimpseSize, 2):cuda()
    local output2 = sg:forward{input[1], location[1]}
    local gradInput2 = sg:backward({input[1], location[1]}, gradOutput[1])
    mytester:assertTensorEq(gradInput[1][1], gradInput2[1], 0.000001, "SpatialGlimpse avgpool backward online img err")
    mytester:assertTensorEq(gradInput[2][1], gradInput2[2], 0.000001, "SpatialGlimpse avgpool backward online loc err")
-   
+
    if false then
       -- benchmark GPU vs CPU
       local location = torch.FloatTensor(32,2):uniform(-1,1)
@@ -1101,7 +1101,7 @@ function dpnntest.SpatialGlimpse()
          sg:forward{input,location}
       end
       local fwdCPUtime = a:time().real
-      
+
       sg:cuda()
       location = location:cuda()
       input = input:cuda()
@@ -1119,7 +1119,7 @@ end
 
 function dpnntest.SpatialGlimpse_backwardcompat()
    -- this is ugly, but I know this verson of the module works.
-   -- So we try to match the newer versions to it 
+   -- So we try to match the newer versions to it
    local SG, parent = torch.class("nn.SG", "nn.Module")
 
    function SG:__init(size, depth, scale)
@@ -1127,7 +1127,7 @@ function dpnntest.SpatialGlimpse_backwardcompat()
       self.size = size -- height == width
       self.depth = depth or 3
       self.scale = scale or 2
-      
+
       assert(torch.type(self.size) == 'number')
       assert(torch.type(self.depth) == 'number')
       assert(torch.type(self.scale) == 'number')
@@ -1149,12 +1149,12 @@ function dpnntest.SpatialGlimpse_backwardcompat()
       local input, location = unpack(inputTable)
       input, location = self:toBatch(input, 3), self:toBatch(location, 1)
       assert(input:dim() == 4 and location:dim() == 2)
-      
+
       self.output:resize(input:size(1), self.depth, input:size(2), self.size, self.size)
-      
+
       self._crop = self._crop or self.output.new()
       self._pad = self._pad or input.new()
-      
+
       for sampleIdx=1,self.output:size(1) do
          local outputSample = self.output[sampleIdx]
          local inputSample = input[sampleIdx]
@@ -1163,31 +1163,31 @@ function dpnntest.SpatialGlimpse_backwardcompat()
          local x, y = xy:select(1,1), xy:select(1,2)
          -- (0,0), (1,1)
          x, y = (x+1)/2, (y+1)/2
-         
+
          -- for each depth of glimpse : pad, crop, downscale
-         local glimpseSize = self.size
-         for depth=1,self.depth do 
+         local glimpseSize = math.floor(self.size)
+         for depth=1,self.depth do
             local dst = outputSample[depth]
             if depth > 1 then
-               glimpseSize = glimpseSize*self.scale
+               glimpseSize = math.floor(glimpseSize*self.scale)
             end
-            
+
             -- add zero padding (glimpse could be partially out of bounds)
             local padSize = math.floor((glimpseSize-1)/2)
             self._pad:resize(input:size(2), input:size(3)+padSize*2, input:size(4)+padSize*2):zero()
             local center = self._pad:narrow(2,padSize+1,input:size(3)):narrow(3,padSize+1,input:size(4))
             center:copy(inputSample)
-            
+
             -- crop it
             local h, w = self._pad:size(2)-glimpseSize, self._pad:size(3)-glimpseSize
-            local x, y = math.min(h,math.max(0,x*h)),  math.min(w,math.max(0,y*w))
-            
+            local x, y = math.floor(math.min(h,math.max(0,x*h))), math.floor(math.min(w,math.max(0,y*w)))
+
             if depth == 1 then
                dst:copy(self._pad:narrow(2,x+1,glimpseSize):narrow(3,y+1,glimpseSize))
             else
                self._crop:resize(input:size(2), glimpseSize, glimpseSize)
                self._crop:copy(self._pad:narrow(2,x+1,glimpseSize):narrow(3,y+1,glimpseSize))
-            
+
                if torch.type(self.module) == 'nn.SpatialAveragePooling' then
                   local poolSize = glimpseSize/self.size
                   assert(poolSize % 2 == 0)
@@ -1200,7 +1200,7 @@ function dpnntest.SpatialGlimpse_backwardcompat()
             end
          end
       end
-      
+
       self.output:resize(input:size(1), self.depth*input:size(2), self.size, self.size)
       self.output = self:fromBatch(self.output, 1)
       return self.output
@@ -1211,12 +1211,12 @@ function dpnntest.SpatialGlimpse_backwardcompat()
       local gradInput, gradLocation = unpack(self.gradInput)
       input, location = self:toBatch(input, 3), self:toBatch(location, 1)
       gradOutput = self:toBatch(gradOutput, 3)
-      
+
       gradInput:resizeAs(input):zero()
       gradLocation:resizeAs(location):zero() -- no backprop through location
-      
+
       gradOutput = gradOutput:view(input:size(1), self.depth, input:size(2), self.size, self.size)
-      
+
       for sampleIdx=1,gradOutput:size(1) do
          local gradOutputSample = gradOutput[sampleIdx]
          local gradInputSample = gradInput[sampleIdx]
@@ -1225,29 +1225,29 @@ function dpnntest.SpatialGlimpse_backwardcompat()
          local x, y = xy:select(1,1), xy:select(1,2)
          -- (0,0), (1,1)
          x, y = (x+1)/2, (y+1)/2
-         
+
          -- for each depth of glimpse : pad, crop, downscale
          local glimpseSize = self.size
-         for depth=1,self.depth do 
+         for depth=1,self.depth do
             local src = gradOutputSample[depth]
             if depth > 1 then
                glimpseSize = glimpseSize*self.scale
             end
-            
+
             -- add zero padding (glimpse could be partially out of bounds)
             local padSize = math.floor((glimpseSize-1)/2)
             self._pad:resize(input:size(2), input:size(3)+padSize*2, input:size(4)+padSize*2):zero()
-            
+
             local h, w = self._pad:size(2)-glimpseSize, self._pad:size(3)-glimpseSize
             local x, y = math.min(h,math.max(0,x*h)),  math.min(w,math.max(0,y*w))
             local pad = self._pad:narrow(2, x+1, glimpseSize):narrow(3, y+1, glimpseSize)
-            
+
             -- upscale glimpse for different depths
             if depth == 1 then
                pad:copy(src)
             else
                self._crop:resize(input:size(2), glimpseSize, glimpseSize)
-               
+
                if torch.type(self.module) == 'nn.SpatialAveragePooling' then
                   local poolSize = glimpseSize/self.size
                   assert(poolSize % 2 == 0)
@@ -1256,37 +1256,37 @@ function dpnntest.SpatialGlimpse_backwardcompat()
                   self.module.dW = poolSize
                   self.module.dH = poolSize
                end
-               
+
                pad:copy(self.module:updateGradInput(self._crop, src))
             end
-           
+
             -- copy into gradInput tensor (excluding padding)
             gradInputSample:add(self._pad:narrow(2, padSize+1, input:size(3)):narrow(3, padSize+1, input:size(4)))
          end
       end
-      
+
       self.gradInput[1] = self:fromBatch(gradInput, 1)
       self.gradInput[2] = self:fromBatch(gradLocation, 1)
-      
+
       return self.gradInput
    end
-   
+
    local batchSize = 1
    local inputSize = {2,8,8}
    local glimpseSize = 4
    local input = torch.randn(batchSize, unpack(inputSize))
    input:resize(batchSize, unpack(inputSize))
-   
+
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
    local sg2 = nn.SG(glimpseSize, 2)
-   
+
    for i=1,10 do
       local location = torch.Tensor(batchSize, 2):uniform(-0.9,0.9)
       local output = sg:forward{input,location}
       local output2 = sg2:forward{input,location}
       mytester:assertTensorEq(output, output2, 0.0000001, "SpatialGlimpse err")
    end
-   
+
 end
 
 -- test rectangle-shaped glimpse sampling
@@ -1294,7 +1294,7 @@ function dpnntest.SpatialGlimpseRect()
    if not pcall(function() require "image" end) then return end -- needs the image package
    local batchSize = 1
    local inputSize = {2,8,8}
-   
+
    local glimpseSize = {4,2} -- {height, width}
    local input = torch.Tensor(batchSize, unpack(inputSize))
    input:range(1,input:nElement())
@@ -1309,7 +1309,7 @@ function dpnntest.SpatialGlimpseRect()
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpseRect center 4 output depth=1 err")
    local outputSize = {batchSize, inputSize[1]*3, glimpseSize[1], glimpseSize[2]}
    mytester:assertTableEq(output:size():totable(), outputSize, 0.000001, "SpatialGlimpseRect output size err")
-   
+
    local input2 = torch.Tensor(unpack(inputSize))
    input2:range(1,input2:nElement())
    input2:resize(unpack(inputSize))
@@ -1317,7 +1317,7 @@ function dpnntest.SpatialGlimpseRect()
    local location2 = torch.Tensor(2):fill(0) -- center patch
    local output2 = sg:forward{input2,location2}
    mytester:assertTensorEq(output2, output[1], 0.00001, "SpatialGlimpseRect online output depth=1 err")
-   
+
    local glimpseSize = {5,3}
    local sg = nn.SpatialGlimpse(glimpseSize)
    local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
@@ -1327,7 +1327,7 @@ function dpnntest.SpatialGlimpseRect()
    local x0 = math.floor((input:size(4)-glimpseSize[2])/2) + 1
    local output2 = input:narrow(3,y0,glimpseSize[1]):narrow(4,x0,glimpseSize[2])
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpseRect center 5 output depth=1 err")
-   
+
    local glimpseSize = {4,3}
    local sg = nn.SpatialGlimpse(glimpseSize)
    local location = torch.Tensor(batchSize, 2):fill(-1) -- top left corner patch
@@ -1339,7 +1339,7 @@ function dpnntest.SpatialGlimpseRect()
    local output2 = pad:narrow(3,1,glimpseSize[1]):narrow(4,1,glimpseSize[2])
    --print('top-left', output2, output_:select(2, 1))
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpseRect top-left 4 output depth=1 err")
-   
+
    local glimpseSize = {5,4}
    local sg = nn.SpatialGlimpse(glimpseSize)
    local location = torch.Tensor(batchSize, 2):fill(-1) -- top left corner patch
@@ -1351,7 +1351,7 @@ function dpnntest.SpatialGlimpseRect()
    pad:narrow(3, y0, inputSize[2]):narrow(4, x0, inputSize[3]):copy(input)
    local output2 = pad:narrow(3,1,glimpseSize[1]):narrow(4,1,glimpseSize[2])
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpseRect top-left 5 output depth=1 err")
-  
+
    local glimpseSize = {3,4}
    local sg = nn.SpatialGlimpse(glimpseSize)
    local location = torch.Tensor(batchSize, 2):fill(1) -- bottom-right corner patch
@@ -1365,7 +1365,7 @@ function dpnntest.SpatialGlimpseRect()
    local dx = math.floor((glimpseSize[2])/2)
    local output2 = pad:narrow(3,inputSize[2]-dy+1,glimpseSize[1]):narrow(4,inputSize[3]-dx+1,glimpseSize[2])
    mytester:assertTensorEq(output2, output_:select(2, 1), 0.00001, "SpatialGlimpseRect bottom-right 4 output depth=1 err")
-   
+
    local glimpseSize = {4,5}
    local sg = nn.SpatialGlimpse(glimpseSize)
    local location = torch.Tensor(batchSize, 2):fill(1) -- bottom-right corner patch
@@ -1413,7 +1413,7 @@ function dpnntest.SpatialGlimpseRect()
    local gradInput2 = srs:updateGradInput(gradInput[1], output_:select(2,2))
    --print('SpatialReSampling', gradInput2, gradInput[1])
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpseRect backward 4 depth 2 error")
-   
+
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
    sg.module = nn.SpatialReSampling{owidth=glimpseSize[2],oheight=glimpseSize[1]}
    local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
@@ -1428,14 +1428,14 @@ function dpnntest.SpatialGlimpseRect()
    gradInput2:add(srs:updateGradInput(gradInput[1], output_:select(2,2)))
    --print('SpatialReSampling', gradInput2, gradInput[1])
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpseRect backward 4 depth 2 full error")
-   
+
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
    sg.module = nn.SpatialReSampling{owidth=glimpseSize[2],oheight=glimpseSize[1]}
    local output2 = sg:forward{input[1], location[1]}
    local gradInput2 = sg:backward({input[1], location[1]}, gradOutput[1])
    mytester:assertTensorEq(gradInput[1][1], gradInput2[1], 0.000001, "SpatialGlimpseRect backward online img err")
    mytester:assertTensorEq(gradInput[2][1], gradInput2[2], 0.000001, "SpatialGlimpseRect backward online loc err")
-   
+
    -- test with spatial avg pool
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
    local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
@@ -1451,7 +1451,7 @@ function dpnntest.SpatialGlimpseRect()
    local srs = nn.SpatialAveragePooling(2,2,2,2)
    local gradInput2 = srs:updateGradInput(gradInput[1], output_:select(2,2))
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpseRect avgpool backward 4 depth 2 error")
-   
+
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
    local location = torch.Tensor(batchSize, 2):fill(0) -- center patch
    local output = sg:forward{input,location}
@@ -1464,17 +1464,17 @@ function dpnntest.SpatialGlimpseRect()
    gradInput2:narrow(3,y0,glimpseSize[1]):narrow(4,x0,glimpseSize[2]):copy(output_:select(2,1))
    gradInput2:add(srs:updateGradInput(gradInput[1], output_:select(2,2)))
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpseRect avgpool backward 4 depth 2 full error")
-   
+
    local sg = nn.SpatialGlimpse(glimpseSize, 2)
    local output2 = sg:forward{input[1], location[1]}
    local gradInput2 = sg:backward({input[1], location[1]}, gradOutput[1])
    mytester:assertTensorEq(gradInput[1][1], gradInput2[1], 0.000001, "SpatialGlimpseRect avgpool backward online img err")
    mytester:assertTensorEq(gradInput[2][1], gradInput2[2], 0.000001, "SpatialGlimpseRect avgpool backward online loc err")
-   
+
    -- test avg pool with cuda
    if not pcall(function() require "cunn" end) then return end -- needs the cunn package
    local input = input:cuda()
-   
+
    local sg = nn.SpatialGlimpse(glimpseSize, 2):cuda()
    local location = torch.CudaTensor(batchSize, 2):fill(0) -- center patch
    local output = sg:forward{input,location}
@@ -1487,7 +1487,7 @@ function dpnntest.SpatialGlimpseRect()
    local srs = nn.SpatialAveragePooling(2,2,2,2):cuda()
    local gradInput2 = srs:updateGradInput(gradInput[1], output_:select(2,2))
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpseRect avgpool backward 4 depth 2 error")
-   
+
    local sg = nn.SpatialGlimpse(glimpseSize, 2):cuda()
    local location = torch.CudaTensor(batchSize, 2):fill(0) -- center patch
    local output = sg:forward{input,location}
@@ -1500,13 +1500,13 @@ function dpnntest.SpatialGlimpseRect()
    gradInput2:narrow(3,y0,glimpseSize[1]):narrow(4,x0,glimpseSize[2]):copy(output_:select(2,1))
    gradInput2:add(srs:updateGradInput(gradInput[1], output_:select(2,2)))
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.000001, "SpatialGlimpseRect avgpool backward 4 depth 2 full error")
-   
+
    local sg = nn.SpatialGlimpse(glimpseSize, 2):cuda()
    local output2 = sg:forward{input[1], location[1]}
    local gradInput2 = sg:backward({input[1], location[1]}, gradOutput[1])
    mytester:assertTensorEq(gradInput[1][1], gradInput2[1], 0.000001, "SpatialGlimpseRect avgpool backward online img err")
    mytester:assertTensorEq(gradInput[2][1], gradInput2[2], 0.000001, "SpatialGlimpseRect avgpool backward online loc err")
-   
+
    if false then
       -- benchmark GPU vs CPU
       local location = torch.FloatTensor(32,2):uniform(-1,1)
@@ -1519,7 +1519,7 @@ function dpnntest.SpatialGlimpseRect()
          sg:forward{input,location}
       end
       local fwdCPUtime = a:time().real
-      
+
       sg:cuda()
       location = location:cuda()
       input = input:cuda()
@@ -1531,7 +1531,7 @@ function dpnntest.SpatialGlimpseRect()
       end
       local fwdGPUtime = a:time().real
       print(fwdGPUtime, fwdCPUtime, fwdCPUtime/fwdGPUtime)
-      -- 
+      --
    end
 end
 
@@ -1551,7 +1551,7 @@ function dpnntest.ArgMax()
    local gradInput = am:backward(input, gradOutput)
    local val, idx = torch.max(input, 2)
    mytester:assertTensorEq(idx:select(2,1):double(), output, 0.000001, "ArgMax output not asLong err")
-   mytester:assertTensorEq(gradInput, input:clone():zero(), 0.000001, "ArgMax gradInput not asLong err") 
+   mytester:assertTensorEq(gradInput, input:clone():zero(), 0.000001, "ArgMax gradInput not asLong err")
 end
 
 function dpnntest.CategoricalEntropy()
@@ -1607,21 +1607,21 @@ function dpnnbigtest.Reinforce()
    local beta = 0.9
    local alpha = 1
    local lr = 0.1
-   
+
    for i=1,inputs:size(1) do
       local j = (i % inputs:size(2)) + 1
       inputs[{i,j}] = torch.uniform(0.9,1.1)
       targets[i] = j
    end
-   
+
    local M = 10
-   local function train(mlp, cost, N, name) 
+   local function train(mlp, cost, N, name)
       local converged = false
       local baseReward
       local reward
       for i=1,M do
          mlp:reset()
-         
+
          baseReward = 0
          for i=1,inputs:size(1) do
             mlp:evaluate()
@@ -1632,7 +1632,7 @@ function dpnnbigtest.Reinforce()
          baseReward = baseReward/inputs:size(1)
 
          for k=1,N do
-            
+
             for i=1,inputs:size(1) do
                mlp:training()
                mlp:zeroGradParameters()
@@ -1643,7 +1643,7 @@ function dpnnbigtest.Reinforce()
                mlp:backward(inputs:narrow(1,i,1), gradOutput)
                mlp:updateParameters(lr)
             end
-            
+
             reward = 0
             for i=1,inputs:size(1) do
                mlp:evaluate()
@@ -1652,7 +1652,7 @@ function dpnnbigtest.Reinforce()
                reward = reward - cost:forward(output, target)
             end
             reward = reward/inputs:size(1)
-            
+
             -- is the baseReward lesser than 70% of reward after training?
             -- i.e. did the reward increase sufficiently?
             if reward*0.7 > baseReward then
@@ -1660,16 +1660,16 @@ function dpnnbigtest.Reinforce()
                break
             end
          end
-         
+
          if reward*0.7 > baseReward then
             converged = true
             break
          end
       end
-      
+
       mytester:assert(converged, name.." did not converge : "..reward.."*0.7 < "..baseReward)
    end
-   
+
    -- ReinforceNormal
    local hiddenSize = 200
    local N = 10
@@ -1684,11 +1684,11 @@ function dpnnbigtest.Reinforce()
    local concat = nn.ConcatTable()
    concat:add(mlp)
    concat:add( nn.Sequential():add( nn.Constant(1,1) ):add(nn.Add(1)) )
-   
+
    local cost = nn.VRClassReward(concat, alpha)
-   
+
    train(concat, cost, N, 'ReinforceNormal')
-   
+
    -- ReinforceGamma
    local hiddenSize = 200
    local N = 10
@@ -1698,13 +1698,13 @@ function dpnnbigtest.Reinforce()
    mlp:add(nn.ReinforceGamma(stdev))
    mlp:add(nn.Linear(hiddenSize, inputs:size(2)))
    mlp:add(nn.SoftMax())
-   
+
    local concat = nn.ConcatTable()
    concat:add(mlp)
    concat:add( nn.Sequential():add( nn.Constant(1,1) ):add(nn.Add(1)) )
-   
+
    local cost = nn.VRClassReward(concat, alpha)
-   
+
    train(concat, cost, N, 'ReinforceGamma')
 
    -- ReinforceBernoulli
@@ -1716,15 +1716,15 @@ function dpnnbigtest.Reinforce()
    mlp:add(nn.ReinforceBernoulli())
    mlp:add(nn.Linear(hiddenSize, inputs:size(2)))
    mlp:add(nn.SoftMax())
-   
+
    local concat = nn.ConcatTable()
    concat:add(mlp)
    concat:add( nn.Sequential():add( nn.Constant(1,1) ):add(nn.Add(1)) )
-   
+
    local cost = nn.VRClassReward(concat, alpha)
-   
+
    train(concat, cost, N, 'ReinforceBernoulli')
-   
+
    -- ReinforceCategorical
    local hiddenSize = 200
    local N = 10
@@ -1735,13 +1735,13 @@ function dpnnbigtest.Reinforce()
    mlp:add(nn.SoftMax())
    mlp:add(nn.AddConstant(0.00001))
    mlp:add(nn.ReinforceCategorical())
-   
+
    local concat = nn.ConcatTable()
    concat:add(mlp)
    concat:add( nn.Sequential():add( nn.Constant(1,1) ):add(nn.Add(1)) )
-   
+
    local cost = nn.VRClassReward(concat, alpha)
-   
+
    train(concat, cost, N, 'ReinforceCategorical')
 end
 
@@ -1756,7 +1756,7 @@ function dpnntest.WhiteNoise()
    mytester:assert(stdValue < 0.15 and stdValue >= 0)
 
    -- Evaluate
-   addNoise:evaluate() 
+   addNoise:evaluate()
    output = addNoise:forward(input)
    meanValue = output:mean()
    stdValue = output:std()
@@ -2000,7 +2000,7 @@ function dpnnbigtest.Kmeans()
    for i=1, batchSize do
       input[i]:fill(torch.random(1, k))
    end
-   
+
    local verbose = false
 
    local attempts = 10
@@ -2014,7 +2014,7 @@ function dpnnbigtest.Kmeans()
    local hasCuda = pcall(function() require 'cunn' end)
    local useCudas = {false, hasCuda}
    for _, initType in pairs(initTypes) do
-      for _, useCuda in pairs(useCudas) do 
+      for _, useCuda in pairs(useCudas) do
 
          sys.tic()
          for j=1, attempts do
@@ -2025,11 +2025,11 @@ function dpnnbigtest.Kmeans()
             else
                km:initRandom(input)
             end
-            
+
             if useCuda then km:cuda() end
             for i=1, iter do
                km:zeroGradParameters()
-               
+
                km:forward(input)
                km:backward(input, gradOutput)
 
@@ -2107,12 +2107,12 @@ end
 
 function dpnntest.OneHot()
    local nClass = 10
-   
+
    -- batch mode
    local batchSize = 3
    local input = torch.LongTensor(batchSize):random(1, nClass)
    local gradOutput = torch.randn(batchSize, nClass)
-   
+
    local oh = nn.OneHot(nClass)
 
    local output = oh:forward(input)
@@ -2133,20 +2133,20 @@ function dpnntest.OneHot()
 
    if pcall(function() require 'cunn' end) then
       oh:cuda()
-      
+
       -- test with long input
       local output = oh:forward(input)
       mytester:assert(torch.type(output) == 'torch.CudaTensor')
       mytester:assertTensorEq(output:double(), output2, 0.000001, "OneHot forward batch long-cuda err")
-      
+
       -- test with cuda input
       local input = input:cuda()
       gradOutput = gradOutput:cuda()
-      
+
       local output = oh:forward(input)
       mytester:assert(torch.type(output) == 'torch.CudaTensor')
       mytester:assertTensorEq(output:double(), output2, 0.000001, "OneHot forward batch cuda err")
-      
+
       local gradInput2 = oh:backward(input, gradOutput)
       mytester:assertTensorEq(gradInput, gradInput2:double(), 0.000001, "OneHot backward batch err")
       cutorch.synchronize()
@@ -2154,14 +2154,14 @@ function dpnntest.OneHot()
       -- non-batch mode (number input)
       mytester:assertTensorEq(oh:forward(num), output3:cuda(), 0.000001, "OneHot forward number err")
    end
-   
+
    -- multi-dimensional input
    local inputSize = 2
    local input = torch.LongTensor(batchSize, inputSize):random(1, nClass)
    local gradOutput = torch.randn(batchSize, inputSize, nClass)
-   
+
    local oh = nn.OneHot(nClass, 2)
-   
+
    local output = oh:forward(input)
    local output2 = torch.Tensor(batchSize*inputSize, nClass):zero()
    local eye = torch.eye(nClass)
@@ -2172,32 +2172,32 @@ function dpnntest.OneHot()
 
    local gradInput = oh:backward(input, gradOutput)
    mytester:assertTensorEq(gradInput, input:double():zero(), 0.000001, "OneHot 2d backward batch err")
-   
+
    if pcall(function() require 'cunn' end) then
       oh:cuda()
-      
+
       -- test with long input
       local output = oh:forward(input)
       mytester:assert(torch.type(output) == 'torch.CudaTensor')
       mytester:assertTensorEq(output:double(), output2, 0.000001, "OneHot 2d forward batch long-cuda err")
-      
+
       -- test with cuda input
       local input = input:cuda()
       gradOutput = gradOutput:cuda()
-     
+
       local output = oh:forward(input)
       mytester:assert(torch.type(output) == 'torch.CudaTensor')
       mytester:assertTensorEq(output:double(), output2, 0.000001, "OneHot 2d forward batch cuda err")
-      
+
       local gradInput2 = oh:backward(input, gradOutput)
       mytester:assertTensorEq(gradInput, gradInput2:double(), 0.000001, "OneHot 2d backward batch err")
-      
+
       local benchmark = false
       if benchmark then
          local input = torch.FloatTensor(50, 50):random(1,65):cuda()
-         
+
          local oh = nn.OneHot(65):cuda()
-         
+
          oh:forward(input)
          cutorch.synchronize()
          local a = torch.Timer()
@@ -2206,7 +2206,7 @@ function dpnntest.OneHot()
          end
          cutorch.synchronize()
          local gputime = a:time().real
-        
+
          oh:float()
          input = input:float()
          oh:forward(input)
@@ -2225,38 +2225,38 @@ function dpnntest.NCE_main()
    local k = 10
    local inputsize = 3
    local outputsize = 100
-   
+
    local noise = torch.Tensor(outputsize):random(1,100)
-   
+
    local ncem = nn.NCEModule(inputsize, outputsize, k, noise)
    ncem.batchnoise = false
    local ncec = nn.NCECriterion()
-   
+
    local input = torch.randn(batchsize, inputsize)
    local target = torch.LongTensor(batchsize):random(1,outputsize)
    local inputTable = {input, target}
-   
-   -- test training 
-   
+
+   -- test training
+
    -- NCEModule.forward
    local output = ncem:forward(inputTable)
-   
+
    mytester:assert(torch.type(output) == 'table')
    mytester:assert(#output == 4)
-   
+
    local Pmt, Pms, Pnt, Pns = unpack(output)
-   
+
    mytester:assertTableEq(Pmt:size():totable(), {batchsize}, 0.0000001)
    mytester:assertTableEq(Pms:size():totable(), {batchsize, k}, 0.0000001)
    mytester:assertTableEq(Pnt:size():totable(), {batchsize}, 0.0000001)
    mytester:assertTableEq(Pns:size():totable(), {batchsize, k}, 0.0000001)
-   
+
    mytester:assert(ncem.sampleidx:min() >= 1 and ncem.sampleidx:max() <= outputsize)
-   
+
    local sampleprob2 = noise:index(1, ncem.sampleidx:view(-1)):view(batchsize, k+1)
    mytester:assertTensorEq(sampleprob2:select(2,1), Pnt, 0.0000001)
    mytester:assertTensorEq(sampleprob2:narrow(2,2,k), Pns, 0.0000001)
-   
+
    local linear = nn.Linear(inputsize, outputsize)
    linear.weight:copy(ncem.weight)
    linear.bias:copy(ncem.bias)
@@ -2269,56 +2269,56 @@ function dpnntest.NCE_main()
    end
    local Pmt2 = output2:select(2,1)
    local Pms2 = output2:narrow(2,2,k)
-   
+
    mytester:assertTensorEq(Pmt, Pmt2, 0.000001)
    mytester:assertTensorEq(Pms, Pms2, 0.000001)
-   
+
    -- NCECriterion.forward
    local loss = ncec:forward(output, target)
-   
-   -- eq 5.1 : P(origin=model) = Pmt / (Pmt + k*Pnt) 
+
+   -- eq 5.1 : P(origin=model) = Pmt / (Pmt + k*Pnt)
    local Pom = Pmt:clone()
    local mdiv = Pmt:clone():add(k, Pnt):add(0.0000001)
    Pom:cdiv(mdiv)
-   
+
    -- eq 5.2 : P(origin=noise) = k*Pns / (Pms + k*Pns)
    local Pon = Pns:clone():mul(k)
    local ndiv = Pms:clone():add(k, Pns):add(0.0000001)
    Pon:cdiv(ndiv)
-   
+
    -- equation 6 in ref. A
-   
+
    local lossm = torch.log(Pom):sum()
    local lossn = torch.log(Pon):sum()
-   
+
    local loss2 = - (lossm + lossn)/batchsize
-   
+
    mytester:assert(math.abs(loss - loss2) < 0.000001)
-   
+
    -- NCECriterion.backward
    local gradOutput = ncec:backward(output, target)
-   
+
    mytester:assert(#gradOutput == 4)
    mytester:assert(math.abs(gradOutput[3]:sum()) < 0.0000001)
    mytester:assert(math.abs(gradOutput[4]:sum()) < 0.0000001)
-   
+
    local dPmt, dPms = gradOutput[1], gradOutput[2]
-   
+
    -- d Pmt / d input = -k*Pnt / ( Pmt * (Pmt + k*Pnt) )
    local dPmt2 = torch.mul(Pnt, -k):cdiv(mdiv):cdiv(torch.add(Pmt, 0.0000001)):div(batchsize)
    -- d Pms / d input = Pms / ( Pms * (Pms + k*Pns) )
    local dPms2 = Pms:clone():cdiv(ndiv):cdiv(torch.add(Pms, 0.0000001)):div(batchsize)
-   
+
    mytester:assertTensorEq(dPmt, dPmt2, 0.0000001)
    mytester:assertTensorEq(dPms, dPms2, 0.0000001)
-   
+
    mytester:assert(dPmt:sum() == dPmt:sum())
    mytester:assert(dPms:sum() == dPms:sum())
-   
+
    -- NCEModule.backward
    ncem:zeroGradParameters()
    local gradInput = ncem:backward(inputTable, gradOutput)
-   
+
    -- updateGradInput
    local gradOutput2_ = torch.zeros(batchsize, k+1)
    gradOutput2_:select(2,1):copy(gradOutput[1])
@@ -2330,48 +2330,48 @@ function dpnntest.NCE_main()
    mlp:zeroGradParameters()
    local gradInput2 = mlp:backward(input, gradOutput2)
    mytester:assertTensorEq(gradInput[1], gradInput2, 0.0000001)
-   
+
    -- accGradParameters
-   
+
    local params, gradParams = ncem:parameters()
    local params2, gradParams2 = mlp:parameters()
-   
+
    for i=1,#params do
       mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.0000001)
    end
-   
-   
+
+
    if pcall(function() require 'cunn' end) then
-      -- test training with cuda 
-   
+      -- test training with cuda
+
       ncem:cuda()
       ncec:cuda()
-      
+
       local input = input:cuda()
       local target = target:cuda()
-      
+
       local inputTable = {input, target}
-      
+
       -- NCEModule.forward
       local output = ncem:forward(inputTable)
-      
+
       mytester:assert(torch.type(output) == 'table')
       mytester:assert(#output == 4)
-      
+
       local Pmt, Pms, Pnt, Pns = unpack(output)
-      
+
       mytester:assertTableEq(Pmt:size():totable(), {batchsize}, 0.0000001)
       mytester:assertTableEq(Pms:size():totable(), {batchsize, k}, 0.0000001)
       mytester:assertTableEq(Pnt:size():totable(), {batchsize}, 0.0000001)
       mytester:assertTableEq(Pns:size():totable(), {batchsize, k}, 0.0000001)
-      
+
       mytester:assert(ncem.sampleidx:min() >= 1 and ncem.sampleidx:max() <= outputsize)
-      
+
       local sampleprob2 = noise:cuda():index(1, ncem.sampleidx:view(-1)):view(batchsize, k+1)
-      
+
       mytester:assertTensorEq(sampleprob2:select(2,1), Pnt, 0.0000001)
       mytester:assertTensorEq(sampleprob2:narrow(2,2,k), Pns, 0.0000001)
-      
+
       local linear = nn.Linear(inputsize, outputsize)
       linear.weight:copy(ncem.weight)
       linear.bias:copy(ncem.bias)
@@ -2385,56 +2385,56 @@ function dpnntest.NCE_main()
       end
       local Pmt2 = output2:select(2,1)
       local Pms2 = output2:narrow(2,2,k)
-      
+
       mytester:assertTensorEq(Pmt, Pmt2, 0.000001)
       mytester:assertTensorEq(Pms, Pms2, 0.000001)
-      
+
       -- NCECriterion.forward
       local loss = ncec:forward(output, target)
-      
-      -- eq 5.1 : P(origin=model) = Pmt / (Pmt + k*Pnt) 
+
+      -- eq 5.1 : P(origin=model) = Pmt / (Pmt + k*Pnt)
       local Pom = Pmt:clone()
       local mdiv = Pmt:clone():add(k, Pnt):add(0.0000001)
       Pom:cdiv(mdiv)
-      
+
       -- eq 5.2 : P(origin=noise) = k*Pns / (Pms + k*Pns)
       local Pon = Pns:clone():mul(k)
       local ndiv = Pms:clone():add(k, Pns):add(0.0000001)
       Pon:cdiv(ndiv)
-      
+
       -- equation 6 in ref. A
-      
+
       local lossm = torch.log(Pom):sum()
       local lossn = torch.log(Pon):sum()
-      
+
       local loss2 = - (lossm + lossn)/batchsize
-      
+
       mytester:assert(math.abs(loss - loss2) < 0.000001)
-      
+
       -- NCECriterion.backward
       local gradOutput = ncec:backward(output, target)
-      
+
       mytester:assert(#gradOutput == 4)
       mytester:assert(math.abs(gradOutput[3]:sum()) < 0.0000001)
       mytester:assert(math.abs(gradOutput[4]:sum()) < 0.0000001)
-      
+
       local dPmt, dPms = gradOutput[1], gradOutput[2]
-      
+
       -- d Pmt / d input = -k*Pnt / ( Pmt * (Pmt + k*Pnt) )
       local dPmt2 = torch.mul(Pnt, -k):cdiv(mdiv):cdiv(torch.add(Pmt, 0.0000001)):div(batchsize)
       -- d Pms / d input = Pms / ( Pms * (Pms + k*Pns) )
       local dPms2 = Pms:clone():cdiv(ndiv):cdiv(torch.add(Pms, 0.0000001)):div(batchsize)
-      
+
       mytester:assertTensorEq(dPmt, dPmt2, 0.0000001)
       mytester:assertTensorEq(dPms, dPms2, 0.0000001)
-      
+
       mytester:assert(dPmt:sum() == dPmt:sum())
       mytester:assert(dPms:sum() == dPms:sum())
-      
+
       -- NCEModule.backward
       ncem:zeroGradParameters()
       local gradInput = ncem:backward(inputTable, gradOutput)
-      
+
       -- updateGradInput
       local gradOutput2_ = torch.zeros(batchsize, k+1):cuda()
       gradOutput2_:select(2,1):copy(gradOutput[1])
@@ -2446,12 +2446,12 @@ function dpnntest.NCE_main()
       mlp:zeroGradParameters()
       local gradInput2 = mlp:backward(input, gradOutput2)
       mytester:assertTensorEq(gradInput[1], gradInput2, 0.0000001)
-      
+
       -- accGradParameters
-      
+
       local params, gradParams = ncem:parameters()
       local params2, gradParams2 = mlp:parameters()
-      
+
       for i=1,#params do
          mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.0000001)
       end
@@ -2462,17 +2462,17 @@ function dpnntest.NCE_multinomial()
    local probs = torch.Tensor(10):uniform(0,1)
    probs:div(probs:sum())
    local nce = nn.NCEModule(10, 10, 2500, probs)
-   
+
    local output = torch.LongTensor()
    nce:noiseSample(output, 1000, 2500)
-   
+
    local counts = torch.Tensor(10):zero()
    output:apply(function(x)
       counts[x] = counts[x] + 1
    end)
-   
+
    counts:div(counts:sum())
-   
+
    mytester:assertTensorEq(probs, counts, 0.001)
 end
 
@@ -2481,165 +2481,165 @@ function dpnntest.NCE_batchnoise()
    local k = 10
    local inputsize = 3
    local outputsize = 100
-   
+
    local noise = torch.Tensor(outputsize):random(1,100)
-   
+
    local ncem = nn.NCEModule(inputsize, outputsize, k, noise, 1)
    assert(ncem.batchnoise)
    local ncec = nn.NCECriterion()
-   
+
    local ncem2 = ncem:clone()
    ncem2.batchnoise = false
    local ncec2 = ncec:clone()
-   
+
    local input = torch.randn(batchsize, inputsize)
    local target = torch.LongTensor(batchsize):random(1,outputsize)
    local inputTable = {input, target}
-   
-   -- test training 
-   
+
+   -- test training
+
    -- NCEModule.forward
    local output = ncem:forward(inputTable)
-   
+
    mytester:assert(torch.type(output) == 'table')
    mytester:assert(#output == 4)
-   
+
    local Pmt, Pms, Pnt, Pns = unpack(output)
-   
+
    mytester:assertTableEq(Pmt:size():totable(), {batchsize}, 0.0000001)
    mytester:assertTableEq(Pms:size():totable(), {batchsize, k}, 0.0000001)
    mytester:assertTableEq(Pnt:size():totable(), {batchsize}, 0.0000001)
    mytester:assertTableEq(Pns:size():totable(), {batchsize, k}, 0.0000001)
-   
+
    mytester:assert(ncem.sampleidx:min() >= 1 and ncem.sampleidx:max() <= outputsize)
-   
+
    local sampleprob2 = noise:index(1, ncem.sampleidx:view(-1))
    mytester:assertTensorEq(sampleprob2:narrow(1,k+1,batchsize), Pnt, 0.0000001)
    mytester:assertTensorEq(sampleprob2:narrow(1,1,k):contiguous():view(1,k):expand(batchsize, k), Pns, 0.0000001)
-   
+
    function ncem2.noiseSample(self, sampleidx, batchsize, k)
       sampleidx:resize(batchsize, k):copy(ncem.sampleidx:narrow(1,1,k):view(1, k):expand(batchsize, k))
       return sampleidx
    end
-   
+
    local output2 = ncem2:forward(inputTable)
    local Pmt2, Pms2, Pnt2, Pns2 = unpack(output2)
-   
+
    mytester:assertTensorEq(Pmt, Pmt2, 0.000001)
    mytester:assertTensorEq(Pms, Pms2, 0.000001)
-   
+
    -- NCECriterion.forward
    local loss = ncec:forward(output, target)
    local loss2 = ncec2:forward(output, target)
-   
+
    mytester:assert(math.abs(loss - loss2) < 0.000001)
-      
+
    -- NCECriterion.backward
    local gradOutput = ncec:backward(output, target)
    local gradOutput2 = ncec2:backward(output, target)
-   
+
    mytester:assert(#gradOutput == 4)
    mytester:assert(math.abs(gradOutput[3]:sum()) < 0.0000001)
    mytester:assert(math.abs(gradOutput[4]:sum()) < 0.0000001)
-   
+
    mytester:assertTensorEq(gradOutput[1], gradOutput2[1], 0.0000001)
    mytester:assertTensorEq(gradOutput[2], gradOutput2[2], 0.0000001)
-   
+
    -- NCEModule.backward
    ncem:zeroGradParameters()
    local gradInput = ncem:backward(inputTable, gradOutput)
-   
+
    ncem2:zeroGradParameters()
    local gradInput2 = ncem2:backward(inputTable, gradOutput2)
-   
+
    -- updateGradInput
    mytester:assertTensorEq(gradInput[1], gradInput2[1], 0.0000001)
-   
+
    -- accGradParameters
    local params, gradParams = ncem:parameters()
    local params2, gradParams2 = ncem2:parameters()
-   
+
    for i=1,#params do
       mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.0000001, tostring(gradParams[i])..tostring(gradParams2[i]))
    end
-   
-   
+
+
    if pcall(function() require 'cunn' end) then
-      -- test training with cuda 
-   
+      -- test training with cuda
+
       ncem:cuda()
       ncec:cuda()
-      
+
       ncem2:cuda()
       ncec2:cuda()
-      
+
       local input = input:cuda()
       local target = target:cuda()
       local noise = noise:cuda()
-      
+
       local inputTable = {input, target}
-      
+
       -- NCEModule.forward
       local output = ncem:forward(inputTable)
-      
+
       mytester:assert(torch.type(output) == 'table')
       mytester:assert(#output == 4)
-      
+
       local Pmt, Pms, Pnt, Pns = unpack(output)
-      
+
       mytester:assertTableEq(Pmt:size():totable(), {batchsize}, 0.0000001)
       mytester:assertTableEq(Pms:size():totable(), {batchsize, k}, 0.0000001)
       mytester:assertTableEq(Pnt:size():totable(), {batchsize}, 0.0000001)
       mytester:assertTableEq(Pns:size():totable(), {batchsize, k}, 0.0000001)
-      
+
       mytester:assert(ncem.sampleidx:min() >= 1 and ncem.sampleidx:max() <= outputsize)
-      
+
       local sampleprob2 = noise:index(1, ncem.sampleidx:view(-1))
       mytester:assertTensorEq(sampleprob2:narrow(1,k+1,batchsize), Pnt, 0.0000001)
       mytester:assertTensorEq(sampleprob2:narrow(1,1,k):contiguous():view(1,k):expand(batchsize, k), Pns, 0.0000001)
-      
+
       function ncem2.noiseSample(self, sampleidx, batchsize, k)
          sampleidx:resize(batchsize, k):copy(ncem.sampleidx:narrow(1,1,k):view(1, k):expand(batchsize, k))
          return sampleidx
       end
-      
+
       local output2 = ncem2:forward(inputTable)
       local Pmt2, Pms2, Pnt2, Pns2 = unpack(output2)
-      
+
       mytester:assertTensorEq(Pmt, Pmt2, 0.000001)
       mytester:assertTensorEq(Pms, Pms2, 0.000001)
-      
+
       -- NCECriterion.forward
       local loss = ncec:forward(output, target)
       local loss2 = ncec2:forward(output, target)
-      
+
       mytester:assert(math.abs(loss - loss2) < 0.000001)
-         
+
       -- NCECriterion.backward
       local gradOutput = ncec:backward(output, target)
       local gradOutput2 = ncec2:backward(output, target)
-      
+
       mytester:assert(#gradOutput == 4)
       mytester:assert(math.abs(gradOutput[3]:sum()) < 0.0000001)
       mytester:assert(math.abs(gradOutput[4]:sum()) < 0.0000001)
-      
+
       mytester:assertTensorEq(gradOutput[1], gradOutput2[1], 0.0000001)
       mytester:assertTensorEq(gradOutput[2], gradOutput2[2], 0.0000001)
-      
+
       -- NCEModule.backward
       ncem:zeroGradParameters()
       local gradInput = ncem:backward(inputTable, gradOutput)
-      
+
       ncem2:zeroGradParameters()
       local gradInput2 = ncem2:backward(inputTable, gradOutput2)
-      
+
       -- updateGradInput
       mytester:assertTensorEq(gradInput[1], gradInput2[1], 0.0000001)
-      
+
       -- accGradParameters
       local params, gradParams = ncem:parameters()
       local params2, gradParams2 = ncem2:parameters()
-      
+
       for i=1,#params do
          mytester:assertTensorEq(gradParams[i], gradParams2[i], 0.000001, tostring(gradParams[i])..tostring(gradParams2[i]))
       end
@@ -2648,7 +2648,7 @@ end
 
 function dpnnbigtest.NCE_benchmark()
    pcall(function() require 'cunn' end) -- make sure to import cunn before initializing large tensors, else weird segfault...
-   
+
    local nclass = 1000000
    local hiddensize = 200
    local batchsize = 50
@@ -2659,13 +2659,13 @@ function dpnnbigtest.NCE_benchmark()
       :add(nn.Linear(hiddensize, nclass))
       :add(nn.SoftMax())
    local nll = nn.ClassNLLCriterion()
-   
+
    local nce = nn.NCEModule(hiddensize, nclass, 25, unigrams)
    local crit = nn.NCECriterion()
-   
+
    local input = torch.randn(batchsize, hiddensize)
    local target = torch.LongTensor(batchsize):random(1,nclass)
-   
+
    local sync = function() return end
    if pcall(function() require 'cunn' end) then
       input = input:cuda()
@@ -2676,17 +2676,17 @@ function dpnnbigtest.NCE_benchmark()
       nll:cuda()
       sync = function() cutorch.synchronize() end
    end
-   
+
    local output = nce:forward{input, target}
    local loss = crit:forward(output, target)
    local gradOutput = crit:backward(output, target)
    local gradInput = nce:backward({input, target}, gradOutput)
-   
+
    local output = mlp:forward(input)
    local loss = nll:forward(output, target)
    local gradOutput = nll:backward(output, target)
    local gradInput = mlp:backward(input, gradOutput)
-   
+
    sync()
    local a = torch.Timer()
    for i=1,nloop do
@@ -2694,28 +2694,28 @@ function dpnnbigtest.NCE_benchmark()
    end
    sync()
    local ncefwd = a:time().real
-   
+
    a:reset()
    for i=1,nloop do
       loss = crit:forward(output, target)
    end
    sync()
    local critfwd = a:time().real
-   
+
    a:reset()
    for i=1,nloop do
       gradOutput = crit:backward(output, target)
    end
    sync()
    local critbwd = a:time().real
-   
+
    a:reset()
    for i=1,nloop do
       gradInput = nce:backward({input, target}, gradOutput)
    end
    sync()
    local ncebwd = a:time().real
-   
+
    -- mlp nll
    local a = torch.Timer()
    for i=1,nloop do
@@ -2723,28 +2723,28 @@ function dpnnbigtest.NCE_benchmark()
    end
    sync()
    local mlpfwd = a:time().real
-   
+
    a:reset()
    for i=1,nloop do
       loss = nll:forward(output, target)
    end
    sync()
    local nllfwd = a:time().real
-   
+
    a:reset()
    for i=1,nloop do
       gradOutput = nll:backward(output, target)
    end
    sync()
    local nllbwd = a:time().real
-   
+
    a:reset()
    for i=1,nloop do
       gradInput = mlp:backward(input, gradOutput)
    end
    sync()
    local mlpbwd = a:time().real
-   
+
    local ncetotal = ncefwd+critfwd+critbwd+ncebwd
    local lintotal = mlpfwd+nllfwd+nllbwd+mlpbwd
    print("module:forward (nce vs linear)", ncefwd, mlpfwd)
@@ -2752,33 +2752,33 @@ function dpnnbigtest.NCE_benchmark()
    print("criterion:backward (nce vs nll)", critbwd, nllbwd)
    print("module:backward (nce vs linear)", ncebwd, mlpbwd)
    print("total (nce vs linear)", ncetotal, lintotal, lintotal/ncetotal)
-   
+
    if not (cunn and cutorch.getDeviceCount() > 1) then
       return
    end
-   
+
    nce:multicuda(1,2)
-   
+
    local output = nce:forward{input, target}
    local loss = crit:forward(output, target)
    local gradOutput = crit:backward(output, target)
    local gradInput = nce:backward({input, target}, gradOutput)
    sync()
-   
+
    local a = torch.Timer()
    for i=1,nloop do
       output = nce:forward{input, target}
    end
    sync()
    local ncefwd2 = a:time().real
-   
+
    a:reset()
    for i=1,nloop do
       gradInput = nce:backward({input, target}, gradOutput)
    end
    sync()
    local ncebwd2 = a:time().real
-   
+
    local total1 = ncefwd+ncebwd
    local total2 = ncefwd2+ncebwd2
    print("module:forward (1 vs 2 gpu)", ncefwd, ncefwd2)
@@ -2829,74 +2829,74 @@ function dpnntest.NCE_multicuda()
    if not pcall(function() require 'cunn' end) then
       return
    end
-   if cutorch.getDeviceCount() < 2 then 
+   if cutorch.getDeviceCount() < 2 then
       return
    end
    assert(torchx.version and torchx.version >= 1, "Update torchx")
-   
+
    local nclass = 1000
    local hiddensize = 20
    local batchsize = 5
    local k = 25
    local unigrams = torch.Tensor(nclass):uniform(0,1)
    local noise = torch.LongTensor(batchsize, k):random(1,nclass)
-   
+
    local crit = nn.NCECriterion():cuda()
    local crit2 = nn.NCECriterion():cuda()
-   
+
    local nce = nn.NCEModule(hiddensize, nclass, k, unigrams)
    nce.batchnoise = math.random() < 0.5
-   
+
    -- make it deterministic
    nce.noiseSample = function(self, sampleidx, batchsize, k)
       sampleidx:resize(batchsize, k)
       sampleidx:copy(noise:narrow(1,1,batchsize))
       return sampleidx
    end
-   
+
    local nce2 = nce:clone()
    nce2:cuda()
-   
+
    local input = torch.randn(batchsize, hiddensize):cuda()
    local target = torch.LongTensor(batchsize):random(1,nclass):cuda()
-   
+
    nce:multicuda(1, 2)
-   
+
    local output = nce:forward{input, target}
    local loss = crit:forward(output, target)
    local gradOutput = crit:backward(output, target)
    nce:zeroGradParameters()
    local gradInput = nce:backward({input, target}, gradOutput)
-   
+
    local output2 = nce2:forward{input, target}
    local loss2 = crit2:forward(output2, target)
    local gradOutput2 = crit2:backward(output2, target)
    nce2:zeroGradParameters()
    local gradInput2 = nce2:backward({input, target}, gradOutput2)
-   
+
    mytester:assertTensorEq(output[1], output2[1], 0.00001)
    mytester:assertTensorEq(output[2], output2[2], 0.00001)
    mytester:assertTensorEq(output[3], output2[3], 0.00001)
    mytester:assertTensorEq(output[4], output2[4], 0.00001)
-   
+
    mytester:assertTensorEq(gradInput[1], gradInput2[1], 0.00001)
    mytester:assertTensorEq(gradInput[2], gradInput2[2], 0.00001)
-   
-   
+
+
    nce2:updateParameters(0.1)
    nce:updateParameters(0.1)
-   
+
    mytester:assertTensorEq(nce2.bias, nce.bias, 0.000001)
    mytester:assertTensorEq(nce2.gradBias, nce.gradBias, 0.000001)
    mytester:assertTensorEq(nce2.weight[{{},{1,hiddensize/2}}]:float(), nce.weight.tensors[1]:float(), 0.000001)
    mytester:assertTensorEq(nce2.weight[{{},{1+(hiddensize/2), hiddensize}}]:float(), nce.weight.tensors[2]:float(), 0.000001)
    mytester:assertTensorEq(nce2.gradWeight[{{},{1,hiddensize/2}}]:float(), nce.gradWeight.tensors[1]:float(), 0.000001)
    mytester:assertTensorEq(nce2.gradWeight[{{},{1+(hiddensize/2), hiddensize}}]:float(), nce.gradWeight.tensors[2]:float(), 0.000001)
-   
+
    -- test momentum
    nce2:updateGradParameters(0.9)
    nce:updateGradParameters(0.9)
-   
+
    mytester:assertTensorEq(nce2.gradBias, nce.gradBias, 0.000001)
    mytester:assertTensorEq(nce2.momGradParams[1][{{},{1,hiddensize/2}}]:float(), nce.momGradParams[1].tensors[1]:float(), 0.000001)
    mytester:assertTensorEq(nce2.momGradParams[1][{{},{1+(hiddensize/2), hiddensize}}]:float(), nce.momGradParams[1].tensors[2]:float(), 0.000001)
