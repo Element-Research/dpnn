@@ -133,13 +133,13 @@ function SpatialGlimpse:updateGradInput(inputTable, gradOutput)
       y, x = (y+1)/2, (x+1)/2
 
       -- for each depth of glimpse : pad, crop, downscale
-      local glimpseWidth = self.width
-      local glimpseHeight = self.height
+      local glimpseWidth = math.floor(self.width)
+      local glimpseHeight = math.floor(self.height)
       for depth=1,self.depth do
          local src = gradOutputSample[depth]
          if depth > 1 then
-            glimpseWidth = glimpseWidth*self.scale
-            glimpseHeight = glimpseHeight*self.scale
+            glimpseWidth = math.floor(glimpseWidth*self.scale)
+            glimpseHeight = math.floor(glimpseHeight*self.scale)
          end
 
          -- add zero padding (glimpse could be partially out of bounds)
@@ -148,7 +148,7 @@ function SpatialGlimpse:updateGradInput(inputTable, gradOutput)
          self._pad:resize(input:size(2), input:size(3)+padHeight*2, input:size(4)+padWidth*2):zero()
 
          local h, w = self._pad:size(2)-glimpseHeight, self._pad:size(3)-glimpseWidth
-         local y, x = math.min(h,math.max(0,y*h)),  math.min(w,math.max(0,x*w))
+         local y, x = math.floor(math.min(h,math.max(0,y*h))), math.floor(math.min(w,math.max(0,x*w)))
          local pad = self._pad:narrow(2, y+1, glimpseHeight):narrow(3, x+1, glimpseWidth)
 
          -- upscale glimpse for different depths
