@@ -313,6 +313,11 @@ We get a nice error message:
 nn.NaN(2) @ nn.Linear(3 -> 4)
 ``` 
 
+For a quick one-liner to catch NaNs anywhere inside a model (for example, a `nn.Sequential` or any other `nn.Container`), we can use this with the `nn.Module.replace` function:
+```lua
+model:replace(function(module) return nn.NaN(module) end)
+```
+
 <a name='nn.Inception'></a>
 ## Inception ##
 References :
