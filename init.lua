@@ -2,7 +2,6 @@ require 'torch'
 require 'nn'
 require 'nnx'
 local _ = require 'moses'
-
 -- create global dpnn table
 dpnn = {}
 dpnn.version = 2
@@ -37,6 +36,7 @@ require('dpnn.Decorator')
 require('dpnn.Serial')
 require('dpnn.DontCast')
 require('dpnn.NaN')
+require('dpnn.Profile')
 
 -- modules
 require('dpnn.PrintSize')
