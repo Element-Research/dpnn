@@ -359,8 +359,13 @@ nn.Linear took 0.161 seconds for 1000 backward passes
 nn.Identity took 0.026 seconds for 1000 backward passes	
 ```
 
-It's good practice to profile modules after a single forwards and backwards pass, since the initial pass often has to allocate memory. Thus, in the example above, you would run another 1000 forwards and backwards passes to time the modules in their normal mode of operation.
+It's good practice to profile modules after a single forwards and backwards pass, since the initial pass often has to allocate memory. Thus, in the example above, you would run another 1000 forwards and backwards passes to time the modules in their normal mode of operation:
 
+```
+for i=1,1000 do
+   mlp:forward(inp)
+   mlp:backward(inp, gradOutput)
+end
 ```
 
 <a name='nn.Inception'></a>
