@@ -528,6 +528,7 @@ function dpnntest.Inception()
 end
 
 function dpnntest.SpatialUniformCrop()
+   if not pcall(function() require "nnx" end) then return end -- needs the nnx package
    local input = torch.Tensor(8,3,10,10):copy(torch.range(1,8):view(8,1,1,1):expand(8,3,10,10))
    local gradOutput = torch.Tensor(8,3,4,4):copy(torch.range(1,8):view(8,1,1,1):expand(8,3,4,4))
    local sc = nn.SpatialUniformCrop(4)
@@ -1293,6 +1294,7 @@ end
 -- test rectangle-shaped glimpse sampling
 function dpnntest.SpatialGlimpseRect()
    if not pcall(function() require "image" end) then return end -- needs the image package
+   if not pcall(function() require "nnx" end) then return end -- needs the nnx package
    local batchSize = 1
    local inputSize = {2,8,8}
 
