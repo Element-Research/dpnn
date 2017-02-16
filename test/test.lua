@@ -2823,6 +2823,33 @@ function dpnntest.NaN()
    mytester:assert(not pcall(function() nan:backward(input, gradOutput) end))
 end
 
+function dpnntest.profile()
+   -- timing the forward pass introduces some overhead to the module
+   -- We want to make sure this overhead isn't too large
+   local mx_overhead = 0.05
+   local print_every = 1000
+   local net = nn.Profile(nn.Linear(1024,1024), print_every)
+   local inp = torch.randn(1, 1024)
+
+   local timer = torch.Timer()
+   local tot_time = 0
+   for i=1,print_every-1 do
+      timer:reset()
+      net:forward(inp)
+      tot_time = tot_time + timer:time().real
+   end
+   mytester:assert(math.abs(net.summedFwdTime - tot_time) / tot_time < mx_overhead)
+   net:forward(inp)
+   -- Do the same test, now that all the memory has already been allocated
+   local tot_time = 0
+   for i=1,print_every-1 do
+      timer:reset()
+      net:forward(inp)
+      tot_time = tot_time + timer:time().real
+   end
+   mytester:assert(math.abs(net.summedFwdTime - tot_time) / tot_time < mx_overhead)
+end
+
 function dpnntest.NCE_multicuda()
    if not pcall(function() require 'torchx' end) then
       return

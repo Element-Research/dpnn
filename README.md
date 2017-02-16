@@ -11,6 +11,7 @@ The package provides the following Modules:
  * [DontCast](#nn.DontCast) : prevent encapsulated module from being casted by `Module:type()` ;
  * [Serial](#nn.Serial) : decorate a module makes its serialized output more compact ; 
  * [NaN](#nn.NaN) : decorate a module to detect the source of NaN errors ;
+ * [Profile](#nn.Profile) : decorate a module to time its forwards and backwards passes ;
  * [Inception](#nn.Inception) : implements the Inception module of the GoogleLeNet article ;
  * [Collapse](#nn.Collapse) : just like `nn.View(-1)`;
  * [Convert](#nn.Convert) : convert between different tensor types or shapes;
@@ -316,6 +317,55 @@ nn.NaN(2) @ nn.Linear(3 -> 4)
 For a quick one-liner to catch NaNs anywhere inside a model (for example, a `nn.Sequential` or any other `nn.Container`), we can use this with the `nn.Module.replace` function:
 ```lua
 model:replace(function(module) return nn.NaN(module) end)
+```
+
+<a name='nn.Profile'></a>
+## Profile ##
+
+```lua
+dmodule = nn.Profile(module, [print_interval, [name] ])
+``` 
+
+The `Profile` module times each forward and backward pass of the decorated `module`. It prints this information after `print_interval` passes, which is `100` by default. For timing multiple modules, the `name` argument allows this information to be printed accompanied by a name, which by default is the type of the decorated `module`.
+
+This is useful for profiling new modules you develop, and tracking down bottlenecks in the speed of a network.
+
+The timer and print statement can add a small amount of overhead to the overall speed.
+
+As an example:
+
+```lua
+mlp = nn.Sequential()
+mlp:add(nn.Identity())
+mlp:add(nn.Linear(1000,1000))
+mlp:add(nn.Tanh())
+mlp:replace(function(module) return nn.Profile(module, 1000) end)
+inp = torch.randn(1000)
+gradOutput = torch.randn(1000)
+for i=1,1000 do
+   mlp:forward(inp)
+   mlp:backward(inp, gradOutput)
+end
+```
+
+results in the following profile information:
+
+```
+nn.Identity took 0.026 seconds for 1000 forward passes	
+nn.Linear took 0.119 seconds for 1000 forward passes	
+nn.Tanh took 0.061 seconds for 1000 forward passes	
+nn.Tanh took 0.032 seconds for 1000 backward passes	
+nn.Linear took 0.161 seconds for 1000 backward passes	
+nn.Identity took 0.026 seconds for 1000 backward passes	
+```
+
+It's good practice to profile modules after a single forwards and backwards pass, since the initial pass often has to allocate memory. Thus, in the example above, you would run another 1000 forwards and backwards passes to time the modules in their normal mode of operation:
+
+```
+for i=1,1000 do
+   mlp:forward(inp)
+   mlp:backward(inp, gradOutput)
+end
 ```
 
 <a name='nn.Inception'></a>
