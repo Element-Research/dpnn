@@ -10,7 +10,11 @@ unpack = unpack or table.unpack -- lua 5.2 compat
 
 function dpnn.require(packagename)
    assert(torch.type(packagename) == 'string')
-   assert(pcall(function() require(packagename) end), "missing package "..packagename..": run 'luarocks install nnx'")
+   local success, message = pcall(function() require(packagename) end)
+   if not success then
+      print("missing package "..packagename..": run 'luarocks install nnx'")
+      error(message)
+   end
 end
 
 -- for testing:
