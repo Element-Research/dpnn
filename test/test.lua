@@ -898,6 +898,7 @@ end
 
 function dpnntest.SpatialGlimpse()
    if not pcall(function() require "image" end) then return end -- needs the image package
+   if not pcall(function() require "nnx" end) then return end -- needs the nnx package
    local batchSize = 1
    local inputSize = {2,8,8}
    local glimpseSize = 4
@@ -1118,12 +1119,12 @@ function dpnntest.SpatialGlimpse()
 end
 
 function dpnntest.SpatialGlimpse_backwardcompat()
+   if not pcall(function() require "nnx" end) then return end -- needs the nnx package
    -- this is ugly, but I know this verson of the module works.
    -- So we try to match the newer versions to it
    local SG, parent = torch.class("nn.SG", "nn.Module")
 
    function SG:__init(size, depth, scale)
-      require 'nnx'
       self.size = size -- height == width
       self.depth = depth or 3
       self.scale = scale or 2

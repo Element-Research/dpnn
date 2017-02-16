@@ -1,6 +1,5 @@
 require 'torch'
 require 'nn'
-require 'nnx'
 local _ = require 'moses'
 
 -- create global dpnn table
@@ -8,6 +7,15 @@ dpnn = {}
 dpnn.version = 2
 
 unpack = unpack or table.unpack -- lua 5.2 compat
+
+function dpnn.require(packagename)
+   assert(torch.type(packagename) == 'string')
+   local success, message = pcall(function() require(packagename) end)
+   if not success then
+      print("missing package "..packagename..": run 'luarocks install nnx'")
+      error(message)
+   end
+end
 
 -- for testing:
 require('dpnn.test')
@@ -49,8 +57,6 @@ require('dpnn.CAddTensorTable')
 require('dpnn.ReverseTable')
 require('dpnn.Dictionary')
 require('dpnn.Inception')
-require('dpnn.SoftMaxTree')
-require('dpnn.SoftMaxForest')
 require('dpnn.Clip')
 require('dpnn.SpatialUniformCrop')
 require('dpnn.SpatialGlimpse')

@@ -14,7 +14,7 @@
 local SpatialGlimpse, parent = torch.class("nn.SpatialGlimpse", "nn.Module")
 
 function SpatialGlimpse:__init(size, depth, scale)
-   require 'nnx'
+   dpnn.require('nnx')
    if torch.type(size)=='table' then
       self.height = size[1]
       self.width = size[2]
@@ -42,6 +42,7 @@ end
 -- a bandwidth limited sensor which focuses on a location.
 -- locations index the x,y coord of the center of the output glimpse
 function SpatialGlimpse:updateOutput(inputTable)
+   dpnn.require('nnx')
    assert(torch.type(inputTable) == 'table')
    assert(#inputTable >= 2)
    local input, location = unpack(inputTable)
