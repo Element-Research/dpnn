@@ -2828,7 +2828,7 @@ end
 function dpnntest.profile()
    -- timing the forward pass introduces some overhead to the module
    -- We want to make sure this overhead isn't too large
-   local mx_overhead = 0.05
+   local mx_overhead = 0.2
    local print_every = 1000
    local net = nn.Profile(nn.Linear(1024,1024), print_every)
    local inp = torch.randn(1, 1024)
