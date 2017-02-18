@@ -2828,7 +2828,7 @@ end
 function dpnntest.profile()
    -- timing the forward pass introduces some overhead to the module
    -- We want to make sure this overhead isn't too large
-   local mx_overhead = 0.2
+   local mx_overhead = 0.05
    local print_every = 1000
    local net = nn.Profile(nn.Linear(1024,1024), print_every)
    local inp = torch.randn(1, 1024)
@@ -2934,10 +2934,27 @@ function dpnntest.NCE_multicuda()
    mytester:assertTensorEq(nce2.gradWeight[{{},{1+(hiddensize/2), hiddensize}}]:float(), nce.gradWeight.tensors[2]:float(), 0.000001)
 end
 
-function dpnn.test(tests)
+function dpnn.test(tests, exclude)
    mytester = torch.Tester()
    mytester:add(dpnntest)
    math.randomseed(os.time())
+   if exclude then
+      local excludes = {}
+      assert(tests)
+      tests = torch.type(tests) == 'table' and tests or {tests}
+      for i,test in ipairs(tests) do
+         assert(torch.type(test) == 'string')
+         excludes[test] = true
+      end
+      tests = {}
+      for testname, testfunc in pairs(dpnntest.__tests) do
+         if not excludes[testname] then
+            table.insert(tests, testname)
+         else
+            print("excluding test: "..testname)
+         end
+      end
+   end
    mytester:run(tests)
 end
 
