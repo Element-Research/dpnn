@@ -1,6 +1,6 @@
 local DontCast, parent = torch.class("nn.DontCast", "nn.Decorator")
 
--- utility functions 
+-- utility functions
 
 local function recursiveTypeCopy(dst, src, type_str)
    if torch.type(src) == 'table' then
@@ -40,7 +40,7 @@ function DontCast:__init(module, castin, castout, moduleType)
    self.castin = castin
    self.castout = (castout == nil) and castin or castout
    self.moduleType = moduleType
-   if (self.castin or self.castout) and not self.moduleType then 
+   if (self.castin or self.castout) and not self.moduleType then
       local moduleType, found = tableTensorType(module.output)
       if found then
          self.moduleType = moduleType
@@ -60,9 +60,9 @@ function DontCast:updateOutput(input)
       self._input = recursiveTypeCopy(self._input, input, self.moduleType)
       input = self._input
    end
-   
-   local output = self.module:updateOutput(input)
-   
+
+   local output = self.modules[1]:updateOutput(input)
+
    if self.castout then
       self.output = recursiveTypeCopy(self.output, output, tableTensorType(self.output))
    else
@@ -79,9 +79,9 @@ function DontCast:updateGradInput(input, gradOutput)
       self._gradOutput = recursiveTypeCopy(self._gradOutput, gradOutput, self.moduleType)
       gradOutput = self._gradOutput
    end
-   
-   local gradInput = self.module:updateGradInput(input, gradOutput)
-   
+
+   local gradInput = self.modules[1]:updateGradInput(input, gradOutput)
+
    if self.castin then
       self.gradInput = recursiveTypeCopy(self.gradInput, gradInput, tableTensorType(self.gradInput))
    else
@@ -97,8 +97,8 @@ function DontCast:accGradParameters(input, gradOutput, scale)
    if self.castout and tableTensorType(gradOutput) ~= self.moduleType then
       gradOutput = self._gradOutput
    end
-   
-   self.module:accGradParameters(input, gradOutput, scale)
+
+   self.modules[1]:accGradParameters(input, gradOutput, scale)
 end
 
 function DontCast:accUpdateGradParameters(input, gradOutput, lr)
@@ -108,8 +108,8 @@ function DontCast:accUpdateGradParameters(input, gradOutput, lr)
    if self.castout and tableTensorType(gradOutput) ~= self.moduleType then
       gradOutput = self._gradOutput
    end
-   
-   self.module:accUpdateGradParameters(input, gradOutput, lr)
+
+   self.modules[1]:accUpdateGradParameters(input, gradOutput, lr)
 end
 
 -- dont cast (the essence thereof)

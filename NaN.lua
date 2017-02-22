@@ -31,7 +31,7 @@ function NaN:recursiveIsNaN(tensor)
 end
 
 function NaN:updateOutput(input)
-   self.output = self.module:updateOutput(input)
+   self.output = self.modules[1]:updateOutput(input)
    if self:recursiveIsNaN(self.output) then
       if self:recursiveIsNaN(input) then
          error(string.format("NaN found in input of module :\n%s", self:__tostring__()))
@@ -44,7 +44,7 @@ function NaN:updateOutput(input)
 end
 
 function NaN:updateGradInput(input, gradOutput)
-   self.gradInput = self.module:updateGradInput(input, gradOutput)
+   self.gradInput = self.modules[1]:updateGradInput(input, gradOutput)
    if self:recursiveIsNaN(self.gradInput) then
       if self:recursiveIsNaN(gradOutput) then
          error(string.format("NaN found in gradOutput of module :\n%s", self:__tostring__()))
@@ -54,8 +54,8 @@ function NaN:updateGradInput(input, gradOutput)
    return self.gradInput
 end
 
-function NaN:accGradParameters(input, gradOutput, scale) 
-   self.module:accGradParameters(input, gradOutput, scale)
+function NaN:accGradParameters(input, gradOutput, scale)
+   self.modules[1]:accGradParameters(input, gradOutput, scale)
    local params, gradParams = self:parameters()
    if self:recursiveIsNaN(gradParams) then
       error(string.format("NaN found in gradParameters of module :\n%s", self:__tostring__()))
@@ -64,9 +64,9 @@ end
 
 function NaN:__tostring__()
    local selfstring = torch.type(self) .. '(' .. self.id .. ')'
-   if self.module.__tostring__ then
-      return selfstring .. ' @ ' .. self.module:__tostring__()
+   if self.modules[1].__tostring__ then
+      return selfstring .. ' @ ' .. self.modules[1]:__tostring__()
    else
-      return selfstring .. ' @ ' .. torch.type(self.module)
+      return selfstring .. ' @ ' .. torch.type(self.modules[1])
    end
 end

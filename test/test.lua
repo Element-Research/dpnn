@@ -315,8 +315,8 @@ function dpnntest.Serial()
       mlp2.tensortype = 'torch.FloatTensor'
       local mlp3 = mlp2:clone()
 
-      mytester:assert(mlp3.module.output:nElement() == 0, name.." serial medium empty err")
-      mytester:assert(torch.type(mlp3.module.output) == 'torch.FloatTensor', name.." serial medium type err")
+      mytester:assert(mlp3.modules[1].output:nElement() == 0, name.." serial medium empty err")
+      mytester:assert(torch.type(mlp3.modules[1].output) == 'torch.FloatTensor', name.." serial medium type err")
 
       mlp:zeroGradParameters()
       local output = mlp:forward(input)
@@ -1193,10 +1193,10 @@ function dpnntest.SpatialGlimpse_backwardcompat()
                if torch.type(self.module) == 'nn.SpatialAveragePooling' then
                   local poolSize = glimpseSize/self.size
                   assert(poolSize % 2 == 0)
-                  self.module.kW = poolSize
-                  self.module.kH = poolSize
-                  self.module.dW = poolSize
-                  self.module.dH = poolSize
+                  self.modules[1].kW = poolSize
+                  self.modules[1].kH = poolSize
+                  self.modules[1].dW = poolSize
+                  self.modules[1].dH = poolSize
                end
                dst:copy(self.module:updateOutput(self._crop))
             end
@@ -1253,13 +1253,13 @@ function dpnntest.SpatialGlimpse_backwardcompat()
                if torch.type(self.module) == 'nn.SpatialAveragePooling' then
                   local poolSize = glimpseSize/self.size
                   assert(poolSize % 2 == 0)
-                  self.module.kW = poolSize
-                  self.module.kH = poolSize
-                  self.module.dW = poolSize
-                  self.module.dH = poolSize
+                  self.modules[1].kW = poolSize
+                  self.modules[1].kH = poolSize
+                  self.modules[1].dW = poolSize
+                  self.modules[1].dH = poolSize
                end
 
-               pad:copy(self.module:updateGradInput(self._crop, src))
+               pad:copy(self.modules[1]:updateGradInput(self._crop, src))
             end
 
             -- copy into gradInput tensor (excluding padding)

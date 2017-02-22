@@ -169,24 +169,24 @@ end
 
 function Inception:updateOutput(input)
    local input = self:toBatch(input, 3)
-   local output = self.module:updateOutput(input)
+   local output = self.modules[1]:updateOutput(input)
    self.output = self:fromBatch(output, 3)
    return self.output
 end
 
 function Inception:updateGradInput(input, gradOutput)
    local input, gradOutput = self:toBatch(input, 3), self:toBatch(gradOutput, 3)
-   local gradInput = self.module:updateGradInput(input, gradOutput)
+   local gradInput = self.modules[1]:updateGradInput(input, gradOutput)
    self.gradInput = self:fromBatch(gradInput, 3)
    return self.gradInput
 end
 
 function Inception:accGradParameters(input, gradOutput, scale)
    local input, gradOutput = self:toBatch(input, 3), self:toBatch(gradOutput, 3)
-   self.module:accGradParameters(input, gradOutput, scale)
+   self.modules[1]:accGradParameters(input, gradOutput, scale)
 end
 
 function Inception:accUpdateGradParameters(input, gradOutput, lr)
    local input, gradOutput = self:toBatch(input, 3), self:toBatch(gradOutput, 3)
-   self.module:accUpdateGradParameters(input, gradOutput, lr)
+   self.modules[1]:accUpdateGradParameters(input, gradOutput, lr)
 end
