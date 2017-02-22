@@ -1198,7 +1198,7 @@ function dpnntest.SpatialGlimpse_backwardcompat()
                   self.modules[1].dW = poolSize
                   self.modules[1].dH = poolSize
                end
-               dst:copy(self.module:updateOutput(self._crop))
+               dst:copy(self.modules[1]:updateOutput(self._crop))
             end
          end
       end
