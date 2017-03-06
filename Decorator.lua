@@ -29,7 +29,7 @@ function Decorator:sharedAccUpdateGradParameters(input, gradOutput, lr)
 end
 
 function Decorator:__tostring__()
-   if self.module.__tostring__ then
+   if self.modules[1].__tostring__ then
       return torch.type(self) .. ' @ ' .. self.modules[1]:__tostring__()
    else
       return torch.type(self) .. ' @ ' .. torch.type(self.modules[1])
