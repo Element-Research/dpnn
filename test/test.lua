@@ -435,25 +435,6 @@ function dpnntest.SpatialUniformCrop()
    mytester:assert(gradInput:max() ~= nil, "SpatialUniformCrop scaling error.")
 end
 
-function dpnntest.ModuleCriterion()
-   local input = torch.randn(8,4)
-   local target = torch.randn(8,4)
-   local inputModule = nn.Tanh()
-   local criterion = nn.MSECriterion()
-   local mc = nn.ModuleCriterion(criterion, inputModule)
-
-   local err = mc:forward(input, target)
-   local gradInput = mc:backward(input, target)
-
-   local output = inputModule:forward(input)
-   local err2 = criterion:forward(output, target)
-   local gradOutput = criterion:backward(output, target)
-   local gradInput2 = inputModule:backward(input, gradOutput)
-
-   mytester:assert(err == err2, "ModuleCriterion backward err")
-   mytester:assertTensorEq(gradInput, gradInput2, 0.000001, "ModuleCriterion backward err")
-end
-
 function dpnntest.ReinforceNormal()
    local input = torch.randn(500,1000) -- means
    local gradOutput = torch.Tensor() -- will be ignored
@@ -1740,71 +1721,6 @@ function dpnntest.PCAColorTransform()
       local gradInput = model:backward(input, input)
       mytester:assert(gradInput:sum() == input:sum(),
                        "PCAColorTransform gradInput value incorrect.")
-   end
-end
-
--- Unit Test Kmeans layer
-function dpnnbigtest.Kmeans()
-   local k = 10
-   local dim = 5
-   local batchSize = 1000
-   local input = torch.rand(batchSize, dim)
-   for i=1, batchSize do
-      input[i]:fill(torch.random(1, k))
-   end
-
-   local verbose = false
-
-   local attempts = 10
-   local iter = 100
-   local bestLoss = 100000000
-   local bestKm = nil
-   local tempLoss = 0
-   local learningRate = 1
-
-   local initTypes = {'random', 'kmeans++'}
-   local hasCuda = pcall(function() require 'cunn' end)
-   local useCudas = {false, hasCuda}
-   for _, initType in pairs(initTypes) do
-      for _, useCuda in pairs(useCudas) do
-
-         sys.tic()
-         for j=1, attempts do
-            local km = nn.Kmeans(k, dim)
-
-            if initType == 'kmeans++' then
-               km:initKmeansPlus(input)
-            else
-               km:initRandom(input)
-            end
-
-            if useCuda then km:cuda() end
-            for i=1, iter do
-               km:zeroGradParameters()
-
-               km:forward(input)
-               km:backward(input, gradOutput)
-
-               -- Gradient descent
-               km.weight:add(-learningRate, km.gradWeight)
-               tempLoss = km.loss
-            end
-            if verbose then print("Attempt Loss " .. j ..": " .. tempLoss) end
-            if tempLoss < bestLoss then
-               bestLoss = tempLoss
-            end
-         end
-         if verbose then
-            print("InitType: " .. initType .. " useCuda: " .. tostring(useCuda))
-            print("Best Loss: " .. bestLoss)
-            print("Total time: " .. sys.toc())
-         end
-         if initType == 'kmeans++' then
-            mytester:assert(bestLoss < 0.00001)
-         else
-            mytester:assert(bestLoss < 500)
-         end
-      end
    end
 end
 

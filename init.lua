@@ -51,7 +51,6 @@ require('dpnn.SpatialGlimpse')
 require('dpnn.ArgMax')
 require('dpnn.CategoricalEntropy')
 require('dpnn.TotalDropout')
-require('dpnn.Kmeans')
 require('dpnn.SpatialRegionDropout')
 require('dpnn.FireModule')
 require('dpnn.SpatialFeatNormalization')
@@ -72,7 +71,6 @@ require('dpnn.VRClassReward')
 require('dpnn.BinaryClassReward')
 
 -- criterions
-require('dpnn.ModuleCriterion')
 require('dpnn.BinaryLogisticRegression')
 require('dpnn.SpatialBinaryLogisticRegression')
 
